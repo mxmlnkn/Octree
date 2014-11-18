@@ -21,6 +21,24 @@ public:
 
     T_DTYPE* data;
     VecI size;
+    
+    /********************************* Summary ********************************
+        BaseMatrix( void );
+        BaseMatrix( VecI size );
+        BaseMatrix( const BaseMatrix & m );
+        ~BaseMatrix( void );
+        BaseMatrix& operator= (const T_DTYPE a);
+        int getLinearIndex( const VecI & pos ) const;
+        VecI getVectorIndex( const int & linindex ) const;
+        T_DTYPE operator[] ( const int i ) const;
+        T_DTYPE & operator[] ( const int i );
+        T_DTYPE operator[] ( const VecI pos ) const;
+        T_DTYPE & operator[] ( const VecI pos );
+        VecI getSize( void ) const;
+        BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const;
+        void insertMatrix( const VecI & pos, const BaseMatrix & m );
+        void Print( void ) const;
+    ***************************************************************************/
 
     /****************************** Constructors ******************************/
     BaseMatrix( void ) {

@@ -14,23 +14,44 @@ public:
     static const int dim = T_DIMENSION;
     T_DTYPE data[T_DIMENSION];
     /**************************************************************************
-     * Vec(void);                                                             *
-     * Vec(const Vec & v);                                                    *
-     * T_DTYPE & operator[] (const int i);                                    *
-     * Vec& operator+= (const Vec & v);                                       *
-     * Vec operator+ (const Vec & v) const;                                   *
-     * Vec& operator-= (const Vec & v);                                       *
-     * Vec operator- (const Vec & v) const;                                   *
-     * T_DTYPE operator* (const Vec v) const;                                 *
-     * Vec& operator*= (const double a);                                      *
-     * Vec operator* (const double a) const;                                  *
-     * Vec& operator/= (const double a);                                      *
-     * Vec operator/ (const double a) const;                                  *
-     * bool operator== (const Vec v) const;                                   *
-     * bool operator!= (const Vec v) const;                                   *
-     * double norm() const;                                                   *
-     * double norm2() const;                                                  *
-     * // Vec cross(const Vec & b) const;                                     *
+        Vec(void);
+        Vec(const T_ETYPE v[T_DIMENSION] );
+        Vec(const Vec<T_ETYPE,T_DIMENSION> & v);
+        Vec(const T_DTYPE a);
+
+        T_DTYPE operator[] (const int i) const;
+        T_DTYPE & operator[] (const int i);
+
+        operator const T_DTYPE*() const;
+
+        Vec& operator= (const T_DTYPE a);
+        Vec& operator= (const Vec<T_ETYPE, T_DIMENSION> & v);
+        Vec& operator+= (const Vec<T_ETYPE, T_DIMENSION> & v);
+        Vec& operator*= (const Vec<T_ETYPE,T_DIMENSION> & v);
+        inline Vec& operator/= (const Vec<T_ETYPE, T_DIMENSION> & v);
+        Vec operator/ (const Vec<T_ETYPE, T_DIMENSION> & v) const;
+
+        bool operator== (const Vec & v) const;
+        bool operator< (const Vec & v) const;
+        bool operator> (const Vec & v) const;
+        bool operator<= (const Vec & v) const;
+        bool operator>= (const Vec & v) const;
+
+        double norm2() const;
+        T_DTYPE product( void ) const;
+        T_DTYPE sum( void ) const;
+
+        inline Vec operator+ (const Vec<T_ETYPE, T_DIMENSION> & v) const;
+        inline Vec& operator-= (const Vec<T_ETYPE, T_DIMENSION> & v);
+        inline Vec operator- (const Vec<T_ETYPE, T_DIMENSION> & v) const;
+        inline Vec operator* (const T_ETYPE a) const;
+        inline Vec operator* (const Vec<T_ETYPE,T_DIMENSION> & v) const;
+        Vec& operator*= (const T_ETYPE a);
+        inline Vec& operator/= (const T_ETYPE a);
+        inline Vec operator/ (const T_ETYPE a) const;
+        inline bool operator!= (const Vec & v) const;
+        double norm() const;
+        void Print( void ) const;
      **************************************************************************/
 
     /****************************** Constructors ******************************/
@@ -71,7 +92,7 @@ public:
     operator const T_DTYPE*() const {
         return this->data;
     }
-    
+
     /************************** Assignment Operators **************************/
     Vec& operator= (const T_DTYPE a) {
         for (int i=0; i<T_DIMENSION; i++)
@@ -138,7 +159,7 @@ public:
             alland = alland & ( this->data[i] > v[i] );
         return alland;
     }
-    
+
     bool operator<= (const Vec & v) const {
         bool alland = true;
         for (int i=0; i<T_DIMENSION; i++)
@@ -152,7 +173,7 @@ public:
             alland = alland & ( this->data[i] >= v[i] );
         return alland;
     }
-    
+
 
     /********************** Horizontal Vector Operations **********************/
 
@@ -253,7 +274,7 @@ public:
         double res = sqrt((*this).norm2());
         return res;
     }
-    
+
     /*************************** Debug methods ********************************/
 #if DEBUG_VECTOR >= 1
     void Print( void ) const {
