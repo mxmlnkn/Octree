@@ -24,12 +24,13 @@ public:
 
     /****************************** Constructors ******************************/
     BaseMatrix( void ) {
-        #if DEBUG_BASEMATRIX >= 1
+        #if DEBUG_BASEMATRIX >= 2
             cout << "Standard Constructor called" << endl << flush;
         #endif
         this->size = 0;
         this->data = NULL;
     }
+    
     BaseMatrix( VecI size ) { 
         #if DEBUG_BASEMATRIX >= 2
             cout << "Constructor of size: "; size.Print(); cout << endl;
@@ -37,13 +38,13 @@ public:
         this->size = size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
     }
-    /* Copy Constructor */
-    BaseMatrix( const BaseMatrix & m ) {
+    
+    /* Copy Constructor. It's a constructor, so data and size are assumed to  *
+     * be absolutely random!                                                  */
+    BaseMatrix( const BaseMatrix & m ) { 
         #if DEBUG_BASEMATRIX >= 2
             cout << "Copy Constructor called with Matrix of size: "; m.size.Print(); cout << endl;
         #endif
-        if ( this->data != NULL )
-            free( this->data );
         this->size = m.size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
         memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
@@ -52,6 +53,25 @@ public:
     ~BaseMatrix( void ) {
         if ( this->data != NULL )
             free( this->data );
+    }
+
+    /************************** Assignment Operators **************************/
+    BaseMatrix& operator= (const T_DTYPE a) {
+        for (int i=0; i < size.product(); i++)
+            this->data[i] = a;
+        return *this;
+    }
+
+    BaseMatrix& operator= (const BaseMatrix & m) {
+        #if DEBUG_BASEMATRIX >= 2
+            cout << "Assignment of size: "; m.size.Print(); cout << endl << flush;
+        #endif
+        this->~BaseMatrix();
+        this->size = m.size;
+        this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+
+        memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
+        return *this;
     }
 
     /**************************************************************************
@@ -70,12 +90,14 @@ public:
             cout << endl;
         #endif
         assert( pos < size );
+        assert( pos >= VecI(0) );
         int index     = 0;
         int prevrange = 1;
         for (int i=T_DIMENSION-1; i>=0; i--) {
             index     += pos[i] * prevrange;
             prevrange *= size[i];
         }
+        assert( index < size.product() );
         return index;
     }
 
@@ -101,53 +123,50 @@ public:
             index[i]  = tmp % this->size[i];
             tmp       = tmp / this->size[i];
         }
+#if DEBUG_BASEMATRIX >= 1
         assert( tmp == 0 );
         assert( index < this->size );
         if ( ! (index >= VecI(0)) ) {
             cout << "[BaseMatrix::getVectorIndex] linindex:" << linindex << endl;
         }
         assert( index >= VecI(0) );
+#endif
         return index;
     }
 
     /**************************** Access Operators ****************************/
-    T_DTYPE operator[] ( const int & i ) const {
-        assert( i < size.product() );
-        return data[i];
+    BaseMatrix<T_DTYPE,T_DIMENSION-1> operator[] ( const int index ) const {
+        assert( index < size[0] );
+        Vec<int,T_DIMENSION-1> submatrixsize;
+        for ( int k=0; k < T_DIMENSION-1; ++k )
+            submatrixsize[k] = size[k+1];
+        BaseMatrix<T_DTYPE,T_DIMENSION-1> mat( submatrixsize );
+        for ( int k=0; k < mat.getSize().product(); ++k ) {
+            Vec<int,T_DIMENSION-1> smallindex = mat.getVectorIndex( k );
+            VecI broadcastedindex;
+            memcpy( &(broadcastedindex.data[1]), smallindex.data, sizeof(int)*T_DIMENSION-1 );
+            broadcastedindex[0] = index;
+            mat[k] = (*this)[broadcastedindex];
+        }
+        return mat;
     }
-    T_DTYPE operator[] ( const VecI & pos ) const {
+    
+    T_DTYPE operator[] ( const VecI pos ) const {
+        assert( pos < size );
         return data[ getLinearIndex(pos) ];
     }
 
-    T_DTYPE & operator[] ( const int & i ) {
+    /*T_DTYPE & operator[] ( const int i ) {
         assert( i < size.product() );
         return data[i];
-    }
-    T_DTYPE & operator[] ( const VecI & pos ) {
+    } */
+    T_DTYPE & operator[] ( const VecI pos ) {
+        assert( pos < size );
         return data[ getLinearIndex(pos) ];
     }
 
 
-    /************************** Assignment Operators **************************/
-    /*BaseMatrix& operator= (const T_DTYPE a) {
-        for (int i=0; i<T_DIMENSION; i++)
-            this->data[i] = a;
-        return *this;
-    }*/
-
-    BaseMatrix& operator= (const BaseMatrix & m) {
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "Assignment of size: "; m.size.Print(); cout << endl << flush;
-        #endif
-        this->~BaseMatrix();
-        this->size = m.size;
-        this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
-
-        memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
-        return *this;
-    }
-
-    /* Other Functions */
+    /***************************** Other Functions ****************************/
     VecI getSize( void ) const {
         return this->size;
     }
