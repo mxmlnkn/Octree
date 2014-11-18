@@ -9,6 +9,15 @@ ToDo:
   - Watch Out for Matrices indicey (row,col) vs. (x,y) (Remove Dirty hack!)
   - Run Test-Kernel (Add 4 nearest neighbors up and mod 10 ) to show how it is
     done with the iterator
+  - Test every method / function singelhandendly for correctness !
+  - Test for only two matrices (send to itself)
+  - Test in 3D ... (need better output)
+  - include per rank output with tout (extra file)
+  - something is wrong with matrix copy assignment !
+        const const SimBox::CellMatrix & m = recvmatrices[direction];
+        SimBox::CellMatrix m = recvmatrices[direction];
+        SimBox::CellMatrix m( recvmatrices[direction] );
+    only first one does work ...
 */
 
 #ifndef M_PI
@@ -126,6 +135,7 @@ int main( int argc, char **argv )
 
     comBox.StartGuardUpdate(); // Asynchron, returns status
     comBox.FinishGuardUpdate();
+    MPI_Barrier( commTorus );
 
 #if DEBUG == 1
     {MPI_Barrier( commTorus );

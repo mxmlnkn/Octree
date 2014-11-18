@@ -58,12 +58,12 @@ public:
 
     /**************************** Access Operators ****************************/
     T_DTYPE operator[] (const int i) const {
-        assert( i < T_DIMENSION );
+        assert( i>= 0 and i < T_DIMENSION );
         return data[i];
     }
 
     T_DTYPE & operator[] (const int i) {
-        assert( i < T_DIMENSION );
+        assert( i>= 0 and i < T_DIMENSION );
         return data[i];
     }
 

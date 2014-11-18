@@ -107,7 +107,7 @@ public:
 #if DEBUG_SIMBOX >= 1
     void PrintValues( void ) {
         cout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << endl;
-        VecI size = this->cells.size;
+        VecI size = this->cells.getSize();
         VecI ind(0);
         for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
             for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)

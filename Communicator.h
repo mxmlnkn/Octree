@@ -8,6 +8,11 @@
 
 using namespace std;
 
+
+#define DEBUG_COMMUNICATOR 1
+
+
+
 template<int T_DIMENSION>
 class CommTopo{
 private:
@@ -124,8 +129,40 @@ public:
         return vec;
     }
     
+    /* reverse of the above getDirectionVector function */
+    int getDirectionNumber( const VecI v ) {
+        int direction = 0;
+        int prevrange = 1;
+        for (int i=0; i<T_DIMENSION; i++) {
+            int value = v[i];
+            if (value==-1) value = 2;
+            direction += value * prevrange;
+            prevrange *= 3;
+        }
+        assert( direction >=1 and direction <=this->nneighbors );
+        assert( getDirectionVector( direction ) == v );
+        return direction;
+    }
+    
     int getOppositeDirection( int direction ) {
-        return getDirectionNumber( -1*getDirectionVector( direction ) );
+        return getDirectionNumber( getDirectionVector( direction )*(-1) );
+    }
+    
+    /* returns the axis corresponding to a direction:                         *
+     *   RIGHT,LEFT -> 0, TOP,BOTTOM -> 1, FRONT,BACK -> 2, ...               *
+     * returns -1 if e.g. RIGHT+LEFT                                          */
+    int getAxis( int direction ) {
+        VecI v( getDirectionVector( direction ) );
+        int axis = -1;
+        for (int i=0; i<T_DIMENSION; i++)
+            if ( v[i] != 0 ) {
+                if (axis == -1)
+                    axis = i;
+                else
+                    /* 2nd axis found -> on diagonal axes return -1 */
+                    return -1;
+            }
+        return axis;
     }
 
     static const int dim = T_DIMENSION;
@@ -133,14 +170,17 @@ public:
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int  processor_name_length;
     int  rank, worldsize;
-    int  nneighbors;
-    int* neighbors;
     MPI_Comm  communicator;
 
     int  periodic[T_DIMENSION];
     int  nthreads[T_DIMENSION];
     int  coords  [T_DIMENSION];
 
+    /* Because of reasons when accessing and direction conversion, these      *
+     * also have an array element for the rank itself at [0] = (0,0,0) !!!    */
+    int  nneighbors;
+    int* neighbors;
+    
     MPI_Request * sendrequests;
     MPI_Request * recvrequests;
 
@@ -149,74 +189,152 @@ public:
 
     void StartGuardUpdate( void ) // Asynchron, returns status
     {
-        SimBox & simbox = SimBox::getInstance();
-        /* Send to right */
-        /* Problem here is getting the correct partial matrix dynamically.
-           Else we could just loop Isend and Irecv over all 1...26 directions */
-        /* Fill SendBuffer with correct data */
-        VecI size,pos;
-        size[X_AXIS] = simbox.guardsize;
-        size[Y_AXIS] = simbox.localcells[Y_AXIS];
-        pos [X_AXIS] = simbox.guardsize + simbox.localcells[X_AXIS] - 1;
-        pos [Y_AXIS] = simbox.guardsize;
-
-        sendmatrices[RIGHT] = simbox.cells.getPartialMatrix( pos, size );
-        MPI_Isend( sendmatrices[RIGHT].data, sendmatrices[RIGHT].size.product()
-                   * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                   neighbors[RIGHT], 53, communicator, &(sendrequests[RIGHT]) );
-
-        recvmatrices[LEFT] = sendmatrices[RIGHT]; // copy because we want same size
-        MPI_Irecv( recvmatrices[LEFT].data, recvmatrices[LEFT].size.product() *
-                   sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                   neighbors[LEFT], 53, communicator, &(recvrequests[LEFT]) );
-
-
-        pos [X_AXIS] = simbox.guardsize;
-        pos [Y_AXIS] = simbox.guardsize;
-        sendmatrices[LEFT] = simbox.cells.getPartialMatrix( pos, size );
-        MPI_Isend( sendmatrices[LEFT].data, sendmatrices[LEFT].size.product()
-                   * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                   neighbors[LEFT], 53, communicator, &(sendrequests[LEFT]) );
-
-        recvmatrices[RIGHT] = sendmatrices[RIGHT]; // copy because we want same size
-        MPI_Irecv( recvmatrices[RIGHT].data, recvmatrices[RIGHT].size.product() *
-                   sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                   neighbors[RIGHT], 53, communicator, &(recvrequests[RIGHT]) );
+        /* Only cycle through direct neighbors first, see notes on paper !!!  */
+        for ( int direction = 1; direction <= this->nneighbors; direction++ ) {
+            int axis = getAxis(direction);
+            if ( axis == -1 ) {
+                recvrequests[direction] = MPI_REQUEST_NULL;
+                sendrequests[direction] = MPI_REQUEST_NULL;
+                continue;
+            }
+            
+            SimBox & simbox = SimBox::getInstance();
+            VecI size( simbox.localcells );
+            size[axis] = simbox.guardsize;
+            VecI pos ( simbox.guardsize );
+            pos[axis] += simbox.localcells[axis] - 1; // we don't want a size, but a position!
+            
+            #if DEBUG_COMMUNICATOR >= 1
+                cout << "[Rank " << this->rank << " in ComBox] Send to Direction ";
+                getDirectionVector( direction ).Print();
+                cout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+                cout << " => pos: "; pos.Print();
+                cout << " size: "; size.Print();
+                cout << endl << flush;
+            #endif
+            
+            sendmatrices[direction] = simbox.cells.getPartialMatrix( pos, size );
+            MPI_Isend( sendmatrices[direction].data, sendmatrices[direction].getSize().product()
+                       * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
+                       neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
+            
+            int opdir = getOppositeDirection( direction );
+            #if DEBUG_COMMUNICATOR >= 2
+                cout << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
+                getDirectionVector( opdir ).Print();
+                cout << "(=lin:" << opdir << "=Rank:" << neighbors[opdir] << ")";
+                cout << endl << flush;
+            #endif
+            
+            recvmatrices[opdir] = sendmatrices[direction]; // copy because we want same size
+            MPI_Irecv( recvmatrices[opdir].data, recvmatrices[opdir].getSize().product() *
+                       sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
+                       neighbors[opdir], 53+opdir, communicator, &(recvrequests[opdir]) );
+        }
     }
 
+    /* Waits for MPI_Recv_Requests to finish and then copies the received     *
+     * partial matrix from the buffer to the simulation matrix. Because of    *
+     * complicated stride in all directions it can't be communicated directly */
     void FinishGuardUpdate( void ) {
-        SimBox & simbox = SimBox::getInstance();
-        // MPI_Waitall( nneighbors, sendrequests, MPI_STATUSES_IGNORE );
-        // sends shouldn't matter for us ...
-        // MPI_Waitall( nneighbors, recvrequests, MPI_STATUSES_IGNORE );
-        // waitall makes problem if rest of array are no valid requests :(
-        // waitall isn't performant anyway. Better use waitany and analyze
-        // whether the packet is from the left or right or so on rank and then
-        // dynamicall copy buffer to simbox-matrix
-        MPI_Wait( &(recvrequests[LEFT]), MPI_STATUSES_IGNORE );
+        while(true) {
+            int index;
+            MPI_Waitany(nneighbors, &(recvrequests[1]), &index, MPI_STATUSES_IGNORE);
+            /* Because we don't let MPI_Waitany watch the 0th request, which  *
+             * would be a recv from the process itself, we get the index      *
+             * shifted by one back !                                          */
+            int direction = index + 1;
+            #if DEBUG_COMMUNICATOR >= 2
+                cout << "Got Result from Direction: " << direction << " Index: " << index << endl;
+            #endif
+            
+            /* this index is returned if all recvrequests are MPI_REQUEST_NULL*/
+            if ( index == MPI_UNDEFINED )
+                break;
+            assert( direction >= 1 and direction <= this->nneighbors );
+            /* delete request (neccessary?) for MPI_UNDEFINED */
+            this->recvrequests[direction] = MPI_REQUEST_NULL;
+            
+            /* if we receive from left, we can use the code for send to right *
+             * for calculating pos, size !                                    */
+            SimBox & simbox = SimBox::getInstance();
+            int axis = getAxis(direction);
+            if ( axis == -1 ) {
+                cout << "Receiving from diagonal neighbor not yet implemented!" << endl;
+            }
+            assert( axis >= 0 and axis < T_DIMENSION);
+            
+            VecI size( simbox.localcells );
+            size[axis] = simbox.guardsize;
+            VecI pos ( simbox.guardsize );
+            pos[axis] += simbox.localcells[axis];
+            
+            #if DEBUG_COMMUNICATOR >= 1
+                cout << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
+                getDirectionVector( direction ).Print();
+                cout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+                cout << " => pos: "; pos.Print();
+                cout << " size: "; size.Print();
+                cout << endl << "Received Matrix: " << endl;
+                    {const SimBox::CellMatrix & m = recvmatrices[direction];
+                    VecI size = m.getSize();
+                    VecI ind(0);
+                    for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
+                        for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
+                            cout << m[ ind ].value << " ";
+                        cout << endl;
+                    }
+                    cout << endl;}
+                cout << endl << flush;
+            #endif
+            
+#if 1==1
+            //simbox.cells[pos] = (recvmatrices[direction])[VecI(0)];
+            const SimBox::CellMatrix & m = recvmatrices[direction];
+            for ( int i=0; i<m.getSize().product(); i++ ) {
+                //assert( pos + m.getVectorIndex(i) < this->size );
+                simbox.cells[ pos + m.getVectorIndex(i) ] = m[i];
+            }
+            //simbox.cells.insertMatrix( pos, recvmatrices[direction] );
+#endif
+        }
+        
+        #if 1 == 0
+            // MPI_Waitall( nneighbors, sendrequests, MPI_STATUSES_IGNORE );
+            // sends shouldn't matter for us ...
+            // MPI_Waitall( nneighbors, recvrequests, MPI_STATUSES_IGNORE );
+            // waitall makes problem if rest of array are no valid requests :(
+            // waitall isn't performant anyway. Better use waitany and analyze
+            // whether the packet is from the left or right or so on rank and then
+            // dynamicall copy buffer to simbox-matrix
+            MPI_Wait( &(recvrequests[LEFT]), MPI_STATUSES_IGNORE );
 
-        /* Copy Buffer Matrices into simBox Matrix */
-        VecI pos;
+            /* Copy Buffer Matrices into simBox Matrix */
+            VecI pos;
 
-        /* Receive from left */
-        pos [X_AXIS] = 0;
-        pos [Y_AXIS] = simbox.guardsize;
-        simbox.cells.insertMatrix( pos, recvmatrices[LEFT] );
+            /* Receive from left */
+            pos [X_AXIS] = 0;
+            pos [Y_AXIS] = simbox.guardsize;
+            simbox.cells.insertMatrix( pos, recvmatrices[LEFT] );
 
-        /* Receive from right */
-        MPI_Wait( &(recvrequests[RIGHT]), MPI_STATUSES_IGNORE );
-        pos [X_AXIS] = simbox.guardsize + simbox.localcells[X_AXIS];
-        pos [Y_AXIS] = simbox.guardsize;
-        simbox.cells.insertMatrix( pos, recvmatrices[RIGHT] );
+            /* Receive from right */
+            MPI_Wait( &(recvrequests[RIGHT]), MPI_STATUSES_IGNORE );
+            pos [X_AXIS] = simbox.guardsize + simbox.localcells[X_AXIS];
+            pos [Y_AXIS] = simbox.guardsize;
+            simbox.cells.insertMatrix( pos, recvmatrices[RIGHT] ); 
+        #endif 
     };
+
     
+#if DEBUG_COMMUNICATOR >= 1
     void Print( void ) {
         cout << "Printing from Communicator on rank " << this->rank;
         cout << " with cartesian coordinates: "; VecI( this->coords ).Print();
         cout << " My neighbors are: " << endl;
         
-        for (int direction = 1; direction < this->nneighbors; direction++) {
+        for (int direction = 1; direction <= this->nneighbors; direction++) {
             (VecI(this->coords) + getDirectionVector( direction )).Print();
+            cout << "(lin=" << direction << ")";
             cout << " -> Rank: " << this->neighbors[direction] << endl << flush;
         }
         
@@ -224,6 +342,7 @@ public:
         double t0 = MPI_Wtime();
         while( MPI_Wtime() - t0 < 0.1 ) {}
     }
+#endif
     
 private:
 
@@ -240,14 +359,18 @@ private:
         nneighbors--;
         cout << "Number of Neighbors: " << nneighbors;
         this->nneighbors = nneighbors;
-        this->neighbors    = (int*)         malloc( sizeof(int)        *nneighbors );
-        this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*nneighbors );
-        this->sendrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*nneighbors );
-        this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*nneighbors );
-        this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*nneighbors );
+        this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
+        this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
+        this->sendrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
+        this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
+        this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
         if ( neighbors == NULL or recvrequests == NULL or sendrequests == NULL )
             cerr << "Couldn't allocate Memory!";
-
+        for (int i=0; i<=nneighbors; i++) {
+            sendrequests[i] = MPI_REQUEST_NULL;
+            recvrequests[i] = MPI_REQUEST_NULL;
+        }
+            
         /* Initialize MPI */
         MPI_Init(NULL, NULL);
         MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
@@ -261,7 +384,7 @@ private:
         MPI_Cart_coords( communicator, rank, T_DIMENSION, coords );
 
         /* Get Neighbors from Topology */
-        for (int direction = 1; direction < this->nneighbors; direction++) {
+        for (int direction = 1; direction <= this->nneighbors; direction++) {
             /* get rank from cartesian coords -> enables diagonal neighbors ! */
             MPI_Cart_rank( this->communicator, ( VecI(this->coords) + 
                 getDirectionVector( direction ) ), &(neighbors[direction]));
