@@ -20,6 +20,7 @@ ToDo:
     only first one does work ...
   - look which methods we could set to static in the classes ( shouldn't depend
     on varibales inside the class, only on the template parameters ! )
+  - Use Functions of 3x3 Matrix-class for Direction conversion
 */
 
 #ifndef M_PI

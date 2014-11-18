@@ -43,7 +43,15 @@ int main( int argc, char **argv )
     {int ind[2] = {3,4};
     cout << m[ind];}*/
 
-    (m[1]).Print();
+    /* should especially print "->0" ... "->5" */
+    for ( int i=0; i < m.getSize().product(); ++i ) {
+       m.getVectorIndex(i).Print();
+       cout << " -> " << m.getLinearIndex( m.getVectorIndex(i) ) << endl;
+    }
+    /* assertion Errors:
+    m.getVectorIndex( m.getSize().product() );
+    m.getVectorIndex( -1 );*/
     
-    //cout << (m[2])[3];
+    m.insertMatrix( Vec<int,2>(0), n );
+    m.Print();
 }

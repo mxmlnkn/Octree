@@ -84,11 +84,6 @@ public:
      * That argument in [] will be named 'prevrange'                          *
      **************************************************************************/
     int getLinearIndex( const VecI & pos ) const {
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "pos: "; pos.Print();
-            cout << " size: "; size.Print();
-            cout << endl;
-        #endif
         assert( pos < size );
         assert( pos >= VecI(0) );
         int index     = 0;
@@ -123,43 +118,38 @@ public:
             index[i]  = tmp % this->size[i];
             tmp       = tmp / this->size[i];
         }
-#if DEBUG_BASEMATRIX >= 1
         assert( tmp == 0 );
         assert( index < this->size );
-        if ( ! (index >= VecI(0)) ) {
-            cout << "[BaseMatrix::getVectorIndex] linindex:" << linindex << endl;
-        }
         assert( index >= VecI(0) );
-#endif
         return index;
     }
 
     /**************************** Access Operators ****************************/
-    BaseMatrix<T_DTYPE,T_DIMENSION-1> operator[] ( const int index ) const {
-        assert( index < size[0] );
-        Vec<int,T_DIMENSION-1> submatrixsize;
-        for ( int k=0; k < T_DIMENSION-1; ++k )
-            submatrixsize[k] = size[k+1];
-        BaseMatrix<T_DTYPE,T_DIMENSION-1> mat( submatrixsize );
-        for ( int k=0; k < mat.getSize().product(); ++k ) {
-            Vec<int,T_DIMENSION-1> smallindex = mat.getVectorIndex( k );
-            VecI broadcastedindex;
-            memcpy( &(broadcastedindex.data[1]), smallindex.data, sizeof(int)*T_DIMENSION-1 );
-            broadcastedindex[0] = index;
-            mat[k] = (*this)[broadcastedindex];
-        }
-        return mat;
+    T_DTYPE operator[] ( const int i ) const {
+        assert( i < size.product() );
+        return data[i];
     }
     
-    T_DTYPE operator[] ( const VecI pos ) const {
+    T_DTYPE & operator[] ( const int i ) {
+        assert( i < size.product() );
+        return data[i];
+    }
+    
+    T_DTYPE operator[] ( const VecI pos ) const {        
+        #if DEBUG_BASEMATRIX >= 1
+        if ( ! (pos < size) ) {
+            cout << "Incorrect Access try to: ";
+            pos.Print();
+            cout << " in ";
+            this->size.Print();
+            cout << "-Matrix";
+            cout << endl;
+        }
+        #endif
         assert( pos < size );
         return data[ getLinearIndex(pos) ];
     }
 
-    /*T_DTYPE & operator[] ( const int i ) {
-        assert( i < size.product() );
-        return data[i];
-    } */
     T_DTYPE & operator[] ( const VecI pos ) {
         assert( pos < size );
         return data[ getLinearIndex(pos) ];
@@ -185,25 +175,6 @@ public:
         for ( int i=0; i<size.product(); i++ )
             tmp[i] = (*this)[ pos + tmp.getVectorIndex(i) ];
 
-#if 1 == 0
-        int currentaxis = T_DIMENSION-1;
-        while(true) {
-            /* Actual operation we want to do! Rest is only another way to    *
-             * write arbitrary for-loops over all indices ... -> reverse      *
-             * getLinearIndex would have been easier -.-                      */
-            tmp[ind] = this->data[pos+ind];
-            ind[currentaxis]++;
-            while( (ind[currentaxis] >= size[currentaxis]) and (currentaxis >= 0) ) {
-                ind[currentaxis] = 0;
-                curentaxis--;
-                ind[currentaxis]++;
-            }
-            /* Overflow => all elements cycled through */
-            if (currentaxis < 0)
-                break;
-        }
-#endif
-
         return tmp;
     }
     
@@ -213,10 +184,11 @@ public:
         m.size.Print(); cout << ") <= (this->size="; this->size.Print();
         cout << "?" << endl << flush;
 #endif
-        assert( pos+m.size <= this->size );
-        for ( int i=0; i<m.size.product(); i++ ) {
-            assert( pos + m.getVectorIndex(i) < this->size );
-            (*this)[ (pos + m.getVectorIndex(i)) ] = m[i];
+        assert( pos+m.getSize() <= this->size );
+        for ( int i=0; i < m.getSize().product(); i++ ) {
+            VecI index = pos + m.getVectorIndex(i);
+            assert( index < this->size );
+            (*this)[ index ] = m[i];
         }
     }
     
