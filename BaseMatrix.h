@@ -24,27 +24,18 @@ public:
 
     /****************************** Constructors ******************************/
     BaseMatrix( void ) {
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "Standard Constructor called" << endl << flush;
-        #endif
         this->size = 0;
         this->data = NULL;
     }
-    
-    BaseMatrix( VecI size ) { 
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "Constructor of size: "; size.Print(); cout << endl;
-        #endif
+
+    BaseMatrix( VecI size ) {
         this->size = size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
     }
-    
+
     /* Copy Constructor. It's a constructor, so data and size are assumed to  *
      * be absolutely random!                                                  */
-    BaseMatrix( const BaseMatrix & m ) { 
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "Copy Constructor called with Matrix of size: "; m.size.Print(); cout << endl;
-        #endif
+    BaseMatrix( const BaseMatrix & m ) {
         this->size = m.size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
         memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
@@ -63,9 +54,6 @@ public:
     }
 
     BaseMatrix& operator= (const BaseMatrix & m) {
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "Assignment of size: "; m.size.Print(); cout << endl << flush;
-        #endif
         this->~BaseMatrix();
         this->size = m.size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
@@ -129,23 +117,13 @@ public:
         assert( i < size.product() );
         return data[i];
     }
-    
+
     T_DTYPE & operator[] ( const int i ) {
         assert( i < size.product() );
         return data[i];
     }
-    
-    T_DTYPE operator[] ( const VecI pos ) const {        
-        #if DEBUG_BASEMATRIX >= 1
-        if ( ! (pos < size) ) {
-            cout << "Incorrect Access try to: ";
-            pos.Print();
-            cout << " in ";
-            this->size.Print();
-            cout << "-Matrix";
-            cout << endl;
-        }
-        #endif
+
+    T_DTYPE operator[] ( const VecI pos ) const {
         assert( pos < size );
         return data[ getLinearIndex(pos) ];
     }
@@ -160,30 +138,19 @@ public:
     VecI getSize( void ) const {
         return this->size;
     }
-    
+
     BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const {
-        #if DEBUG_BASEMATRIX >= 2
-            cout << "pos: "; pos.Print();
-            cout << " size: "; size.Print();
-            cout << " this->size: "; this->size.Print();
-            cout << endl;
-        #endif
         assert( pos+size <= this->size );
         BaseMatrix<T_DTYPE,T_DIMENSION> tmp( size );
         VecI ind(0);
-        
+
         for ( int i=0; i<size.product(); i++ )
             tmp[i] = (*this)[ pos + tmp.getVectorIndex(i) ];
 
         return tmp;
     }
-    
+
     void insertMatrix( const VecI & pos, const BaseMatrix & m ) {
-#if DEBUG_BASEMATRIX >= 2
-        cout << "(pos="; pos.Print(); cout << ") + (m.size=";
-        m.size.Print(); cout << ") <= (this->size="; this->size.Print();
-        cout << "?" << endl << flush;
-#endif
         assert( pos+m.getSize() <= this->size );
         for ( int i=0; i < m.getSize().product(); i++ ) {
             VecI index = pos + m.getVectorIndex(i);
@@ -191,7 +158,7 @@ public:
             (*this)[ index ] = m[i];
         }
     }
-    
+
 #if DEBUG_BASEMATRIX >= 1
     void Print( void ) const {
         VecI size = this->getSize();

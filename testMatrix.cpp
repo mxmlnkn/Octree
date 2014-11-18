@@ -54,4 +54,18 @@ int main( int argc, char **argv )
     
     m.insertMatrix( Vec<int,2>(0), n );
     m.Print();
+    
+    size[1] = 1;
+    BaseMatrix<int,2> p( (Vec<int,2>)size );
+    p = 0;
+    p.Print();
+    int pos[2] = {0,1};
+    m.insertMatrix( pos, p );
+    m.Print();
+    
+    BaseMatrix<int,2> q;
+    pos[0] = 1; pos[1] = 0;
+    size[0]= 1; size[1]= 3;
+    q = m.getPartialMatrix( pos, size );
+    q.Print();
 }
