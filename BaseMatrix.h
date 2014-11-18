@@ -2,13 +2,14 @@
 
 #include <cassert>
 #include <iostream>
+#include <cstring> // memcpy
 #include "Vector.h"
 
 using namespace std;
 
 #pragma once
 
-#define DEBUG_BASEMATRIX 0
+#define DEBUG_BASEMATRIX 2
 
 
 template<typename T_DTYPE, int T_DIMENSION>
@@ -23,34 +24,36 @@ public:
 
     /****************************** Constructors ******************************/
     BaseMatrix( void ) {
+        #if DEBUG_BASEMATRIX >= 1
+            cout << "Standard Constructor called" << endl << flush;
+        #endif
         this->size = 0;
-        data = NULL;
+        this->data = NULL;
     }
-    BaseMatrix( const VecI size ) { 
-        this->size = size;
-        data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+    BaseMatrix( VecI size ) { 
         #if DEBUG_BASEMATRIX >= 2
             cout << "Constructor of size: "; size.Print(); cout << endl;
         #endif
+        this->size = size;
+        this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
     }
     /* Copy Constructor */
     BaseMatrix( const BaseMatrix & m ) {
-        this->size = size;
-        this->~BaseMatrix();
-        this->size = m.size;
-        data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
-        memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
-        #if DEBUG_BASEMATRIX >= 0
-            cout << "Copy Constrcutor called with Matrix of size: "; m.size.Print(); cout << endl;
+        #if DEBUG_BASEMATRIX >= 2
+            cout << "Copy Constructor called with Matrix of size: "; m.size.Print(); cout << endl;
         #endif
+        if ( this->data != NULL )
+            free( this->data );
+        this->size = m.size;
+        this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+        memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
     }
 
     ~BaseMatrix( void ) {
-        if (data != NULL)
-            free( data );
+        if ( this->data != NULL )
+            free( this->data );
     }
 
-//private:
     /**************************************************************************
      * If we have 2 slates of 3x4 length and we wanted the index  [i,j,k] =   *
      * [1,2,1] (begin with 0!), then the matrix lies in the memory like:      *
@@ -60,7 +63,7 @@ public:
      *   21 = (i=1)*[ (nj=3) * (nk=4) ] + (j=2)*[ (nk=4) ] + (k=1)*[ 1 ]      *
      * That argument in [] will be named 'prevrange'                          *
      **************************************************************************/
-    int getLinearIndex( const VecI pos ) const {
+    int getLinearIndex( const VecI & pos ) const {
         #if DEBUG_BASEMATRIX >= 2
             cout << "pos: "; pos.Print();
             cout << " size: "; size.Print();
@@ -90,7 +93,7 @@ public:
      * This works, because every new summand has the previous factor in       *
      * prevrange, so that summand mod factor = 0                              *
      **************************************************************************/
-    VecI getVectorIndex( const int linindex ) const {
+    VecI getVectorIndex( const int & linindex ) const {
         assert( linindex < this->size.product() );
         VecI index;
         int tmp = linindex;
@@ -107,21 +110,20 @@ public:
         return index;
     }
 
-public:
     /**************************** Access Operators ****************************/
-    T_DTYPE operator[] ( const int i ) const {
+    T_DTYPE operator[] ( const int & i ) const {
         assert( i < size.product() );
         return data[i];
     }
-    T_DTYPE operator[] ( const VecI pos ) const {
+    T_DTYPE operator[] ( const VecI & pos ) const {
         return data[ getLinearIndex(pos) ];
     }
 
-    T_DTYPE & operator[] ( const int i ) {
+    T_DTYPE & operator[] ( const int & i ) {
         assert( i < size.product() );
         return data[i];
     }
-    T_DTYPE & operator[] ( const VecI pos ) {
+    T_DTYPE & operator[] ( const VecI & pos ) {
         return data[ getLinearIndex(pos) ];
     }
 
@@ -134,12 +136,12 @@ public:
     }*/
 
     BaseMatrix& operator= (const BaseMatrix & m) {
+        #if DEBUG_BASEMATRIX >= 2
+            cout << "Assignment of size: "; m.size.Print(); cout << endl << flush;
+        #endif
         this->~BaseMatrix();
         this->size = m.size;
         this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
-        #if DEBUG_BASEMATRIX >= 0
-            cout << "Assignment of size: "; m.size.Print(); cout << endl;
-        #endif
 
         memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
         return *this;
@@ -150,7 +152,7 @@ public:
         return this->size;
     }
     
-    BaseMatrix getPartialMatrix( const VecI pos, const VecI size ) const {
+    BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const {
         #if DEBUG_BASEMATRIX >= 2
             cout << "pos: "; pos.Print();
             cout << " size: "; size.Print();
@@ -186,7 +188,7 @@ public:
         return tmp;
     }
     
-    void insertMatrix( const VecI pos, const BaseMatrix m ) {
+    void insertMatrix( const VecI & pos, const BaseMatrix & m ) {
 #if DEBUG_BASEMATRIX >= 2
         cout << "(pos="; pos.Print(); cout << ") + (m.size=";
         m.size.Print(); cout << ") <= (this->size="; this->size.Print();
@@ -198,5 +200,20 @@ public:
             (*this)[ (pos + m.getVectorIndex(i)) ] = m[i];
         }
     }
+    
+#if DEBUG_BASEMATRIX >= 1
+    void Print( void ) const {
+        VecI size = this->getSize();
+        cout << "This "; size.Print();
+        cout << "Matrix:" << endl;
+        VecI ind(0);
+        for ( ind[1]=0; ind[1]<size[1]; ind[1]++) {
+            for ( ind[0]=0; ind[0]<size[0]; ind[0]++)
+                cout << (*this)[ ind ] << " ";
+            cout << endl;
+        }
+        cout << endl;
+    }
+#endif
 };
 

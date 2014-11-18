@@ -72,13 +72,59 @@ public:
     static const int GUARD  = 1;
     static const int BORDER = 2;
     static const int CORE   = 4;
-    
+
     static const int X_AXIS = 0;
     static const int Y_AXIS = 1;
     static const int Z_AXIS = 2;
 
+    bool inArea( const int & area, const VecI & pos ) {
+        assert( area != 0 ); // would be trivial iterator
+        assert( area <= CORE+BORDER+GUARD );
+
+        bool inCore   = (     ( pos >= VecI(2*T_GUARDSIZE) )
+                          and ( pos <  VecI(T_GUARDSIZE) + localcells - VecI(T_GUARDSIZE) )
+                        );
+        bool inBorder = (     ( pos >= VecI(T_GUARDSIZE) )
+                          and ( pos <  VecI(T_GUARDSIZE) + localcells )
+                          and ( not inCore ) 
+                        );
+        bool inGuard  = (     ( pos >= VecI(0)) 
+                          and ( pos <  VecI(T_GUARDSIZE) + localcells + VecI(T_GUARDSIZE) )
+                          and ( not inBorder ) 
+                          and ( not inCore   )
+                        );
+
+        bool allor = false;
+        if ( area & GUARD )
+            allor = allor or inGuard;
+        if ( area & BORDER )
+            allor = allor or inBorder;
+        if ( area & CORE )
+            allor = allor or inCore;
+
+        #if DEBUG_SIMBOX >= 0
+            cout << endl << "[InArea: (" ;
+            for ( int i=0; i<T_DIMENSION-1; i++ )
+                cout << pos[i] << ",";
+            cout << pos[T_DIMENSION-1] << ") ";
+            cout << "is in ";
+            if (inCore  ) cout << "CORE ";
+            if (inBorder) cout << "BORDER ";
+            if (inGuard ) cout << "GUARD ";
+            if (!inCore and !inBorder and !inGuard) cout << "None ";
+            cout << ", localcells=(" ;
+            for ( int i=0; i<T_DIMENSION-1; i++ )
+                cout << localcells[i] << ",";
+            cout << localcells[T_DIMENSION-1] << ") ";
+            cout << " GuardSize=" << guardsize;
+            cout << "]" << endl;
+        #endif
+        
+        return allor;
+    }
+
     #include "SimulationBoxIterator.h"
-    
+
     Iterator getIterator( const int area ) const {
         return Iterator( area, localcells + VecI(2*T_GUARDSIZE) );
     }
@@ -103,7 +149,7 @@ public:
         this->abspos = coords * localcells / VecD( globalcells ) * globsize;
         this->cells = BaseMatrix<CellData,T_DIMENSION>( localcells + VecI(2*T_GUARDSIZE) );
     }
-    
+
 #if DEBUG_SIMBOX >= 1
     void PrintValues( void ) {
         cout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << endl;
@@ -131,6 +177,22 @@ public:
     VecD getGlobalPosition ( Iterator it ) {
         return abspos + ( VecD(it.icell) * cellsize );
     }
-    //delinCoreCoord
 
 };
+
+/* static members can't be defined in a class declaration, that's why we need *
+ * these seemingly useless lines to actually allocate the memory space for    *
+ * those variables                                                            */
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::GUARD  ;
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::BORDER ;
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::CORE   ;
+
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::X_AXIS ;
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::Y_AXIS ;
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::Z_AXIS ;

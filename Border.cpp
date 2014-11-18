@@ -18,6 +18,8 @@ ToDo:
         SimBox::CellMatrix m = recvmatrices[direction];
         SimBox::CellMatrix m( recvmatrices[direction] );
     only first one does work ...
+  - look which methods we could set to static in the classes ( shouldn't depend
+    on varibales inside the class, only on the template parameters ! )
 */
 
 #ifndef M_PI

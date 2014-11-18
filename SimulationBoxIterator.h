@@ -50,7 +50,7 @@
     public:
         Iterator( const int area, const VecI ncells ) {
             assert( area != 0 ); // would be trivial iterator
-            assert( area  < 8 );
+            assert( area <= CORE+BORDER+GUARD );
             assert( area != CORE+GUARD ); // more difficult to implement,
                                           // and makes no sense
             this->core   = area & CORE;
