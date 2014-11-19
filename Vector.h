@@ -31,7 +31,7 @@ public:
     Vec& operator= (const T_DTYPE a);
     template<typename T_ETYPE> Vec& operator= (const Vec<T_ETYPE, T_DIM> & v);
     template<typename T_ETYPE> Vec& operator+=(const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec& operator*=(const Vec<T_ETYPE,T_DIM> & v);
+    template<typename T_ETYPE> Vec& operator*=(const Vec<T_ETYPE, T_DIM> & v);
     template<typename T_ETYPE> Vec& operator/=(const Vec<T_ETYPE, T_DIM> & v);
     template<typename T_ETYPE> Vec  operator/ (const Vec<T_ETYPE, T_DIM> & v) const;
 
@@ -48,15 +48,15 @@ public:
     template<typename T_ETYPE> Vec  operator+ (const Vec<T_ETYPE, T_DIM> & v) const;
     template<typename T_ETYPE> Vec& operator-=(const Vec<T_ETYPE, T_DIM> & v);
     template<typename T_ETYPE> Vec  operator- (const Vec<T_ETYPE, T_DIM> & v) const;
+    template<typename T_ETYPE> Vec  operator* (const Vec<T_ETYPE, T_DIM> & v) const;
+    
+    template<typename T_ETYPE> Vec  operator+ (const T_ETYPE a) const;
+    template<typename T_ETYPE> Vec& operator- (const T_ETYPE a) const;
     template<typename T_ETYPE> Vec  operator* (const T_ETYPE a) const;
-    template<typename T_ETYPE> Vec  operator* (const Vec<T_ETYPE,T_DIM> & v) const;
-    template<typename T_ETYPE> Vec& operator*=(const T_ETYPE a);
-    template<typename T_ETYPE> Vec& operator/=(const T_ETYPE a);
     template<typename T_ETYPE> Vec  operator/ (const T_ETYPE a) const;
 
     bool operator!= (const Vec & v) const;
     double norm() const;
-    void Print( void ) const;
 };
 
 
@@ -85,7 +85,7 @@ Vec<T_DTYPE,T_DIM>::~Vec( void ) {
 }
 
 template<typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const Vec<T_DTYPE,T_DIM> & v ) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const Vec & v ) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] = v.data[i];
     return *this;
@@ -289,43 +289,12 @@ Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const Vec<T_ETYPE, T_DIM> & v)
     return (*this)+( v*(-1) );
 }
 
-/* Elementwise Multiplication, derived from *= */
-template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator*( const T_ETYPE a ) const {
-    Vec res = *this;
-    res *= a;
-    return res;
-}
-
-/* Broadcasting Multiplication, derived from *= */
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator*( const Vec<T_ETYPE,T_DIM> & v ) const {
     Vec res = *this;
     res *= v;
     return res;
-}
-
-/* Broadcasting Multiplication, derived from elementwise Mul */
-template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*=( const T_ETYPE a ) {
-    (*this) *= Vec(a);
-    return *this;
-}
-/* Broadcasting division from double or int, derived from elementwise div */
-template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/=( const T_ETYPE a ) {
-    (*this) /= a;
-    return *this;
-}
-/* Broadcasting division from double or int, derived from elementwise mul */
-template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/( const T_ETYPE a ) const {
-    return (*this)*(Vec(1.0)/a);
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -339,46 +308,71 @@ double Vec<T_DTYPE,T_DIM>::norm() const {
     return res;
 }
 
-/***************************** Debug methods **********************************/
-#if DEBUG_VECTOR >= 1
+/***************** Broadcasting Operators to save memory **********************/
+// this could also be done with , but we want to save memory !
 template<typename T_DTYPE, int T_DIM>
-void Vec<T_DTYPE,T_DIM>::Print( void ) const {
-    cout << "(";
-    for (int i=0; i<T_DIM-1; i++)
-        cout << this->data[i] << ",";
-    cout << this->data[T_DIM-1] << ")";
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const T_ETYPE a) const {
+    Vec<T_DTYPE,T_DIM> tmp( *this );
+    for (int i=0; i<T_DIM; i++)
+        tmp.data[i] += a;
+    return tmp;
 }
-#endif
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
+    Vec<T_DTYPE,T_DIM> tmp( *this );
+    for (int i=0; i<T_DIM; i++)
+        tmp.data[i] -= a;
+    return tmp;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>  Vec<T_DTYPE,T_DIM>::operator* (const T_ETYPE a) const {
+    Vec<T_DTYPE,T_DIM> tmp( *this );
+    for (int i=0; i<T_DIM; i++)
+        tmp.data[i] *= a;
+    return tmp;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/ (const T_ETYPE a) const {
+    Vec<T_DTYPE,T_DIM> tmp( *this );
+    for (int i=0; i<T_DIM; i++)
+        tmp.data[i] /= a;
+    return tmp;
+}
+
+
+/************************** global overloading ********************************/
 
 /* overload global operator* to allow 3*Vec additionally to Vec*3 */
-/*template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator+( const T & scalar, const Vec<T_DTYPE,T_DIM> & righthandside )
-{
-    // scalar multiplication is commutative: s M = M s
+template<typename T, typename T_DTYPE, int T_DIM>
+Vec<T_DTYPE,T_DIM> operator+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
     return righthandside + scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator-( const T & scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
+Vec<T_DTYPE,T_DIM> operator-( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
     return righthandside - scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator*( const T & scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
+Vec<T_DTYPE,T_DIM> operator*( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
     return righthandside * scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator/( const T & scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
+Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
     return righthandside / scalar;
-} */
-/*
-ostream& operator <<(ostream& osObject, const storageRentals& rentals)
-{
-
-  for (int count = 0; count < 8; count++) {
-      osObject << "Unit: " << count + 1 << "    " << rentals.stoUnits[count] << endl;
-  }
-  return osObject;
 }
 
-If the stoUnits member is private you need to make the stream function a friend of your storage class.
-
-friend ostream& operator<<(ostream& osObject, const storageRentals& rentals);*/
+/* Enables cout << Vec<int,2>(1); This alos works with fstream and therefore with tout */
+template<typename T_DTYPE, int T_DIM>
+ostream& operator<<( ostream& out, const Vec<T_DTYPE,T_DIM>& v ) {
+    out << "(";
+    for (int i=0; i<T_DIM-1; i++)
+        out << v[i] << ",";
+    out << v[T_DIM-1] << ")";
+    return out;
+}

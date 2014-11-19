@@ -24,14 +24,14 @@ int main( int argc, char **argv )
         for (ind[0]=0; ind[0]<size[0]; ind[0]++ ) {
             m[ind] = ind[1]*size[0]+ind[0];
         }
-    m.Print();
+    cout << m;
     BaseMatrix<int,2> n(m);
-    n.Print();
+    cout << n;
     
     cout << "Test indice range" << endl;
     
     /* Following will fail assertion. That all elements can be accessed is    *
-     * provenby Print()                                                       */
+     * proven by Print()     s                                                */
     /*{int ind[2] = {-1,-1};
     cout << m[ind];}
     {int ind[2] = {0,-1};
@@ -45,7 +45,7 @@ int main( int argc, char **argv )
 
     /* should especially print "->0" ... "->5" */
     for ( int i=0; i < m.getSize().product(); ++i ) {
-       m.getVectorIndex(i).Print();
+       cout << m.getVectorIndex(i);
        cout << " -> " << m.getLinearIndex( m.getVectorIndex(i) ) << endl;
     }
     /* assertion Errors:
@@ -53,25 +53,31 @@ int main( int argc, char **argv )
     m.getVectorIndex( -1 );*/
     
     m.insertMatrix( Vec<int,2>(0), n );
-    m.Print();
+    cout << m;
     
     size[1] = 1;
     BaseMatrix<int,2> p( (Vec<int,2>)size );
     p = 0;
-    p.Print();
+    cout << p;
     int pos[2] = {0,1};
     m.insertMatrix( pos, p );
-    m.Print();
+    cout << m;
     
     BaseMatrix<int,2> q;
     pos[0] = 1; pos[1] = 0;
     size[0]= 1; size[1]= 3;
     q = m.getPartialMatrix( pos, size );
-    q.Print();
+    cout << q;
     
     size[0]=7;size[1]=7;
     BaseMatrix<int,2> r( (Vec<int,2>)size );
     for (int k=0; k<r.getSize().product(); ++k)
         r[k] = k;
-    r.Print();
+    cout << r;
+    
+    Vec<int,2> newvec(size);
+    cout << newvec;
+    cout << (3+newvec);
+    cout << Vec<int,2>(1) << endl;
+    cout << newvec;
 }

@@ -55,7 +55,7 @@ template<int T_DIMENSION, int T_GUARDSIZE>
 class SimulationBox {
     SimulationBox( void ) {};
 public:
-    typedef BaseMatrix<CellData,T_DIMENSION> CellMatrix;
+    typedef typename BaseMatrix<CellData,T_DIMENSION> CellMatrix;
 
     BaseMatrix<CellData,T_DIMENSION> cells;
     static const int dim       = T_DIMENSION;
