@@ -10,9 +10,7 @@ ToDo:
   - Test every method / function singelhandendly for correctness !
         -> Done for Vector, BaseMatrix
   - Test in 3D ... (need better output)
-  - include per rank output with tout (extra file)
   - Use Functions of 3x3 Matrix-class for Direction conversion
-  - Use inArea of SimBox from Iterator, instead of it's own one
 
 
 Testcase 1:
@@ -114,6 +112,7 @@ typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // neded by Commu
 
 
 #include "SimulationBoxIterator.tpp"
+#include "SimulationBox.tpp"
 
 
 using namespace std;
@@ -253,6 +252,10 @@ int main( int argc, char **argv )
 
 /*
 Done:
+  - Use inArea of SimBox from Iterator, instead of it's own one
+        => have global InArea and this->inAres which gives some extra parameters
+           from its object
+  - include per rank output with tout (extra file)
   - look which methods we could set to static in the classes ( shouldn't depend
     on variables inside the class, only on the template parameters ! )
         => none really ...

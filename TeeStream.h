@@ -8,9 +8,6 @@
 
 using namespace std;
 
-#define TEESTEREAM_VERBOSE 1
-
-
 /* outstream similar to cout but outputs (also/only) into files (tout/terr) */
 class TeeStream{
     public:
@@ -58,4 +55,3 @@ class TeeStream{
 
 TeeStream tout(1);
 TeeStream terr(0);
-

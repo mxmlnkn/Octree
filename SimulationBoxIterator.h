@@ -8,19 +8,16 @@ namespace SimulationBox {
 template<int T_DIM, int T_GUARDSIZE>
 class Iterator {
 private:
-    const void * simbox;
-public:
-    /* Only public for convenience, shouldn't be tempered with !!! */
+    int  area;  // next 3 are derived from this one
     bool core;
     bool border;
     bool guard;
-
-    int area;
-
+public:
+    /* Only public for convenience, shouldn't be tempered with !!! */
     VecI icell;  // stores current cell index. This is where we are
     VecI ncells; // with Guard !!!
 
-    Iterator( const int area, const VecI ncells, const void* simbox );
+    Iterator( const int area, const VecI ncells );
     ~Iterator( void );
     Iterator( const Iterator & src );
     int getCellIndex( void ) const;

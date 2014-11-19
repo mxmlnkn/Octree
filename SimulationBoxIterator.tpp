@@ -7,7 +7,7 @@ namespace SimulationBox {
 /******************************** Definitions *********************************/
 
 template<int T_DIM, int T_GUARDSIZE>
-Iterator<T_DIM,T_GUARDSIZE>::Iterator( const int area, const VecI ncells, const void * simbox ) {
+Iterator<T_DIM,T_GUARDSIZE>::Iterator( const int area, const VecI ncells ) {
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
     assert( area != CORE+GUARD ); // more difficult to implement,
@@ -16,7 +16,6 @@ Iterator<T_DIM,T_GUARDSIZE>::Iterator( const int area, const VecI ncells, const 
     this->border = area & BORDER;
     this->guard  = area & GUARD;
     this->area   = area;
-    this->simbox = simbox;
     icell = 0;
     this->ncells = ncells;
 }
@@ -84,8 +83,7 @@ Iterator<T_DIM,T_GUARDSIZE> Iterator<T_DIM,T_GUARDSIZE>::end( void ) const {
 template<int T_DIM, int T_GUARDSIZE>
 Iterator<T_DIM,T_GUARDSIZE>& Iterator<T_DIM,T_GUARDSIZE>::operator<<( const int index[T_DIM] ) {
     VecI ind = VecI(index);
-    const SimulationBox<T_DIM,T_GUARDSIZE>* tmp = static_cast< const SimulationBox<T_DIM,T_GUARDSIZE>* >(simbox);
-    assert( tmp->inArea( ind, area ) );
+    assert( InArea( ind, area, (ncells-VecI(2*T_GUARDSIZE)), T_GUARDSIZE ) );
     *this = this->begin();
     this->icell += ind;
     return *this;
