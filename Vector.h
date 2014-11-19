@@ -1,6 +1,5 @@
 #include <cassert>
 #include <iostream>
-#include <cstdarg>
 
 using namespace std;
 
@@ -22,8 +21,7 @@ public:
 
     template<typename T_ETYPE> Vec(const T_ETYPE v[T_DIM] );
     template<typename T_ETYPE> Vec(const Vec<T_ETYPE,T_DIM> & v);
-    //Vec(const T_DTYPE a);
-    Vec( int n, ... ); // ambiguous :(
+    Vec(const T_DTYPE a);
 
     T_DTYPE operator[] (const int i) const;
     T_DTYPE & operator[] (const int i);
@@ -102,28 +100,17 @@ Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE v[T_DIM] ) {
         this->data[i] = v[i];
 }
 
-/*template<typename T_DTYPE, int T_DIM>
+template<typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM>::Vec(const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] = a;
-}*/
+}
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const Vec<T_ETYPE,T_DIM> & v ) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] = v.data[i]; // implicit conversion from T_ETYPE to T_DTYPE
-}
-
-// must get exactly T_DIM arguments !!! (well or more, which would be ignored)
-template<typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM>::Vec( int n, ... ) {
-    va_list varlist;
-    va_start(varlist,n);
-    assert( n<=T_DIM );
-    for (int i=0; i<n; i++)
-        this->data[i] = va_arg( varlist, double );
-    va_end(varlist);
 }
 
 /**************************** Access Operators ****************************/
