@@ -5,7 +5,6 @@
 #include <iostream>
 #include "Vector.h"
 #include "SimulationBox.h"
-#include "TeeStream.h"
 
 using namespace std;
 
@@ -189,7 +188,7 @@ public:
         for ( int axis=0; axis<T_DIMENSION; ++axis )
             if ( v[axis] == 1 )
                 pos[axis] += simbox.localcells[axis] - simbox.guardsize;
-        assert( simbox.inArea( pos, SimBox::BORDER ) );
+        assert( simbox.inArea( pos, SimulationBox::BORDER ) );
         return pos;
     }
 
@@ -250,23 +249,21 @@ public:
                        neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
 
             #if DEBUG_COMMUNICATOR >= 1
-                tout << "[Rank " << this->rank << " in ComBox] Send to Direction ";
-                getDirectionVector( direction ).Print();
-                tout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
-                tout << " => pos: "; pos.Print();
-                tout << " size: "; size.Print();
-                tout << endl << flush;
-                tout << endl << "Sent Matrix: " << endl;
+                terr << "[Rank " << this->rank << " in ComBox] Send to Direction ";
+                terr << getDirectionVector( direction );
+                terr << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+                terr << " => pos: " << pos << " size: " << size << endl << flush;
+                terr << endl << "Sent Matrix: " << endl;
                     {const SimBox::CellMatrix & m = sendmatrices[direction];
                     VecI size = m.getSize();
                     VecI ind(0);
                     for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
                         for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                            tout << m[ ind ].value << " ";
-                        tout << endl;
+                            terr << m[ ind ].value << " ";
+                        terr << endl;
                     }
-                    tout << endl;}
-                tout << endl << flush;
+                    terr << endl;}
+                terr << endl << flush;
             #endif
 
             int opdir = getOppositeDirection( direction );
@@ -299,23 +296,13 @@ public:
             VecI size = getGuardSizeInDirection    (direction);
             VecI pos  = getGuardPositionInDirection(direction);
 
-            #if DEBUG_COMMUNICATOR >= 1
-                tout << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
-                getDirectionVector( direction ).Print();
-                tout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
-                tout << " => pos: "; pos.Print();
-                tout << " size: "; size.Print();
-                tout << endl << "Received Matrix: " << endl;
-                    {const SimBox::CellMatrix & m = recvmatrices[direction];
-                    VecI size = m.getSize();
-                    VecI ind(0);
-                    for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
-                        for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                            tout << m[ ind ].value << " ";
-                        tout << endl;
-                    }
-                    tout << endl;}
-                tout << endl << flush;
+            #if DEBUG_COMMUNICATOR >= 2
+                terr << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
+                     << getDirectionVector( direction )
+                     << "(=lin:" << direction << "=Rank:" << neighbors[direction]
+                     << ") => pos: " << pos << " size: " << size << endl 
+                     << "Received Matrix: " << endl << recvmatrices[direction]
+                     << endl << flush;
             #endif
 
             SimBox::getInstance().cells.insertMatrix( pos, recvmatrices[direction] );
@@ -325,14 +312,14 @@ public:
 
 #if DEBUG_COMMUNICATOR >= 1
     void Print( void ) {
-        tout << "Printing from Communicator on rank " << this->rank;
-        tout << " with cartesian coordinates: "; VecI( this->coords ).Print();
-        tout << " My neighbors are: " << endl;
+        terr << "Printing from Communicator on rank " << this->rank
+             << " with cartesian coordinates: " << VecI( this->coords )
+             << " My neighbors are: " << endl;
 
         for (int direction = 1; direction <= this->nneighbors; direction++) {
-            (VecI(this->coords) + getDirectionVector( direction )).Print();
-            tout << "(lin=" << direction << ")";
-            tout << " -> Rank: " << this->neighbors[direction] << endl << flush;
+            terr << (VecI(this->coords) + getDirectionVector( direction ))
+                 << "(lin=" << direction << ") -> Rank: "
+                 << this->neighbors[direction] << endl << flush;
         }
 
         /* Wait a bit till everything is flushed out, to not get scrambled output */
@@ -354,7 +341,7 @@ private:
         for (int i=0; i<T_DIMENSION; i++)
             nneighbors *= 3;
         nneighbors--;
-        tout << "Number of Neighbors: " << nneighbors;
+        terr << "Number of Neighbors: " << nneighbors;
         this->nneighbors = nneighbors;
         this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
         this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
@@ -362,7 +349,7 @@ private:
         this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
         this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
         if ( neighbors == NULL or recvrequests == NULL or sendrequests == NULL )
-            cerr << "Couldn't allocate Memory!";
+            terr << "Couldn't allocate Memory!";
         for (int i=0; i<=nneighbors; i++) {
             sendrequests[i] = MPI_REQUEST_NULL;
             recvrequests[i] = MPI_REQUEST_NULL;

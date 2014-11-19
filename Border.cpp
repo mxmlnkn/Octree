@@ -107,9 +107,13 @@ typedef Vec<double, SIMDIM> VecD;
 typedef Vec<int   , SIMDIM> VecI;
 
 #include "SimulationBox.h"
-typedef SimulationBox<SIMDIM,GUARDSIZE> SimBox; // neded by Communicator.h
+typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // neded by Communicator.h
 
 #include "Communicator.h"
+
+
+
+#include "SimulationBoxIterator.tpp"
 
 
 using namespace std;
@@ -127,7 +131,7 @@ int main( int argc, char **argv )
     /* Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIMENSION] ) */
     simBox.Init( 10, 10, 5, comBox.coords );
 
-    SimBox::Iterator it = simBox.getIterator( simBox.CORE + simBox.BORDER );
+    SimBox::IteratorType it = simBox.getIterator( SimulationBox::CORE + SimulationBox::BORDER );
     VecD globcoords = simBox.getGlobalPosition( it );
 
     for ( it=it.begin(); it!=it.end(); ++it ) {
@@ -141,7 +145,7 @@ int main( int argc, char **argv )
     }
 
     // Set guard to 0 (not really necessary, only looks better)
-    for ( it=simBox.getIterator( simBox.GUARD ).begin(); it!=it.end(); ++it )
+    for ( it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
         simBox[it].value = 0;
 
     const int rank      = comBox.rank;
@@ -149,19 +153,15 @@ int main( int argc, char **argv )
     const MPI_Comm commTorus = comBox.communicator;
 
 #if DEBUG == 1
-    {if (rank == 0) {
-        tout << "Torus Size: (";
-        for (int j=0; j<SIMDIM-1; j++)
-            tout << comBox.nthreads[j] << ",";
-        tout << comBox.nthreads[SIMDIM-1] << ")" << endl;
-    }
+    if (rank == 0)
+        tout << "Torus Size: (" << VecI(comBox.nthreads) << endl;
 
-    MPI_Barrier( commTorus );
+    {MPI_Barrier( commTorus );
     int beacon;
     if ( rank == 0 )
     {
         comBox.Print();
-        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
+        tout << "Global Coordinates: " << globcoords << endl;
         simBox.PrintValues();
         /* Let other ranks print their Matrices */
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
@@ -171,7 +171,7 @@ int main( int argc, char **argv )
     {
         MPI_Recv( &beacon, 1, MPI_INT, (rank-1)%worldsize, beacon, commTorus, MPI_STATUS_IGNORE );
         comBox.Print();
-        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
+        tout << "Global Coordinates: " << globcoords << endl;
         simBox.PrintValues();
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
     }
@@ -182,15 +182,14 @@ int main( int argc, char **argv )
 
     /* Test getPartialMatrix */
     if (rank == 0) {
-        tout << "==============" << endl;
-        tout << "Update Guards!" << endl;
-        tout << "==============" << endl << flush;
+        tout << "==============" << endl
+             << "Update Guards!" << endl
+             << "==============" << endl << flush;
         int size[SIMDIM] = {3,4};
         int  pos[SIMDIM] = {0,3};
         BaseMatrix<CellData,SIMDIM> mat = simBox.cells.getPartialMatrix( VecI(pos), VecI(size) );
-        tout << "PartialMatrix at "; VecI(pos).Print();
-        tout << " of size "; VecI(size).Print();
-        tout << " in matrix of rank 0: " << endl;
+        tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size)
+             << " in matrix of rank 0: " << endl;
         for (int i=0; i<size[0]; i++) {
             for (int j=0; j<size[1]; j++) {
                 int ind[SIMDIM] = {i,j};
@@ -215,9 +214,9 @@ int main( int argc, char **argv )
     int beacon;
     if ( rank == 0 )
     {
-        tout << "[Rank " << rank << "]" << endl;
-        tout << "MPI-Coords: "; VecD( comBox.coords ).Print(); tout << endl;
-        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
+        tout << "[Rank " << rank << "]" << endl
+             << "MPI-Coords: " << VecD( comBox.coords ) << endl
+             << "Global Coordinates: " << globcoords << endl;
         simBox.PrintValues();
         /* Let other ranks print their Matrices */
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
@@ -226,9 +225,9 @@ int main( int argc, char **argv )
     else
     {
         MPI_Recv( &beacon, 1, MPI_INT, (rank-1)%worldsize, beacon, commTorus, MPI_STATUS_IGNORE );
-        tout << "[Rank " << rank << "]" << endl;
-        tout << "MPI-Coords: "; VecD( comBox.coords ).Print(); tout << endl;
-        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
+        tout << "[Rank " << rank << "]" << endl
+             << "MPI-Coords: " << VecD( comBox.coords ) << endl
+             << "Global Coordinates: " << globcoords << endl;
         simBox.PrintValues();
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
     }
@@ -236,14 +235,14 @@ int main( int argc, char **argv )
 #endif
 
 
-    tout << "==========================" << endl;
-    tout << "Set Border,Core and Guard!" << endl;
-    tout << "==========================" << endl << flush;
-    for ( SimBox::Iterator it=simBox.getIterator( simBox.CORE ).begin(); it!=it.end(); ++it )
+    tout << "==========================" << endl
+         << "Set Border,Core and Guard!" << endl
+         << "==========================" << endl << flush;
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it )
         simBox[it].value = 1;
-    for ( SimBox::Iterator it=simBox.getIterator( simBox.BORDER ).begin(); it!=it.end(); ++it )
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::BORDER ).begin(); it!=it.end(); ++it )
         simBox[it].value = 8;
-    for ( SimBox::Iterator it=simBox.getIterator( simBox.GUARD ).begin(); it!=it.end(); ++it )
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
         simBox[it].value = 0;
 
     if (rank == 0);

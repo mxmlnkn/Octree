@@ -11,6 +11,8 @@ using namespace std;
 
 #define DEBUG_BASEMATRIX 2
 
+//namespace BaseMatrix
+
 /**************************************************************************
  * If we have 2 slates of 3x4 length and we wanted the index  [i,j,k] =   *
  * [1,2,1] (begin with 0!), then the matrix lies in the memory like:      *
@@ -67,10 +69,11 @@ Vec<int,T_DIM> ConvertLinearToVectorIndex( const int & linindex, const Vec<int,T
 template<typename T_DTYPE, int T_DIM>
 class BaseMatrix {
 private:
-    T_DTYPE* data;
     Vec<int,T_DIM> size;
 
 public:
+    T_DTYPE* data;
+    
     static const int dim = T_DIM;
     typedef Vec<int,T_DIM> VecI;
     typedef T_DTYPE Datatype;
@@ -205,7 +208,7 @@ void BaseMatrix<T_DTYPE,T_DIM>::insertMatrix( const VecI & pos, const BaseMatrix
 }
 
 
-/* Enables cout << Vec<int,2>(1); This alos works with fstream and therefore with tout */
+/* Enables cout << Vec<int,2>(1); This alos works with fstream and therefore with cout */
 template<typename T_DTYPE, int T_DIM>
 ostream& operator<<( ostream& out, const BaseMatrix<T_DTYPE,T_DIM>& m ) {
     typedef typename BaseMatrix<T_DTYPE,T_DIM>::VecI VecI; // xD ... typisch picongpu
