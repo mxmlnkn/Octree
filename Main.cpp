@@ -1,6 +1,6 @@
 /*
 
-rm border.exe; mpic++ border.cpp -o border.exe -Wall -std=c++0x; mpirun -n 4 ./border.exe
+rm Main.exe; mpic++ Main.cpp -o Main.exe -Wall -std=c++0x; mpirun -n 4 ./Main.exe
 
 ToDo:
   - Do more MPI Error Management
@@ -11,7 +11,8 @@ ToDo:
         -> Done for Vector, BaseMatrix
   - Test in 3D ... (need better output)
   - Use Functions of 3x3 Matrix-class for Direction conversion
-
+  - Document everything better
+  - Beende den template-Wahn -.-. Vor allem Bei Vector und Basematrix mit T_DIM!
 
 Testcase 1:
 
@@ -106,11 +107,11 @@ typedef Vec<int   , SIMDIM> VecI;
 
 #include "SimulationBox.h"
 typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // neded by Communicator.h
-
+typedef BaseMatrix<SimulationBox::CellData,SIMDIM> SimMatrix;
 #include "Communicator.h"
 
 
-
+#include "Vector.tpp"
 #include "SimulationBoxIterator.tpp"
 #include "SimulationBox.tpp"
 
@@ -125,7 +126,7 @@ int main( int argc, char **argv )
     SimBox & simBox = SimBox::getInstance();
     CommTopo<SIMDIM> & comBox = CommTopo<SIMDIM>::getInstance();
     tout.open( string(""), comBox.rank );
-    srand( clock() + comBox.rank );
+    srand( clock() * comBox.rank );
 
     /* Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIMENSION] ) */
     simBox.Init( 10, 10, 5, comBox.coords );
@@ -136,7 +137,7 @@ int main( int argc, char **argv )
     for ( it=it.begin(); it!=it.end(); ++it ) {
         VecD globsize   = simBox.globsize;
         VecD globcoords = simBox.getGlobalPosition( it );
-        simBox[it].value = (5 +
+        (simBox.t[0]->cells)[it.icell].value = (5 +
           int( 5*sin(2.*M_PI * globcoords[0]/globsize[0] ) *
                  sin(2.*M_PI * globcoords[1]/globsize[1] )
           ) ) % 10;
@@ -145,7 +146,7 @@ int main( int argc, char **argv )
 
     // Set guard to 0 (not really necessary, only looks better)
     for ( it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
-        simBox[it].value = 0;
+        simBox.t[0]->cells[it.icell].value = 0;
 
     const int rank      = comBox.rank;
     const int worldsize = comBox.worldsize;
@@ -186,7 +187,7 @@ int main( int argc, char **argv )
              << "==============" << endl << flush;
         int size[SIMDIM] = {3,4};
         int  pos[SIMDIM] = {0,3};
-        BaseMatrix<CellData,SIMDIM> mat = simBox.cells.getPartialMatrix( VecI(pos), VecI(size) );
+        SimMatrix mat = simBox.t[0]->cells.getPartialMatrix( VecI(pos), VecI(size) );
         tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size)
              << " in matrix of rank 0: " << endl;
         for (int i=0; i<size[0]; i++) {
@@ -204,8 +205,8 @@ int main( int argc, char **argv )
     MPI_Barrier( commTorus );
 #endif
 
-    comBox.StartGuardUpdate(); // Asynchron, returns status
-    comBox.FinishGuardUpdate();
+    comBox.StartGuardUpdate ( 0 ); // Asynchron, returns status
+    comBox.FinishGuardUpdate( 0 );
     MPI_Barrier( commTorus );
 
 #if DEBUG == 1
@@ -233,22 +234,57 @@ int main( int argc, char **argv )
     MPI_Barrier( commTorus );}
 #endif
 
+    tout << "==============================================" << endl
+         << "Delete Guard to demonstrate asynchronous send!" << endl
+         << "==============================================" << endl << flush;
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
+        (simBox.t[0]->cells)[it.icell].value = 0;
+    simBox.PrintValues();
 
+    tout << "========================================" << endl
+         << "Add all 4 (2D) neighbors to cell on Core" << endl
+         << "========================================" << endl << flush;
+    simBox.CopyCurrentToPriorTimestep();
+    comBox.StartGuardUpdate( 1 ); //  Sends Border data from last timestep (t[1])
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it ) {
+        (simBox.t[0]->cells)[it.icell].value +=
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( RIGHT , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( LEFT  , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( TOP   , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( BOTTOM, SIMDIM ) ].value;
+    }
+    comBox.FinishGuardUpdate( 1 ); // Saves received data into t[1], because we only need prior time step
+    for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::BORDER ).begin(); it!=it.end(); ++it ) {
+        //VecI neighbor = it.icell + getDirectionVector( RIGHT, SIMDIM );
+        (simBox.t[0]->cells)[it.icell].value +=
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( RIGHT , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( LEFT  , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( TOP   , SIMDIM ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector( BOTTOM, SIMDIM ) ].value;
+    }
+    simBox.PrintValues();
+    
+    
     tout << "==========================" << endl
          << "Set Border,Core and Guard!" << endl
          << "==========================" << endl << flush;
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it )
-        simBox[it].value = 1;
+        (simBox.t[0]->cells)[it.icell].value = 1;
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::BORDER ).begin(); it!=it.end(); ++it )
-        simBox[it].value = 8;
+        (simBox.t[0]->cells)[it.icell].value = 8;
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
-        simBox[it].value = 0;
+        (simBox.t[0]->cells)[it.icell].value = 0;
 
-    if (rank == 0);
-        simBox.PrintValues();
+    simBox.PrintValues();
 
     MPI_Finalize(); // doesn't work in destructor :S
+
 }
+
+
+
+
+
 
 /*
 Done:

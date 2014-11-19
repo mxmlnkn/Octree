@@ -5,7 +5,13 @@
 
 namespace SimulationBox {
 
-
+/* static members can't be defined in a class declaration, that's why we need *
+ * these seemingly useless lines to actually allocate the memory space for    *
+ * those variables                                                            */
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::dim ;
+template<int T_DIMENSION, int T_GUARDSIZE>
+const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::guardsize;
 
 /**************************************************************************
  * The 'Halo' in Musubi is here being called Guard for consistency with   *
@@ -67,10 +73,15 @@ bool InArea( const VecI & pos, const int & area, const VecI & localcells, int gu
 
 
 template<int T_DIM, int T_GUARDSIZE>
-SimulationBox<T_DIM,T_GUARDSIZE>::SimulationBox( void ) {};
+SimulationBox<T_DIM,T_GUARDSIZE>::SimulationBox( void ) {
+    for (int i=0; i<this->ntimesteps; i++)
+        this->t[i] = (TimeData*) malloc( sizeof(TimeData) );
+};
 
 template<int T_DIM, int T_GUARDSIZE>
 SimulationBox<T_DIM,T_GUARDSIZE>::~SimulationBox(void) {
+    for (int i=0; i<this->ntimesteps; i++)
+        free( this->t[i] );
 }
 
 template<int T_DIM, int T_GUARDSIZE>
@@ -81,11 +92,6 @@ bool SimulationBox<T_DIM,T_GUARDSIZE>::inArea( const VecI & pos, const int & are
 template<int T_DIM, int T_GUARDSIZE>
 typename SimulationBox<T_DIM,T_GUARDSIZE>::IteratorType SimulationBox<T_DIM,T_GUARDSIZE>::getIterator( const int area ) const {
     return IteratorType( area, localcells + VecI(2*T_GUARDSIZE) );
-}
-
-template<int T_DIM, int T_GUARDSIZE>
-CellData & SimulationBox<T_DIM,T_GUARDSIZE>::operator[]( const IteratorType & it ) {
-    return cells[ it.icell ];
 }
 
 // Later the coordinates shouldn't come from mpi, but from octotree
@@ -103,18 +109,19 @@ void SimulationBox<T_DIM,T_GUARDSIZE>::Init( VecD globsize,
     VecD coords( mpicoords );
     // Assuming localcells is the same for every process !!!
     this->abspos = coords * localcells / VecD( globalcells ) * globsize;
-    this->cells = BaseMatrix<CellData,T_DIM>( localcells + VecI(2*T_GUARDSIZE) );
+    for ( int timestep=0; timestep < this->ntimesteps; timestep++ )
+        this->t[timestep]->cells = BaseMatrix<CellData,T_DIM>( localcells + VecI(2*T_GUARDSIZE) );
 }
 
 #if DEBUG_SIMBOX >= 1
 template<int T_DIM, int T_GUARDSIZE>
-void SimulationBox<T_DIM,T_GUARDSIZE>::PrintValues( void ) const {
+void SimulationBox<T_DIM,T_GUARDSIZE>::PrintValues( int timestep ) const {
     tout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << std::endl;
-    VecI size = this->cells.getSize();
+    VecI size = this->t[timestep]->cells.getSize();
     VecI ind(0);
     for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
         for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-            tout << cells[ ind ].value << " ";
+            tout << this->t[timestep]->cells[ ind ].value << " ";
         tout << std::endl;
     }
     tout << std::endl << std::flush;
@@ -130,14 +137,20 @@ typename SimulationBox<T_DIM, T_GUARDSIZE>::VecD SimulationBox<T_DIM,T_GUARDSIZE
     return abspos + ( VecD(it.icell) * cellsize );
 }
 
-
-
-/* static members can't be defined in a class declaration, that's why we need *
- * these seemingly useless lines to actually allocate the memory space for    *
- * those variables                                                            */
-template<int T_DIMENSION, int T_GUARDSIZE>
-const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::dim ;
-template<int T_DIMENSION, int T_GUARDSIZE>
-const int SimulationBox<T_DIMENSION, T_GUARDSIZE>::guardsize;
-
+template<int T_DIM, int T_GUARDSIZE>
+void SimulationBox<T_DIM,T_GUARDSIZE>::CopyCurrentToPriorTimestep( void ) {
+    // t[ntimesteps-1] is the oldest position => shift t[i] to t[i+1]
+    TimeData * tmp = t[ntimesteps-1];
+    for (int j = ntimesteps-1; j > 0; j--) {
+        // this only swaps pointers ( but it also works with copy 
+        // assignment operators defined in the data structure )
+        t[j] = t[j-1];
+        t[j] = t[j-1];
+    }
+    for ( int pos=0; pos < this->t[0]->cells.getSize().product(); pos++ )
+        tmp->cells[pos] = t[0]->cells[pos];
+    t[0] = tmp;
 }
+
+
+} // namespace SimulationBox
