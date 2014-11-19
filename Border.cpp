@@ -3,25 +3,88 @@
 rm border.exe; mpic++ border.cpp -o border.exe -Wall -std=c++0x; mpirun -n 4 ./border.exe
 
 ToDo:
-  - Implement Communication (will have to link ComBox with SimBox :(, maybe
-    even as global vars. Only hope it can be done without cyclic referencing
   - Do more MPI Error Management
-  - Watch Out for Matrices indicey (row,col) vs. (x,y) (Remove Dirty hack!)
+  - Watch Out for Matrices indices (row,col) vs. (x,y)
   - Run Test-Kernel (Add 4 nearest neighbors up and mod 10 ) to show how it is
     done with the iterator
   - Test every method / function singelhandendly for correctness !
-  - Test for only two matrices (send to itself)
+        -> Done for Vector, BaseMatrix
   - Test in 3D ... (need better output)
   - include per rank output with tout (extra file)
-  - something is wrong with matrix copy assignment !
-        const const SimBox::CellMatrix & m = recvmatrices[direction];
-        SimBox::CellMatrix m = recvmatrices[direction];
-        SimBox::CellMatrix m( recvmatrices[direction] );
-    only first one does work ...
-  - look which methods we could set to static in the classes ( shouldn't depend
-    on varibales inside the class, only on the template parameters ! )
   - Use Functions of 3x3 Matrix-class for Direction conversion
+  - Use inArea of SimBox from Iterator, instead of it's own one
+
+
+Testcase 1:
+
+[Rank 0]                             [Rank 1]
+MPI-Coords: (0,0)                    MPI-Coords: (1,0)
+Global Coordinates: (0,0)            Global Coordinates: (5,0)
+My Raw Matrix with Guard(size=1) is  My Raw Matrix with Guard(size=1) is
+0 5 5 5 5 5 0                        0 5 5 5 5 5 0
+5 6 7 7 6 5 4                        5 4 3 3 4 5 6
+5 7 9 9 7 5 3                        5 3 1 1 3 5 7
+5 7 9 9 7 5 3                        5 3 1 1 3 5 7
+5 6 7 7 6 5 6                        5 4 3 3 4 5 4
+5 5 5 5 5 5 5                        5 5 5 5 5 5 5
+0 4 3 3 4 5 0                        0 6 7 7 6 5 0
+
+
+Testcase 2:
+Global Coordinates: (0,0)            Global Coordinates: (5,0)
+My Raw Matrix with Guard(size=1) is  My Raw Matrix with Guard(size=1) is
+0 0 0 0 0 0 0                        0 0 0 0 0 0 0
+0 6 7 7 6 5 0                        0 4 3 3 4 5 0
+0 7 9 9 7 5 0                        0 3 1 1 3 5 0
+0 7 9 9 7 5 0                        0 3 1 1 3 5 0
+0 6 7 7 6 5 0                        0 4 3 3 4 5 0
+0 5 5 5 5 5 0                        0 5 5 5 5 5 0
+0 0 0 0 0 0 0                        0 0 0 0 0 0 0
+
+[Rank 1]                             [Rank 1]
+MPI-Coords: (1,0)                    MPI-Coords: (1,0)
+Global Coordinates: (5,0)            Global Coordinates: (5,0)
+My Raw Matrix with Guard(size=1) is  My Raw Matrix with Guard(size=1) is
+5 5 5 5 5 5 5                        5 5 5 5 5 5 5
+5 6 7 7 6 5 4                        5 4 3 3 4 5 6
+5 7 9 9 7 5 3                        5 3 1 1 3 5 7
+5 7 9 9 7 5 3                        5 3 1 1 3 5 7
+5 6 7 7 6 5 4                        5 4 3 3 4 5 6
+5 5 5 5 5 5 5                        5 5 5 5 5 5 5
+5 6 7 7 6 5 4                        5 4 3 3 4 5 6
+
+
+Testcase 3:
+
+Global Coordinates: (0,0)            Global Coordinates: (5,0)
+My Raw Matrix with Guard(size=2) is  My Raw Matrix with Guard(size=2) is
+0 0 0 0 0 0 0 0 0                    0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0                    0 0 0 0 0 0 0 0 0
+0 0 9 9 7 5 3 0 0                    0 0 1 1 3 5 7 0 0
+0 0 9 9 7 5 3 0 0                    0 0 1 1 3 5 7 0 0
+0 0 7 7 6 5 4 0 0                    0 0 3 3 4 5 6 0 0
+0 0 5 5 5 5 5 0 0                    0 0 5 5 5 5 5 0 0
+0 0 3 3 4 5 6 0 0                    0 0 7 7 6 5 4 0 0
+0 0 0 0 0 0 0 0 0                    0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0                    0 0 0 0 0 0 0 0 0
+
+[Rank 0]                             [Rank 1]
+MPI-Coords: (0,0)                    MPI-Coords: (1,0)
+Global Coordinates: (0,0)            Global Coordinates: (5,0)
+My Raw Matrix with Guard(size=2) is  My Raw Matrix with Guard(size=2) is
+5 5 5 5 5 5 5 5 5                    5 5 5 5 5 5 5 5 5
+5 4 3 3 4 5 6 7 7                    5 6 7 7 6 5 4 3 3
+5 7 9 9 7 5 3 1 1                    5 3 1 1 3 5 7 9 9
+5 7 9 9 7 5 3 1 1                    5 3 1 1 3 5 7 9 9
+5 6 7 7 6 5 4 3 3                    5 4 3 3 4 5 6 7 7
+5 5 5 5 5 5 5 5 5                    5 5 5 5 5 5 5 5 5
+5 4 3 3 4 5 6 7 7                    5 6 7 7 6 5 4 3 3
+5 7 9 9 7 5 3 1 1                    5 3 1 1 3 5 7 9 9
+5 7 9 9 7 5 3 1 1                    5 3 1 1 3 5 7 9 9
+
+
 */
+
 
 #ifndef M_PI
 #   define M_PI 3.14159265358979323846
@@ -36,6 +99,8 @@ ToDo:
 #include <cstdlib>  // malloc
 #include <mpi.h>
 #include <time.h>
+
+#include "TeeStream.h"
 
 #include "Vector.h"
 typedef Vec<double, SIMDIM> VecD;
@@ -54,15 +119,17 @@ using namespace std;
 
 int main( int argc, char **argv )
 {
-    CommTopo<SIMDIM> & comBox = CommTopo<SIMDIM>::getInstance();
     SimBox & simBox = SimBox::getInstance();
+    CommTopo<SIMDIM> & comBox = CommTopo<SIMDIM>::getInstance();
+    tout.open( string(""), comBox.rank );
+    srand( clock() + comBox.rank );
 
     /* Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIMENSION] ) */
     simBox.Init( 10, 10, 5, comBox.coords );
 
     SimBox::Iterator it = simBox.getIterator( simBox.CORE + simBox.BORDER );
     VecD globcoords = simBox.getGlobalPosition( it );
-    
+
     for ( it=it.begin(); it!=it.end(); ++it ) {
         VecD globsize   = simBox.globsize;
         VecD globcoords = simBox.getGlobalPosition( it );
@@ -72,17 +139,21 @@ int main( int argc, char **argv )
           ) ) % 10;
         // simBox[it].value = globcoords[1];
     }
-    
+
+    // Set guard to 0 (not really necessary, only looks better)
+    for ( it=simBox.getIterator( simBox.GUARD ).begin(); it!=it.end(); ++it )
+        simBox[it].value = 0;
+
     const int rank      = comBox.rank;
     const int worldsize = comBox.worldsize;
     const MPI_Comm commTorus = comBox.communicator;
 
 #if DEBUG == 1
     {if (rank == 0) {
-        cout << "Torus Size: (";
+        tout << "Torus Size: (";
         for (int j=0; j<SIMDIM-1; j++)
-            cout << comBox.nthreads[j] << ",";
-        cout << comBox.nthreads[SIMDIM-1] << ")" << endl;
+            tout << comBox.nthreads[j] << ",";
+        tout << comBox.nthreads[SIMDIM-1] << ")" << endl;
     }
 
     MPI_Barrier( commTorus );
@@ -90,7 +161,7 @@ int main( int argc, char **argv )
     if ( rank == 0 )
     {
         comBox.Print();
-        cout << "Global Coordinates: "; globcoords.Print(); cout << endl;
+        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
         simBox.PrintValues();
         /* Let other ranks print their Matrices */
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
@@ -100,7 +171,7 @@ int main( int argc, char **argv )
     {
         MPI_Recv( &beacon, 1, MPI_INT, (rank-1)%worldsize, beacon, commTorus, MPI_STATUS_IGNORE );
         comBox.Print();
-        cout << "Global Coordinates: "; globcoords.Print(); cout << endl;
+        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
         simBox.PrintValues();
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
     }
@@ -108,33 +179,32 @@ int main( int argc, char **argv )
     double t0 = MPI_Wtime();
     while( MPI_Wtime() - t0 < 0.5 ) {}
     MPI_Barrier( commTorus );}
-    
+
     /* Test getPartialMatrix */
     if (rank == 0) {
-        cout << "==============" << endl;
-        cout << "Update Guards!" << endl;
-        cout << "==============" << endl << flush;
+        tout << "==============" << endl;
+        tout << "Update Guards!" << endl;
+        tout << "==============" << endl << flush;
         int size[SIMDIM] = {3,4};
         int  pos[SIMDIM] = {0,3};
         BaseMatrix<CellData,SIMDIM> mat = simBox.cells.getPartialMatrix( VecI(pos), VecI(size) );
-        cout << "PartialMatrix at "; VecI(pos).Print();
-        cout << " of size "; VecI(size).Print();
-        cout << " in matrix of rank 0: " << endl;
+        tout << "PartialMatrix at "; VecI(pos).Print();
+        tout << " of size "; VecI(size).Print();
+        tout << " in matrix of rank 0: " << endl;
         for (int i=0; i<size[0]; i++) {
             for (int j=0; j<size[1]; j++) {
                 int ind[SIMDIM] = {i,j};
-                cout << mat[VecI(ind)].value << " ";
+                tout << mat[VecI(ind)].value << " ";
             }
-            cout << endl << flush;
+            tout << endl << flush;
         }
     }
-    
+
     /* Wait a bit till everything is flushed out, to not get scrambled output */
     double t0 = MPI_Wtime();
     while( MPI_Wtime() - t0 < 0.5 ) {}
     MPI_Barrier( commTorus );
 #endif
-
 
     comBox.StartGuardUpdate(); // Asynchron, returns status
     comBox.FinishGuardUpdate();
@@ -145,9 +215,9 @@ int main( int argc, char **argv )
     int beacon;
     if ( rank == 0 )
     {
-        cout << "[Rank " << rank << "]" << endl;
-        cout << "MPI-Coords: "; VecD( comBox.coords ).Print(); cout << endl;
-        cout << "Global Coordinates: "; globcoords.Print(); cout << endl;
+        tout << "[Rank " << rank << "]" << endl;
+        tout << "MPI-Coords: "; VecD( comBox.coords ).Print(); tout << endl;
+        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
         simBox.PrintValues();
         /* Let other ranks print their Matrices */
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
@@ -156,19 +226,45 @@ int main( int argc, char **argv )
     else
     {
         MPI_Recv( &beacon, 1, MPI_INT, (rank-1)%worldsize, beacon, commTorus, MPI_STATUS_IGNORE );
-        cout << "[Rank " << rank << "]" << endl;
-        cout << "MPI-Coords: "; VecD( comBox.coords ).Print(); cout << endl;
-        cout << "Global Coordinates: "; globcoords.Print(); cout << endl;
+        tout << "[Rank " << rank << "]" << endl;
+        tout << "MPI-Coords: "; VecD( comBox.coords ).Print(); tout << endl;
+        tout << "Global Coordinates: "; globcoords.Print(); tout << endl;
         simBox.PrintValues();
         MPI_Send( &beacon, 1, MPI_INT, (rank+1)%worldsize, beacon, commTorus );
     }
     MPI_Barrier( commTorus );}
 #endif
-    
+
+
+    tout << "==========================" << endl;
+    tout << "Set Border,Core and Guard!" << endl;
+    tout << "==========================" << endl << flush;
+    for ( SimBox::Iterator it=simBox.getIterator( simBox.CORE ).begin(); it!=it.end(); ++it )
+        simBox[it].value = 1;
+    for ( SimBox::Iterator it=simBox.getIterator( simBox.BORDER ).begin(); it!=it.end(); ++it )
+        simBox[it].value = 8;
+    for ( SimBox::Iterator it=simBox.getIterator( simBox.GUARD ).begin(); it!=it.end(); ++it )
+        simBox[it].value = 0;
+
+    if (rank == 0);
+        simBox.PrintValues();
+
     MPI_Finalize(); // doesn't work in destructor :S
 }
 
 /*
 Done:
+  - look which methods we could set to static in the classes ( shouldn't depend
+    on variables inside the class, only on the template parameters ! )
+        => none really ...
+  - something is wrong with matrix copy assignment !
+        const const SimBox::CellMatrix & m = recvmatrices[direction];
+        SimBox::CellMatrix m = recvmatrices[direction];
+        SimBox::CellMatrix m( recvmatrices[direction] );
+    only first one does work -> called Destructor instead of just free(...)
+       => not good
+  - Test for only two matrices (send to itself) -> workds
+  - Implement Communication (will have to link ComBox with SimBox :(, maybe
+    even as global vars. Only hope it can be done without cyclic referencing
   - Find better encoding for the directions (get rid of CENTER / OFFSET ! )
 */

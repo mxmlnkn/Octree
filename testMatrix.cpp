@@ -68,4 +68,10 @@ int main( int argc, char **argv )
     size[0]= 1; size[1]= 3;
     q = m.getPartialMatrix( pos, size );
     q.Print();
+    
+    size[0]=7;size[1]=7;
+    BaseMatrix<int,2> r( (Vec<int,2>)size );
+    for (int k=0; k<r.getSize().product(); ++k)
+        r[k] = k;
+    r.Print();
 }

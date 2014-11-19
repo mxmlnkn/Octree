@@ -4,6 +4,7 @@
 #include <iostream>  // malloc
 #include "Vector.h"
 #include "BaseMatrix.h"
+#include "TeeStream.h"
 
 using namespace std;
 
@@ -14,11 +15,45 @@ typedef struct CellDataStruct {
     int value;
 } CellData;
 
+    /* This are predefined constant for addressing. E.g. if we want to        *
+     * iterate only over the CORE or we want a value on the X_AXIS. These are *
+     * are not sizes or widths!                                               */
+    const int GUARD  = 1;
+    const int BORDER = 2;
+    const int CORE   = 4;
+
+    bool inArea( const VecI & pos, const int & area, const VecI & localcells, int guardsize ) {
+        assert( area != 0 ); // would be trivial iterator
+        assert( area <= CORE+BORDER+GUARD );
+
+        bool inCore   = (     ( pos >= VecI(2*guardsize) )
+                          and ( pos <  VecI(guardsize) + localcells - VecI(guardsize) )
+                        );
+        bool inBorder = (     ( pos >= VecI(guardsize) )
+                          and ( pos <  VecI(guardsize) + localcells )
+                          and ( not inCore ) 
+                        );
+        bool inGuard  = (     ( pos >= VecI(0)) 
+                          and ( pos <  VecI(guardsize) + localcells + VecI(guardsize) )
+                          and ( not inBorder ) 
+                          and ( not inCore   )
+                        );
+
+        bool allor = false;
+        if ( area & GUARD )
+            allor = allor or inGuard;
+        if ( area & BORDER )
+            allor = allor or inBorder;
+        if ( area & CORE )
+            allor = allor or inCore;
+
+        return allor;
+    }
+
+
 template<int T_DIMENSION, int T_GUARDSIZE>
 class SimulationBox {
     SimulationBox( void ) {};
-
-
 public:
     typedef BaseMatrix<CellData,T_DIMENSION> CellMatrix;
 
@@ -72,12 +107,12 @@ public:
     static const int GUARD  = 1;
     static const int BORDER = 2;
     static const int CORE   = 4;
-
+    
     static const int X_AXIS = 0;
     static const int Y_AXIS = 1;
     static const int Z_AXIS = 2;
 
-    bool inArea( const int & area, const VecI & pos ) {
+    bool inArea( const VecI & pos, const int & area ) const {
         assert( area != 0 ); // would be trivial iterator
         assert( area <= CORE+BORDER+GUARD );
 
@@ -103,21 +138,21 @@ public:
             allor = allor or inCore;
 
         #if DEBUG_SIMBOX >= 0
-            cout << endl << "[InArea: (" ;
+            tout << endl << "[InArea: (" ;
             for ( int i=0; i<T_DIMENSION-1; i++ )
-                cout << pos[i] << ",";
-            cout << pos[T_DIMENSION-1] << ") ";
-            cout << "is in ";
-            if (inCore  ) cout << "CORE ";
-            if (inBorder) cout << "BORDER ";
-            if (inGuard ) cout << "GUARD ";
-            if (!inCore and !inBorder and !inGuard) cout << "None ";
-            cout << ", localcells=(" ;
+                tout << pos[i] << ",";
+            tout << pos[T_DIMENSION-1] << ") ";
+            tout << "is in ";
+            if (inCore  ) tout << "CORE ";
+            if (inBorder) tout << "BORDER ";
+            if (inGuard ) tout << "GUARD ";
+            if (!inCore and !inBorder and !inGuard) tout << "None ";
+            tout << ", localcells=(" ;
             for ( int i=0; i<T_DIMENSION-1; i++ )
-                cout << localcells[i] << ",";
-            cout << localcells[T_DIMENSION-1] << ") ";
-            cout << " GuardSize=" << guardsize;
-            cout << "]" << endl;
+                tout << localcells[i] << ",";
+            tout << localcells[T_DIMENSION-1] << ") ";
+            tout << " GuardSize=" << guardsize;
+            tout << "]" << endl;
         #endif
         
         return allor;
@@ -152,15 +187,19 @@ public:
 
 #if DEBUG_SIMBOX >= 1
     void PrintValues( void ) {
-        cout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << endl;
+        tout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << endl;
         VecI size = this->cells.getSize();
         VecI ind(0);
         for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
             for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                cout << cells[ ind ].value << " ";
-            cout << endl;
+                tout << cells[ ind ].value << " ";
+            tout << endl;
         }
-        cout << endl;
+        tout << endl << flush;
+        
+        /* Wait a bit till everything is flushed out, to not get scrambled output */
+        double t0 = MPI_Wtime();
+        while( MPI_Wtime() - t0 < 0.1*( double(rand())/double(RAND_MAX) ) ) {}
     }
 #endif
 

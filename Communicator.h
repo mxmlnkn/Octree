@@ -1,10 +1,11 @@
 #pragma once
 
 #include <mpi.h>
-#include <cstdlib>  // malloc
-#include <iostream>  // malloc
+#include <cstdlib>   // malloc
+#include <iostream>
 #include "Vector.h"
 #include "SimulationBox.h"
+#include "TeeStream.h"
 
 using namespace std;
 
@@ -187,8 +188,8 @@ public:
         VecI v( getDirectionVector( direction ) );
         for ( int axis=0; axis<T_DIMENSION; ++axis )
             if ( v[axis] == 1 )
-                pos[axis] += simbox.localcells[axis] - 1;
-        assert( simbox.inArea( SimBox::BORDER, pos ) );
+                pos[axis] += simbox.localcells[axis] - simbox.guardsize;
+        assert( simbox.inArea( pos, SimBox::BORDER ) );
         return pos;
     }
 
@@ -201,7 +202,7 @@ public:
         VecI v( getDirectionVector( direction ) );
         for ( int axis=0; axis<T_DIMENSION; ++axis ) {
             assert( abs(v[axis]) <= 1 );
-            pos[axis] += v[axis];
+            pos[axis] += v[axis]*SimBox::getInstance().guardsize;
         }
         return pos;
     }
@@ -234,11 +235,11 @@ public:
         for ( int direction = 1; direction <= this->nneighbors; direction++ )
         {
             /* Limit send directions to very nearest neighbors, no diagonals  */
-            if ( getAxis(direction) == -1 ) {
+            /* if ( getAxis(direction) == -1 ) {
                 recvrequests[direction] = MPI_REQUEST_NULL;
                 sendrequests[direction] = MPI_REQUEST_NULL;
                 continue;
-            }
+            } */
             
             VecI size = this->getBorderSizeInDirection    (direction);
             VecI pos  = this->getBorderPositionInDirection(direction);
@@ -249,23 +250,23 @@ public:
                        neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
 
             #if DEBUG_COMMUNICATOR >= 1
-                cout << "[Rank " << this->rank << " in ComBox] Send to Direction ";
+                tout << "[Rank " << this->rank << " in ComBox] Send to Direction ";
                 getDirectionVector( direction ).Print();
-                cout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
-                cout << " => pos: "; pos.Print();
-                cout << " size: "; size.Print();
-                cout << endl << flush;
-                cout << endl << "Sent Matrix: " << endl;
+                tout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+                tout << " => pos: "; pos.Print();
+                tout << " size: "; size.Print();
+                tout << endl << flush;
+                tout << endl << "Sent Matrix: " << endl;
                     {const SimBox::CellMatrix & m = sendmatrices[direction];
                     VecI size = m.getSize();
                     VecI ind(0);
                     for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
                         for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                            cout << m[ ind ].value << " ";
-                        cout << endl;
+                            tout << m[ ind ].value << " ";
+                        tout << endl;
                     }
-                    cout << endl;}
-                cout << endl << flush;
+                    tout << endl;}
+                tout << endl << flush;
             #endif
 
             int opdir = getOppositeDirection( direction );
@@ -299,22 +300,22 @@ public:
             VecI pos  = getGuardPositionInDirection(direction);
 
             #if DEBUG_COMMUNICATOR >= 1
-                cout << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
+                tout << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
                 getDirectionVector( direction ).Print();
-                cout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
-                cout << " => pos: "; pos.Print();
-                cout << " size: "; size.Print();
-                cout << endl << "Received Matrix: " << endl;
+                tout << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+                tout << " => pos: "; pos.Print();
+                tout << " size: "; size.Print();
+                tout << endl << "Received Matrix: " << endl;
                     {const SimBox::CellMatrix & m = recvmatrices[direction];
                     VecI size = m.getSize();
                     VecI ind(0);
                     for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
                         for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                            cout << m[ ind ].value << " ";
-                        cout << endl;
+                            tout << m[ ind ].value << " ";
+                        tout << endl;
                     }
-                    cout << endl;}
-                cout << endl << flush;
+                    tout << endl;}
+                tout << endl << flush;
             #endif
 
             SimBox::getInstance().cells.insertMatrix( pos, recvmatrices[direction] );
@@ -324,14 +325,14 @@ public:
 
 #if DEBUG_COMMUNICATOR >= 1
     void Print( void ) {
-        cout << "Printing from Communicator on rank " << this->rank;
-        cout << " with cartesian coordinates: "; VecI( this->coords ).Print();
-        cout << " My neighbors are: " << endl;
+        tout << "Printing from Communicator on rank " << this->rank;
+        tout << " with cartesian coordinates: "; VecI( this->coords ).Print();
+        tout << " My neighbors are: " << endl;
 
         for (int direction = 1; direction <= this->nneighbors; direction++) {
             (VecI(this->coords) + getDirectionVector( direction )).Print();
-            cout << "(lin=" << direction << ")";
-            cout << " -> Rank: " << this->neighbors[direction] << endl << flush;
+            tout << "(lin=" << direction << ")";
+            tout << " -> Rank: " << this->neighbors[direction] << endl << flush;
         }
 
         /* Wait a bit till everything is flushed out, to not get scrambled output */
@@ -353,7 +354,7 @@ private:
         for (int i=0; i<T_DIMENSION; i++)
             nneighbors *= 3;
         nneighbors--;
-        cout << "Number of Neighbors: " << nneighbors;
+        tout << "Number of Neighbors: " << nneighbors;
         this->nneighbors = nneighbors;
         this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
         this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
