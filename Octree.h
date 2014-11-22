@@ -4,6 +4,13 @@ ToDo:
   - Coarsening
   - GetSize Function
   - later: parallelism
+  - max depth
+  - Find Error (Grow Up, Rejuvenate ausschließen ... )
+  - Add CheckIntegrity Method, which checks for parents, child-pointers, ...
+  - Test all methods singlehandedly
+  + Bigger goal: parallelize ...
+  - two kind of errors: one after 61 moves -> Octree.tpp
+  - Weird boxes arrangement after timestep 2 -> Svg.tpp
 */
 
 #pragma once
@@ -49,17 +56,17 @@ public:
     typedef struct { VecD pos; T_DTYPE* object; } Datapoint;
     typedef std::list<Datapoint> Datalist;
 
-private:
 /* Saving parent makes traversing easiers. Also a Node can get it's neighbor  *
  * through its parent, e.g. to check whether coarsening can be done           */
-    class Node<T_DTYPE,T_DIM> * const parent;
+    class Node<T_DTYPE,T_DIM> * parent;
 
 /* In order to avoid floating point errors center and size elements must be   *
  * in the form of 2 ^ ( ..., -1, 0, 1, ... ) ! Root Node is supposed have     *
  *     size = VecD(1), center = VecD(0)                                       */
-    VecD const center;
-    VecD const size;
-
+    VecD center;
+    VecD size;
+    
+private:
 /* Pointer of these are NULL, if its a leaf node. The mapping between array   *
  * index and position is being done by ConvertNumberToDirection    -------    *
  * and vice versa. So 0 is the lower left back octant, while      | 1 | 3 |   *
@@ -67,7 +74,7 @@ private:
  * stored in the order they should be traversed , therefore a     | 0 | 2 |   *
  *  a traversing mapping additionally                              -------    */
     const int nchildren = compileTime::pow(2,T_DIM);
-    class Node<T_DTYPE,T_DIM> * children[ compileTime::pow(2,T_DIM) ];
+    Node * children[ compileTime::pow(2,T_DIM) ];
 
 /* Max data might not necessarily be uphold, if for example more than         *
  * OCTREE_MAX_OBJECTS_PER_LEAF are for some reason at the exact same point    *
@@ -77,7 +84,7 @@ private:
  * himself                                                                    */
     const int maxdata = OCTREE_MAX_OBJECTS_PER_LEAF;
     Datalist data;
-
+    
 /* converts 001 to (-1,-1,1), 101 to (-1,1,-1) and so on. With this we can    *
  * map 0...7 to all eight neighbors in an Octree or respectively 0...3 for a  *
  * Quadtree or 0...2^N-1 for a tree in N dimensions                           */
@@ -85,10 +92,13 @@ private:
     int  ConvertDirectionToNumber( const VecI ) const;
 /* Traverses the Octree non-recursively deeper and deeper if necessary to     *
  * find the octant lead which encompasses a given position                    */
-    Node& FindLeafContainingPos( const VecD & pos );
+    Node * FindLeafContainingPos( const VecD & pos );
 /* Give birth to eight new children with the correct coordinates and sizes.   *
  * It's private, so no reason to not give this a funny name :)                */
     void GrowUp(void);
+/* Tries to collapse all children into the parent                             */
+    bool Rejuvenate(void);
+    bool HasOnlyLeaves(void) const;
 
 public:
 /* Forbid empty constructor, because we always have to create a node with a   *
@@ -104,6 +114,13 @@ public:
  * if it has grown big enough, i.e. has exceeded OCTREE_MAX_OBJECTS_PER_LEAF  */
     Node(Node * const parent, VecD const cent, VecD const size);
 
+/* Some Functions granting read access to private variables                   */
+    const Node *     getChildPtr( const int i ) const;
+    const Datapoint * getDataPtr( const int i ) const;
+    
+/* Test if a point lies inside the space described by this node               */
+    bool IsInside ( const VecD & pos ) const;
+    
 /* This is for example needed to decide whether we have reached an end in our *
  * recursive search for some data                                             */
     bool IsLeaf( void ) const;
@@ -118,9 +135,8 @@ public:
  * the "rare" case two objects are at the same position. E.g. in a maxwell    *
  * solver to fit the initial conditions electrons and ions are initialized at *
  * the same location (!) in order to make initializing E more easy, because   *
- * it becomes zero everywhere                                                 */
-    void RemoveData( const VecD pos, T_DTYPE * const object );
-    void MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
+ * it becomes zero everywhere. Returns false, if it couldn't find the datum.  */
+    bool RemoveData( const VecD pos, T_DTYPE * const object );
 
 /* <> would also suffice after operator<< instead of <T_DTYPE,T_DIM>, but one *
  * of both is needed or else the linker can't find the appropriate template   *
@@ -137,22 +153,24 @@ public:
     typedef Vec<int   ,T_DIM> VecI;
     const int dim = T_DIM;
 
-private:
-    VecD center, size;
-
 public:
-    class Node<T_DTYPE,T_DIM> * root; // root can be leaf or child!
-    T_DTYPE data;
+    VecD center, size;
+    typedef class Node<T_DTYPE,T_DIM> Nodetype;
+    typedef class Node<T_DTYPE,T_DIM> Node;
+    Nodetype * root; // root can be leaf or child!
 
     Octree(void);
+    Octree(const VecD center, const VecD size);
     Octree(const Octree &);
     ~Octree(void);
     Octree& operator=(const Octree &);
 
-    Octree( const VecD center, const VecD size );
+    VecD FindData( T_DTYPE * const object ) const;
+    const Nodetype * GetNodePtr( const VecD center ) const;
     void InsertData( const VecD pos, T_DTYPE * const object );
-/* Output an svg-version of the Octree instead of a simple Ascii-"Art" :)     */
-    void PrintToSVG( const std::string filename );
+    /* Returns false if datum not found */
+    bool RemoveData( const VecD pos, T_DTYPE * const object );
+    bool MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
 
     friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, const Octree<T_DTYPE,T_DIM>& tree );
 };
