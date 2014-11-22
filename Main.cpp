@@ -125,7 +125,7 @@ int main( int argc, char **argv )
 {
     SimBox & simBox = SimBox::getInstance();
     CommTopo<SIMDIM> & comBox = CommTopo<SIMDIM>::getInstance();
-    tout.open( string(""), comBox.rank );
+    tout.Open( string(""), comBox.rank );
     srand( clock() * comBox.rank );
 
     /* Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIMENSION] ) */
@@ -248,19 +248,19 @@ int main( int argc, char **argv )
     comBox.StartGuardUpdate( 1 ); //  Sends Border data from last timestep (t[1])
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it ) {
         (simBox.t[0]->cells)[it.icell].value +=
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( RIGHT , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( LEFT  , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( TOP   , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( BOTTOM, SIMDIM ) ].value;
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( RIGHT  ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( LEFT   ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( TOP    ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( BOTTOM ) ].value;
     }
     comBox.FinishGuardUpdate( 1 ); // Saves received data into t[1], because we only need prior time step
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::BORDER ).begin(); it!=it.end(); ++it ) {
         //VecI neighbor = it.icell + getDirectionVector( RIGHT, SIMDIM );
         (simBox.t[0]->cells)[it.icell].value +=
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( RIGHT , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( LEFT  , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( TOP   , SIMDIM ) ].value +
-            (simBox.t[1]->cells)[ it.icell + getDirectionVector( BOTTOM, SIMDIM ) ].value;
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( RIGHT  ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( LEFT   ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( TOP    ) ].value +
+            (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( BOTTOM ) ].value;
     }
     simBox.PrintValues();
     

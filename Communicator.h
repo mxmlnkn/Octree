@@ -48,7 +48,7 @@ public:
          *   send to LEFT or RIGHT => make it a 1x3x3 surface                 *
          *   send to TOP or BOTTOM => make it a 3x1x3 surface                 *
          *   send to LEFT+TOP      => make it a 1x1x3 line of cells (edge)    */
-        VecI v( getDirectionVector( direction, T_DIM ) );
+        VecI v( getDirectionVector<T_DIM>( direction ) );
         for (int axis=0; axis<T_DIM; ++axis)
             if ( v[axis] != 0 )
                 size[axis] = simbox.guardsize;
@@ -58,7 +58,7 @@ public:
     VecI getBorderPositionInDirection( const int & direction ) const {
         SimBox & simbox = SimBox::getInstance();
         VecI pos ( simbox.guardsize );
-        VecI v( getDirectionVector( direction, T_DIM ) );
+        VecI v( getDirectionVector<T_DIM>( direction ) );
         for ( int axis=0; axis<T_DIM; ++axis )
             if ( v[axis] == 1 )
                 pos[axis] += simbox.localcells[axis] - simbox.guardsize;
@@ -72,7 +72,7 @@ public:
 
     VecI getGuardPositionInDirection( const int & direction ) const {
         VecI pos = this->getBorderPositionInDirection( direction );
-        VecI v( getDirectionVector( direction, T_DIM ) );
+        VecI v( getDirectionVector<T_DIM>( direction ) );
         for ( int axis=0; axis<T_DIM; ++axis ) {
             assert( abs(v[axis]) <= 1 );
             pos[axis] += v[axis]*SimBox::getInstance().guardsize;
@@ -124,7 +124,7 @@ public:
 
             #if DEBUG_COMMUNICATOR >= 1
                 terr << "[Rank " << this->rank << " in ComBox] Send to Direction ";
-                terr << getDirectionVector( direction, T_DIM );
+                terr << getDirectionVector<T_DIM>( direction );
                 terr << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
                 terr << " => pos: " << pos << " size: " << size << endl << flush;
                 terr << endl << "Sent Matrix: " << endl;
@@ -140,7 +140,7 @@ public:
                 terr << endl << flush;
             #endif
 
-            int opdir = getOppositeDirection( direction, T_DIM );
+            int opdir = getOppositeDirection<T_DIM>( direction );
             recvmatrices[opdir] = sendmatrices[direction]; // copy because we want same size
             MPI_Irecv( recvmatrices[opdir].data, recvmatrices[opdir].getSize().product() *
                        sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
@@ -172,7 +172,7 @@ public:
 
             #if DEBUG_COMMUNICATOR >= 2
                 terr << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
-                     << getDirectionVector( direction, T_DIM )
+                     << getDirectionVector<T_DIM>( direction )
                      << "(=lin:" << direction << "=Rank:" << neighbors[direction]
                      << ") => pos: " << pos << " size: " << size << endl
                      << "Received Matrix: " << endl << recvmatrices[direction]
@@ -191,7 +191,7 @@ public:
              << " My neighbors are: " << endl;
 
         for (int direction = 1; direction <= this->nneighbors; direction++) {
-            terr << (VecI(this->coords) + getDirectionVector( direction, T_DIM ))
+            terr << (VecI(this->coords) + getDirectionVector<T_DIM>( direction ))
                  << "(lin=" << direction << ") -> Rank: "
                  << this->neighbors[direction] << endl << flush;
         }
@@ -245,7 +245,7 @@ private:
         for (int direction = 1; direction <= this->nneighbors; direction++) {
             /* get rank from cartesian coords -> enables diagonal neighbors ! */
             MPI_Cart_rank( this->communicator, ( VecI(this->coords) +
-                getDirectionVector( direction, T_DIM ) ), &(neighbors[direction]));
+                getDirectionVector<T_DIM>( direction ) ), &(neighbors[direction]));
         }
     }
 

@@ -164,6 +164,22 @@ bool Vec<T_DTYPE,T_DIM>::operator>=( const Vec & v ) const {
     return alland;
 }
 
+template<typename T_DTYPE, int T_DIM>
+Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::GreaterThan( const Vec & v ) const {
+    Vec<bool,T_DIM> res;
+    for (int i=0; i<T_DIM; i++)
+        res[i] = this->data[i] > v[i];
+    return res;
+}
+
+template<typename T_DTYPE, int T_DIM>
+Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::SmallerThan( const Vec & v ) const {
+    Vec<bool,T_DIM> res;
+    for (int i=0; i<T_DIM; i++)
+        res[i] = this->data[i] < v[i];
+    return res;
+}
+
 
 /********************** Horizontal Vector Operations **********************/
 
@@ -261,7 +277,7 @@ Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const T_ETYPE a) const {
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
     for (int i=0; i<T_DIM; i++)
         tmp.data[i] -= a;
@@ -270,7 +286,7 @@ Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>  Vec<T_DTYPE,T_DIM>::operator* (const T_ETYPE a) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator* (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
     for (int i=0; i<T_DIM; i++)
         tmp.data[i] *= a;
@@ -309,7 +325,7 @@ Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & rightha
 
 /* Enables cout << Vec<int,2>(1); This also works with fstream and therefore with tout */
 template<typename T_DTYPE, int T_DIM>
-ostream& operator<<( ostream& out, const Vec<T_DTYPE,T_DIM>& v ) {
+std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM>& v ) {
     out << "(";
     for (int i=0; i<T_DIM-1; i++)
         out << v[i] << ",";

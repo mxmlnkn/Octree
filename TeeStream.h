@@ -20,7 +20,7 @@ class TeeStream{
         TeeStream( const char * filename ) {
             fileStream.open( filename, std::ofstream::out | std::ofstream::app );
         }
-        void open( string filename, int rank = 0 ) {
+        void Open( string filename, int rank = 0 ) {
             /* Create Timestamp and rank strings for filenames */
             time_t t = time(0);   // get time now
             struct tm * now = localtime( &t );

@@ -68,9 +68,10 @@ const int FRONT  = 9;
  * Problem: Will have to check for (0,0,0,...) at every for loop !!!      *
  *   - as all the values would be positive we also should shift it by the *
  *     position of the center, to get directions relative to it           */
-VecI getDirectionVector( int direction, int dimensions ) {
-    VecI vec(0);
-    assert( direction >= 1 and direction <= pow(3,dimensions)+0.0001 );
+template<int T_DIM>
+Vec<int,T_DIM> getDirectionVector( int direction ) {
+    Vec<int,T_DIM> vec(0);
+    assert( direction >= 1 and direction <= pow(3,T_DIM)+0.0001 );
     /* This may not be needed for 2D, but it also doesn't make the        *
      * results wrong                                                      */
     switch( direction % 3 ) {
@@ -95,27 +96,28 @@ template<int T_DIM>
 int getDirectionNumber( const Vec<int,T_DIM> & v ) {
     int direction = 0;
     int prevrange = 1;
-    for (int i=0; i<v.dim; i++) {
+    for (int i=0; i<T_DIM; i++) {
         int value = v[i];
         if (value==-1) value = 2;
         direction += value * prevrange;
         prevrange *= 3;
     }
     assert( direction >=1 and direction <= pow(3,v.dim)+0.0001 );
-    assert( getDirectionVector( direction, v.dim ) == v );
+    assert( getDirectionVector<T_DIM>( direction ) == v );
     return direction;
 }
 
-int getOppositeDirection( int & direction, int dimensions ) {
-    return getDirectionNumber( getDirectionVector( direction, dimensions )*(-1) );
+template<int T_DIM>
+int getOppositeDirection( int & direction ) {
+    return getDirectionNumber( getDirectionVector<T_DIM>( direction )*(-1) );
 }
 
 /* returns the axis corresponding to a direction:                         *
  *   RIGHT,LEFT -> 0, TOP,BOTTOM -> 1, FRONT,BACK -> 2, ...               *
  * returns -1 if e.g. RIGHT+LEFT                                          */
 template<int T_DIM>
-int getAxis( const int & direction, int dimensions ) {
-    Vec<int,T_DIM> v( getDirectionVector( direction, dimensions ) );
+int getAxis( const int & direction) {
+    Vec<int,T_DIM> v( getDirectionVector<T_DIM>( direction ) );
     int axis = -1;
     for (int i=0; i<v.dim; i++)
         if ( v[i] != 0 ) {
