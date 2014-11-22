@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG_OCTREE 10
+#define DEBUG_OCTREE 9
 
 
 
@@ -109,7 +109,7 @@ void Node<T_DTYPE,T_DIM>::GrowUp( void ) {
 #endif
     for (int i=0; i<compileTime::pow(2,T_DIM); ++i) {
         VecD direction = VecD( ConvertNumberToDirection( i ) );
-        this->children[i] = new class Node( this, this->center + 
+        this->children[i] = new class Node( this, this->center +
                             0.25*direction*size, 0.5*size );
     }
 /* Migrate data to child-leaf nodes. If it is too much data they will recursi-*
@@ -158,10 +158,20 @@ Octree<T_DTYPE,T_DIM>::Octree( void ) {
     assert(false);
 }
 
+template<typename T_DTYPE, int T_DIM>
+Octree<T_DTYPE,T_DIM>::Octree( const Octree & ) {
+    assert(false);
+}
 
 template<typename T_DTYPE, int T_DIM>
 Octree<T_DTYPE,T_DIM>::~Octree( void ) {
     delete this->root;
+}
+
+template<typename T_DTYPE, int T_DIM>
+typename Octree<T_DTYPE,T_DIM>::Octree& Octree<T_DTYPE,T_DIM>::operator=(const Octree &)
+{
+    assert(false);
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -177,16 +187,116 @@ void Octree<T_DTYPE,T_DIM>::InsertData( const VecD pos, T_DTYPE * const object )
                 InsertData( pos / this->size, object );
 }
 
+template<typename T_DTYPE, int T_DIM>
+void Octree<T_DTYPE,T_DIM>::PrintToSVG( const std::string filename ) {
+    /* Create Timestamp and rank strings for filenames */
+    time_t t = time(0);   // get time now
+    struct tm * now = localtime( &t );
+    std::stringstream timestamp;
+    timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
+              << now->tm_mday << "_" << now->tm_hour << "-"
+              << now->tm_min  << "_";
+    std::string timesr = timestamp.str();
+    std::ofstream out;
+    out.open( timesr + filename + std::string(".svg"),
+                     std::ofstream::out | std::ofstream::app );
+    double borderx = 20;
+    double bordery = 20;
+    double height  = 800;
+    double width   = height / this->size[1] * this->size[0];
+    VecD imagesize  ; imagesize  [0] = width  ; imagesize  [1] = height ;
+    VecD imageborder; imageborder[0] = borderx; imageborder[1] = bordery;
+    out << "<?xml version=\"1.0\" standalone=\"no\"?>              \n"
+        << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"       \n"
+        << "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
+        << "<svg                                                   \n"
+        << "   xmlns   = \"http://www.w3.org/2000/svg\">           \n"
+        << "   width   = \"" << 2*borderx+width  << "px\"          \n"
+        << "   height  = \"" << 2*bordery+height << "px\"          \n"
+        << "   version = \"1.1\"                                   \n"
+        << "  >                                                    \n";
+    /* Make Canvas Black */
+    out << "  <rect                                     \n"
+        << "     x      = \"" << 0                << "\"\n"
+        << "     y      = \"" << 0                << "\"\n"
+        << "     width  = \"" << 2*borderx+width  << "\"\n"
+        << "     height = \"" << 2*bordery+height << "\"\n"
+        << "     fill   = \"black\"                     \n"
+        << "     stroke = \"none\"                      \n"
+        << "  />                                        \n";
+
+    typedef class Node<T_DTYPE,T_DIM> Node;
+    typedef struct{ int ichild; Node* node; } tododata;
+    std::stack<tododata> todo;
+    tododata tmp = { 0, this->root };
+    todo.push( tmp );
+    while( !todo.empty() ) {
+        Node & current = *(todo.top().node);
+        if ( todo.top().ichild == 0 ) {
+            /* Draw white stroked rectangle */
+            /* We can just scale everything up, because Octree saves all data *
+             * scaled down to a box at 0 with size 1 ! :)                     */
+            VecD upperleft = VecD(0.5) + current.center;
+            upperleft[1] = 1 - upperleft[1]; // flip along y-axis
+            upperleft -= 0.5*current.size;
+            upperleft *= imagesize;   // scale image up
+            upperleft += imageborder;
+            VecD rect_size = current.size * imagesize;
+            out << "  <rect                                         \n"
+                << "     x      = \"" << upperleft[0] << "px" << "\"\n"
+                << "     y      = \"" << upperleft[1] << "px" << "\"\n"
+                << "     width  = \"" << rect_size[0] << "px" << "\"\n"
+                << "     height = \"" << rect_size[1] << "px" << "\"\n"
+                << "     fill   = \"none\"                          \n"
+                << "     stroke = \"white\"                         \n"
+                << "     stroke-width = \"3px\"                     \n"
+                << "  />                                            \n";
+        }
+        if ( current.IsLeaf() ) {
+            typename Node::Datalist::iterator  it = current.data.begin();
+            while ( it != current.data.end() ) {
+                /* Draw object into the world! */
+                /* out << it->pos * imagesize << *(it->object) */
+                VecD center( VecD(0.5) + it->pos );
+                center[1] = 1 - center[1];
+                center *= imagesize;   // scale image up
+                center += imageborder;
+                out << "  <circle                                    \n"
+                    << "     cx     = \"" << center[0] << "px" << "\"\n"
+                    << "     cy     = \"" << center[1] << "px" << "\"\n"
+                    << "     r      = \"3px\"                        \n"
+                    << "     fill   = \"red\"                        \n"
+                    << "     stroke = \"none\"                       \n"
+                    << "  />                                         \n";
+                ++it;
+            }
+            todo.pop();
+        } else {
+            if ( todo.top().ichild < current.nchildren ) {
+                tmp.node   = current.children[ todo.top().ichild++ ];
+                tmp.ichild = 0;
+                todo.push(tmp);
+            } else {
+                todo.pop();
+            }
+        }
+    }
+    out << "</svg>\n";
+    out.close();
+}
 
 
 } // namespace Octree
 
 
+
+
 /******************************** Debug output ********************************/
+
 template<typename T_DTYPE, int T_DIM>
 std::ostream& operator<<( std::ostream& out, const Octree::Octree<T_DTYPE,T_DIM>& tree ) {
-    typedef struct{ int ichild; class Octree::Node<T_DTYPE,T_DIM>* node; } tododata;
-    typedef Octree::Node<T_DTYPE,T_DIM> Node;
+    typedef class Octree::Node<T_DTYPE,T_DIM> Node;
+    typedef struct{ int ichild; Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { 0, tree.root };
     todo.push( tmp );
@@ -195,8 +305,8 @@ std::ostream& operator<<( std::ostream& out, const Octree::Octree<T_DTYPE,T_DIM>
         if ( current.IsLeaf() ) {
             for ( int i=0; i<todo.size()-1; ++i )
                 out << "  ";
-            out << "Leaf at " << current.center << " with size "
-                << current.size << std::endl;
+            out << "Leaf at "    << tree.size * current.center
+                << " with size " << tree.size * current.size << std::endl;
             typename Node::Datalist::iterator  it = current.data.begin();
             while ( it != current.data.end() ) {
                 for ( int i=0; i<todo.size(); ++i )
@@ -209,8 +319,8 @@ std::ostream& operator<<( std::ostream& out, const Octree::Octree<T_DTYPE,T_DIM>
             if ( todo.top().ichild == 0 ) {
                 for ( int i=0; i<todo.size()-1; ++i )
                     out << "  ";
-                out << "Parent at " << current.center << " with size "
-                    << current.size << std::endl;
+                out << "Parent at "  << tree.size * current.center
+                    << " with size " << tree.size * current.size << std::endl;
             }
             if ( todo.top().ichild < current.nchildren ) {
                 tmp.node   = current.children[ todo.top().ichild++ ];
@@ -223,3 +333,4 @@ std::ostream& operator<<( std::ostream& out, const Octree::Octree<T_DTYPE,T_DIM>
     }
     return out;
 }
+

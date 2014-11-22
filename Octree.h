@@ -33,9 +33,10 @@ template<typename T_DTYPE, int T_DIM>
 class Octree;
 }
 
+/* This outputs a nice formatted version of the tree.                         */
 template<typename T_DTYPE, int T_DIM>
-std::ostream& operator<<( std::ostream& out, const Octree::Octree<T_DTYPE,T_DIM>& tree );
-
+std::ostream& operator<<( std::ostream& out,
+                          const Octree::Octree<T_DTYPE,T_DIM>& tree );
 
 namespace Octree {
 
@@ -52,13 +53,13 @@ private:
 /* Saving parent makes traversing easiers. Also a Node can get it's neighbor  *
  * through its parent, e.g. to check whether coarsening can be done           */
     class Node<T_DTYPE,T_DIM> * const parent;
-    
+
 /* In order to avoid floating point errors center and size elements must be   *
  * in the form of 2 ^ ( ..., -1, 0, 1, ... ) ! Root Node is supposed have     *
  *     size = VecD(1), center = VecD(0)                                       */
     VecD const center;
     VecD const size;
-    
+
 /* Pointer of these are NULL, if its a leaf node. The mapping between array   *
  * index and position is being done by ConvertNumberToDirection    -------    *
  * and vice versa. So 0 is the lower left back octant, while      | 1 | 3 |   *
@@ -67,7 +68,7 @@ private:
  *  a traversing mapping additionally                              -------    */
     const int nchildren = compileTime::pow(2,T_DIM);
     class Node<T_DTYPE,T_DIM> * children[ compileTime::pow(2,T_DIM) ];
-    
+
 /* Max data might not necessarily be uphold, if for example more than         *
  * OCTREE_MAX_OBJECTS_PER_LEAF are for some reason at the exact same point    *
  * the Octree would otherwise allocate infinite amount of smaller boxes. You  *
@@ -76,7 +77,7 @@ private:
  * himself                                                                    */
     const int maxdata = OCTREE_MAX_OBJECTS_PER_LEAF;
     Datalist data;
-    
+
 /* converts 001 to (-1,-1,1), 101 to (-1,1,-1) and so on. With this we can    *
  * map 0...7 to all eight neighbors in an Octree or respectively 0...3 for a  *
  * Quadtree or 0...2^N-1 for a tree in N dimensions                           */
@@ -102,7 +103,7 @@ public:
  * initialized as a Lead Node, but it can "grow up" and become a parent :)    *
  * if it has grown big enough, i.e. has exceeded OCTREE_MAX_OBJECTS_PER_LEAF  */
     Node(Node * const parent, VecD const cent, VecD const size);
-    
+
 /* This is for example needed to decide whether we have reached an end in our *
  * recursive search for some data                                             */
     bool IsLeaf( void ) const;
@@ -124,8 +125,8 @@ public:
 /* <> would also suffice after operator<< instead of <T_DTYPE,T_DIM>, but one *
  * of both is needed or else the linker can't find the appropriate template   *
  * global function                                                            */
-friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, const class Octree<T_DTYPE,T_DIM>& tree );
-friend class Octree<T_DTYPE,T_DIM>;
+    friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, const class Octree<T_DTYPE,T_DIM>& tree );
+    friend class Octree<T_DTYPE,T_DIM>;
 };
 
 
@@ -135,23 +136,25 @@ public:
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
     const int dim = T_DIM;
-    
+
 private:
     VecD center, size;
 
 public:
     class Node<T_DTYPE,T_DIM> * root; // root can be leaf or child!
     T_DTYPE data;
-    
+
     Octree(void);
-    Octree(const Octree &) {};
+    Octree(const Octree &);
     ~Octree(void);
-    Octree& operator=(const Octree &) {};
-    
+    Octree& operator=(const Octree &);
+
     Octree( const VecD center, const VecD size );
     void InsertData( const VecD pos, T_DTYPE * const object );
-    
-friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, const Octree<T_DTYPE,T_DIM>& tree );
+/* Output an svg-version of the Octree instead of a simple Ascii-"Art" :)     */
+    void PrintToSVG( const std::string filename );
+
+    friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, const Octree<T_DTYPE,T_DIM>& tree );
 };
 
 } // namespace Octree

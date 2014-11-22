@@ -7,6 +7,7 @@ rm testOctree.exe; g++ testOctree.cpp -o testOctree.exe -Wall -std=c++0x; ./test
 #include <iostream>
 #include <cmath>    // sin
 #include <cstdlib>  // malloc
+#include <random>   // normal_distribution
 
 namespace compileTime {
 
@@ -31,35 +32,34 @@ typedef Vec<double,SIMDIM> VecD;
 
 int main( int argc, char **argv )
 {
-    tout.Open("");
-
-    const int NValues = 20;
-    VecD positions[NValues];
-    int  data     [NValues] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
-    positions[ 0][0] =  0.680369; positions[ 0][1] = -0.132787;
-    positions[ 1][0] = -0.585351; positions[ 1][1] = -0.054848;
-    positions[ 2][0] = -0.158091; positions[ 2][1] = -0.867561;
-    positions[ 3][0] = -0.477332; positions[ 3][1] =  0.798686;
-    positions[ 4][0] =  0.752312; positions[ 4][1] =  0.770033;
-    positions[ 5][0] =  0.211714; positions[ 5][1] = -0.661169;
-    positions[ 6][0] =  0.935703; positions[ 6][1] = -0.695199;
-    positions[ 7][0] =  0.597030; positions[ 7][1] =  0.767231;
-    positions[ 8][0] = -0.853328; positions[ 8][1] =  0.706876;
-    positions[ 9][0] =  0.178442; positions[ 9][1] =  0.947039;
-    positions[10][0] =  0.054220; positions[10][1] =  0.745018;
-    positions[11][0] = -0.009938; positions[11][1] = -0.720338;
-    positions[12][0] =  0.494300; positions[12][1] = -0.701520;
-    positions[13][0] = -0.723740; positions[13][1] =  0.268552;
-    positions[14][0] =  0.709980; positions[14][1] =  0.930955;
-    positions[15][0] =  0.487417; positions[15][1] =  0.908338;
-    positions[16][0] =  0.124996; positions[16][1] = -0.501056;
-    positions[17][0] = -0.959923; positions[17][1] = -0.662497;
-    positions[18][0] =  0.015413; positions[18][1] =  0.891808;
-    positions[19][0] = -0.589081; positions[19][1] =  0.753129;
+    tout.Open("out");
+    
+    
+    const int NValues = 100;
+    int * data = (int*) malloc( sizeof(int)*NValues );
+    for (int i=0; i<NValues; ++i)
+        data[i] = i;
+    
     VecD size(2), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
-    for (int i=0; i<20; i++) {
-        tree.InsertData( positions[i], &(data[i]) );
+    
+    std::default_random_engine rng( 7542168 );
+    std::normal_distribution<double> x_distribution(  0.2, 0.5 );
+    std::normal_distribution<double> y_distribution( -0.3, 0.2 );
+    
+    for (int i=0; i<NValues; i++) {
+        VecD position;
+        position[0] = x_distribution(rng);
+        if ( position[0] > +0.5*size[0] ) position[0] = +0.5*size[0] - 1e-6;
+        if ( position[0] < -0.5*size[0] ) position[0] = -0.5*size[0];
+        position[1] = y_distribution(rng);
+        if ( position[1] > +0.5*size[1] ) position[1] = +0.5*size[1] - 1e-6;
+        if ( position[1] < -0.5*size[1] ) position[1] = -0.5*size[1];
+        tree.InsertData( position, &(data[i]) );
     }
-    std::cout << tree;
+    
+    tout << tree;
+    tree.PrintToSVG( std::string("octree") );;
+    
+    free(data);
 }
