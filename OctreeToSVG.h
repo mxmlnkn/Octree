@@ -9,7 +9,7 @@
 namespace Octree {
 
 template<typename T_DTYPE, int T_DIM>
-class OctreeToSVG {
+class OctreeToSvg {
 public:
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
@@ -32,7 +32,7 @@ private:
     const int STROKE_WIDTH = 1;
     
     /* Thanks to https://stackoverflow.com/questions/16362231/ */
-    struct OrCompareVecD {
+    struct StrictWeakOrderingVecD {
         bool operator()( const VecD & a, const VecD & b ) const {
             for (int i=0; i<T_DIM; i++) {
                 if (a[i] < b[i]) return true;
@@ -40,20 +40,20 @@ private:
             }
             return false;
     } };
-    
 /* Boxes Drawn is being called with the centers of each square, as those are  *
  * unique. For each unique center a unique ID and a boolean, whether it is    *
  * currently visible (the last <set/> was "stroke:white" or not. If a box can *
  * be found in this map, than it must already have been drawn with <rect/>    */
     typedef struct { int id; bool visible; } Keyvalues;
+    typedef std::map<VecD,Keyvalues,StrictWeakOrderingVecD> VecDMap;
     int NBoxesDrawn = 0;
-    std::map<VecD,Keyvalues,OrCompareVecD> BoxesDrawn;
-    typename std::map<VecD,Keyvalues,OrCompareVecD>::iterator BoxesDrawnIt;
+    VecDMap BoxesDrawn;
+    typename VecDMap::iterator BoxesDrawnIt;
 
 public:
-    OctreeToSVG(void) { assert(false); }
-    OctreeToSVG(const Octreetype & tree, const std::string filename);
-    ~OctreeToSVG(void) {
+    OctreeToSvg(void) { assert(false); }
+    OctreeToSvg(const Octreetype & tree, const std::string filename);
+    ~OctreeToSvg(void) {
         out << "</svg>\n";
         out.close();
     }

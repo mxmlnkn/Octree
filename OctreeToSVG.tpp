@@ -10,7 +10,7 @@ namespace Octree {
 
 
 template<typename T_DTYPE, int T_DIM>
-OctreeToSVG<T_DTYPE,T_DIM>::OctreeToSVG (
+OctreeToSvg<T_DTYPE,T_DIM>::OctreeToSvg (
   const Octree<T_DTYPE,T_DIM> & tree,
   const std::string filename )
 : tree( tree ), borderx( 20 ), bordery( 20 ), height( 800 ),
@@ -32,38 +32,38 @@ OctreeToSVG<T_DTYPE,T_DIM>::OctreeToSVG (
         << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\""       "\n"
         << "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">""\n"
         << "<svg"                                                   "\n"
-        << "   xmlns:xlink = \"http://www.w3.org/1999/xlink\""      "\n"
-        << "   xmlns   = \"http://www.w3.org/2000/svg\">"           "\n"
-        << "   width   = \"" << 2*borderx+width  << "px\""          "\n"
-        << "   height  = \"" << 2*bordery+height << "px\""          "\n"
-        << "   version = \"1.1\""                                   "\n"
-        << "  >"                                                    "\n"
-        << "  <defs>"                                               "\n"
-        << "    <style type=\"text/css\">"                          "\n"
-        << "      rect {"                                           "\n"
-        << "       fill : none;"                                    "\n"
-        << "       stroke : white;"                                 "\n"
-        << "       stroke-width : " << STROKE_WIDTH << "px"         "\n"
-        << "      }"                                                "\n"
-        << "      circle {"                                         "\n"
-        << "       fill : red;"                                     "\n"
-        << "       stroke : none"                                   "\n"
-        << "      }"                                                "\n"
-        << "    </style>"                                           "\n"
-        << "  </defs>"                                              "\n";
+        << " xmlns:xlink = \"http://www.w3.org/1999/xlink\""        "\n"
+        << " xmlns   = \"http://www.w3.org/2000/svg\">"             "\n"
+        << " width   = \"" << 2*borderx+width  << "px\""            "\n"
+        << " height  = \"" << 2*bordery+height << "px\""            "\n"
+        << " version = \"1.1\""                                     "\n"
+        << ">"                                                      "\n"
+        << "<defs>"                                                 "\n"
+        << "  <style type=\"text/css\">"                            "\n"
+        << "   rect {"                                              "\n"
+        << "    fill : none;"                                       "\n"
+        << "    stroke : white;"                                    "\n"
+        << "    stroke-width : " << STROKE_WIDTH << "px"            "\n"
+        << "   }"                                                   "\n"
+        << "   circle {"                                            "\n"
+        << "    fill : red;"                                        "\n"
+        << "    stroke : none"                                      "\n"
+        << "   }"                                                   "\n"
+        << "  </style>"                                             "\n"
+        << "</defs>"                                                "\n";
     /* Make Canvas Black */
-    out << "  <rect"                                   "\n"
-        << "     x      = \"" << 0                << "\"\n"
-        << "     y      = \"" << 0                << "\"\n"
-        << "     width  = \"" << 2*borderx+width  << "\"\n"
-        << "     height = \"" << 2*bordery+height << "\"\n"
-        << "     style  = \"fill:black;stroke:none\"    \n"
-        << "  />"                                      "\n";
+    out << "<rect"                               "\n"
+        << " x     =\"" << 0                << "\"\n"
+        << " y     =\"" << 0                << "\"\n"
+        << " width =\"" << 2*borderx+width  << "\"\n"
+        << " height=\"" << 2*bordery+height << "\"\n"
+        << " style =\"fill:black;stroke:none\"    \n"
+        << "/>"                                  "\n";
 }
 
 
 template<typename T_DTYPE, int T_DIM>
-void OctreeToSVG<T_DTYPE,T_DIM>::PrintGrid(void) {
+void OctreeToSvg<T_DTYPE,T_DIM>::PrintGrid(void) {
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { /* ichild */ 0, /* node */ this->tree.root };
@@ -82,13 +82,13 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintGrid(void) {
             upperleft *= imagesize;   // scale image up
             upperleft += imageborder;
             VecD rect_size = currentnode->size * imagesize;
-            out << "  <rect"                                       "\n"
-                << "     id     = \"" << toBeStored.id        << "\"\n"
-                << "     x      = \"" << upperleft[0] << "px" << "\"\n"
-                << "     y      = \"" << upperleft[1] << "px" << "\"\n"
-                << "     width  = \"" << rect_size[0] << "px" << "\"\n"
-                << "     height = \"" << rect_size[1] << "px" << "\"\n"
-                << "  />"                                          "\n";
+            out << "<rect"                                   "\n"
+                << " id    =\"" << toBeStored.id        << "\"\n"
+                << " x     =\"" << upperleft[0] << "px" << "\"\n"
+                << " y     =\"" << upperleft[1] << "px" << "\"\n"
+                << " width =\"" << rect_size[0] << "px" << "\"\n"
+                << " height=\"" << rect_size[1] << "px" << "\"\n"
+                << "/>"                                      "\n";
         }
         if ( currentnode->IsLeaf() )
             todo.pop();
@@ -106,7 +106,7 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintGrid(void) {
 
 
 template<typename T_DTYPE, int T_DIM>
-void OctreeToSVG<T_DTYPE,T_DIM>::PrintPositions(void) {
+void OctreeToSvg<T_DTYPE,T_DIM>::PrintPositions(void) {
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { 0, this->tree.root };
@@ -123,12 +123,12 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintPositions(void) {
                 center *= imagesize;   // scale image up
                 center += imageborder;
                 size_t id = reinterpret_cast<size_t>( current->getDataPtr(i)->object );
-                out << "  <circle"                              "\n"
-                    << "     id = \"" << id                << "\"\n"
-                    << "     cx = \"" << center[0] << "px" << "\"\n"
-                    << "     cy = \"" << center[1] << "px" << "\"\n"
-                    << "     r  = \"3px\""                      "\n"
-                    << "  />"                                   "\n";
+                out << "<circle"                          "\n"
+                    << " id=\"" << id                << "\"\n"
+                    << " cx=\"" << center[0] << "px" << "\"\n"
+                    << " cy=\"" << center[1] << "px" << "\"\n"
+                    << " r =\"3px\""                      "\n"
+                    << "/>"                               "\n";
                 ++i;
             }
             todo.pop();
@@ -145,7 +145,7 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintPositions(void) {
 }
 
 template<typename T_DTYPE, int T_DIM>
-void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
+void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
 {
     /*std::cerr << "-BoxesDrawn-\n";
     typename std::map<VecD,Keyvalues>::iterator it = BoxesDrawn.begin();
@@ -198,14 +198,14 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                 upperleft += imageborder;
                 VecD rect_size = currentnode->size * imagesize;
 
-                out << "  <rect"                                       "\n"
-                    << "     id     = \"" << toBeStored.id        << "\"\n"
-                    << "     x      = \"" << upperleft[0] << "px" << "\"\n"
-                    << "     y      = \"" << upperleft[1] << "px" << "\"\n"
-                    << "     width  = \"" << rect_size[0] << "px" << "\"\n"
-                    << "     height = \"" << rect_size[1] << "px" << "\"\n"
-                    << "     style  = \"stroke:none\""                 "\n"
-                    << "  />"                                          "\n";
+                out << "<rect"                                   "\n"
+                    << " id    =\"" << toBeStored.id        << "\"\n"
+                    << " x     =\"" << upperleft[0] << "px" << "\"\n"
+                    << " y     =\"" << upperleft[1] << "px" << "\"\n"
+                    << " width =\"" << rect_size[0] << "px" << "\"\n"
+                    << " height=\"" << rect_size[1] << "px" << "\"\n"
+                    << " style =\"stroke:none\""                 "\n"
+                    << "/>"                                      "\n";
             }
             /* Some Box which was drawn, but is not visible, reappeard */
             if (   BoxesDrawnIt != BoxesDrawn.end() and
@@ -216,12 +216,12 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                           << "ID : " << BoxesDrawnIt->second.id << "\n";
                 #endif
 
-                out << "  <set"                                        "\n"
-                    << "    xlink:href = \"#" << BoxesDrawnIt->second.id << "\"\n"
-                    << "    attributeName = \"stroke\""                "\n"
-                    << "    begin = \"" << DUR*(currentTime+0.5) << "s\"\n"
-                    << "    to    = \"white\""                         "\n"
-                    << "  />"                                          "\n";
+                out << "<set"                                            "\n"
+                    << " xlink:href=\"#" << BoxesDrawnIt->second.id << "\"\n"
+                    << " attributeName=\"stroke\""                       "\n"
+                    << " begin=\"" << DUR*(currentTime+0.5) <<        "s\"\n"
+                    << " to   =\"white\""                                "\n"
+                    << "/>"                                              "\n";
                 BoxesDrawnIt->second.visible = true;
             }
         }
@@ -251,24 +251,24 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                         oldpos *= imagesize;   // scale image up
                         oldpos += imageborder;
                         size_t id = reinterpret_cast<size_t>( datum );
-                        out << "  <animate"                               "\n"
-                            << "    xlink:href = \"#" << id  <<         "\"\n"
-                            << "    attributeName = \"cx\""               "\n"
-                            << "    fill  = \"freeze\""                   "\n"
-                            << "    begin = \"" << DUR*currentTime <<  "s\"\n"
-                            << "    dur   = \"" << DUR             <<  "s\"\n"
-                            << "    from  = \"" << oldpos[0]       << "px\"\n"
-                            << "    to    = \"" << newpos[0]       << "px\"\n"
-                            << "  />"                                     "\n";
-                        out << "  <animate"                               "\n"
-                            << "    xlink:href = \"#" << id        <<   "\"\n"
-                            << "    attributeName = \"cy\""               "\n"
-                            << "    fill  = \"freeze\""                   "\n"
-                            << "    begin = \"" << DUR*currentTime <<  "s\"\n"
-                            << "    dur   = \"" << DUR             <<  "s\"\n"
-                            << "    from  = \"" << oldpos[1]       << "px\"\n"
-                            << "    to    = \"" << newpos[1]       << "px\"\n"
-                            << "  />"                                     "\n";
+                        out << "<animate"                            "\n"
+                            << " xlink:href=\"#" << id  <<         "\"\n"
+                            << " attributeName=\"cx\""               "\n"
+                            << " fill =\"freeze\""                   "\n"
+                            << " begin=\"" << DUR*currentTime <<  "s\"\n"
+                            << " dur  =\"" << DUR             <<  "s\"\n"
+                            << " from =\"" << oldpos[0]       << "px\"\n"
+                            << " to   =\"" << newpos[0]       << "px\"\n"
+                            << "/>"                                  "\n";
+                        out << "<animate"                            "\n"
+                            << " xlink:href=\"#" << id        <<   "\"\n"
+                            << " attributeName=\"cy\""               "\n"
+                            << " fill =\"freeze\""                   "\n"
+                            << " begin=\"" << DUR*currentTime <<  "s\"\n"
+                            << " dur  =\"" << DUR             <<  "s\"\n"
+                            << " from =\"" << oldpos[1]       << "px\"\n"
+                            << " to   =\"" << newpos[1]       << "px\"\n"
+                            << "/>"                                  "\n";
                     } else { /* NAN means the datum wasn't found anymore */
 
                     }
@@ -306,12 +306,12 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
             std::cerr << "Box around " << boxcenter << " vanished!!! "
                       << "ID: " << id << "\n";
             #endif
-            out << "  <set"                                        "\n"
-                << "    xlink:href = \"#" << id  <<              "\"\n"
-                << "    attributeName = \"stroke\""                "\n"
-                << "    begin = \"" << DUR*(currentTime+0.5) << "s\"\n"
-                << "    to    = \"none\""                          "\n"
-                << "  />"                                          "\n";
+            out << "<set"                                     "\n"
+                << " xlink:href=\"#" << id  <<              "\"\n"
+                << " attributeName=\"stroke\""                "\n"
+                << " begin=\"" << DUR*(currentTime+0.5) << "s\"\n"
+                << " to   =\"none\""                          "\n"
+                << "/>"                                       "\n";
             BoxesDrawnIt->second.visible = false;
         }
         ++BoxesDrawnIt;

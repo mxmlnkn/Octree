@@ -21,12 +21,12 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 
 #include "Vector.h"
 #include "Octree.h"
-#include "OctreeToSVG.h"
+#include "OctreeToSvg.h"
 #include "TeeStream.h"
 
 #include "Vector.tpp"
 #include "Octree.tpp"
-#include "OctreeToSVG.tpp"
+#include "OctreeToSvg.tpp"
 
 #define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;
@@ -61,7 +61,7 @@ int main( int argc, char **argv )
     }
     
     tout << tree;
-    Octree::OctreeToSVG<int,SIMDIM> svgoutput( tree, std::string("octree") );
+    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, std::string("octree") );
     svgoutput.PrintGrid();
     svgoutput.PrintPositions();
     /*//std::cout << "\n====== Compare Tree with itself =====" << std::endl;
@@ -104,9 +104,13 @@ int main( int argc, char **argv )
                       ( size[1]-1e-6 ) ) - 0.5*size[1];
             
             tree.MoveData( pos, &(data[i]), newpos );
+            if ( !tree.CheckIntegrity() ) {
+                std::cout << "DIE HOELLE IST LOS!!!\n";
+                return 1;
+            }
         }
-        std::cout << "==t:" << t << "==" << std::endl;
-        tout << tree;
+        //std::cout << "==t:" << t << "==" << std::endl;
+        //tout << tree;
         svgoutput.AnimateUpdated( tree );
     }
     
