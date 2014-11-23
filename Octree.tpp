@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG_OCTREE 9
+#define DEBUG_OCTREE 8
 
 
 
@@ -389,7 +389,7 @@ const VecD newpos ) {
     }
     if (it == tmp->data.end())
         return false;
-    if ( tmp->IsInside( newpos ) )
+    if ( tmp->IsInside( newpos / this->size ) )
         it->pos = newpos / this->size;
 /* If the new position will change the parent leaf of that object, then it's  *
  * being relocated by removing and inserting it anew (could be optimized)     */

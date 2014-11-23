@@ -1,5 +1,9 @@
 #pragma once
 
+
+#define DEBUG_OCTREE_SVG 0
+
+
 namespace Octree {
 
 
@@ -166,14 +170,12 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
             #if DEBUG_OCTREE_SVG >= 10
             std::cerr << boxcenter << " already drawn? "
                       << !(BoxesDrawnIt == BoxesDrawn.end() )
-                      << " BoxesDrawnSize: " << BoxesDrawn.size() << std::endl
-            #endif
+                      << " BoxesDrawnSize: " << BoxesDrawn.size() << std::endl;
             if ( BoxesDrawnIt != BoxesDrawn.end() )
-                #if DEBUG_OCTREE_SVG >= 10
                 std::cerr << " Found: " << BoxesDrawnIt->first << " => ("
                           << BoxesDrawnIt->second.id << ","
                           << BoxesDrawnIt->second.visible << ")\n";
-                #endif
+            #endif
             /* A new octant was created. We need to draw that first */
             if ( BoxesDrawnIt == BoxesDrawn.end() ) {
 /* By setting visibility to false we ensure that in the If-case thereafter    *
@@ -182,10 +184,10 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                 Keyvalues toBeStored = { NBoxesDrawn++, /*visible*/ false };
                 this->BoxesDrawn[ currentnode->center ] = toBeStored;
                 BoxesDrawnIt = BoxesDrawn.find( boxcenter );
-                
+
                 #if DEBUG_OCTREE_SVG >= 10
                 std::cerr << "Box around " << boxcenter << " was created !!! "
-                          << "ID : " << toBeStored.id << "(" 
+                          << "ID : " << toBeStored.id << "("
                           << BoxesDrawnIt->second.id << ")\n";
                 #endif
 
@@ -206,11 +208,13 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                     << "  />"                                          "\n";
             }
             /* Some Box which was drawn, but is not visible, reappeard */
-            if (   BoxesDrawnIt != BoxesDrawn.end() and 
+            if (   BoxesDrawnIt != BoxesDrawn.end() and
                  ! BoxesDrawnIt->second.visible )
             {
+                #if DEBUG_OCTREE_SVG >= 10
                 std::cerr << "Box around " << boxcenter << " reappeared !!! "
                           << "ID : " << BoxesDrawnIt->second.id << "\n";
+                #endif
 
                 out << "  <set"                                        "\n"
                     << "    xlink:href = \"#" << BoxesDrawnIt->second.id << "\"\n"
@@ -295,11 +299,13 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
     while ( BoxesDrawnIt != BoxesDrawn.end() ) {
         VecD boxcenter = BoxesDrawnIt->first;
         int  id        = BoxesDrawnIt->second.id;
-        if ( BoxesDrawnIt->second.visible and 
+        if ( BoxesDrawnIt->second.visible and
              newtree.GetNodePtr( boxcenter ) == NULL )
         {
+            #if DEBUG_OCTREE_SVG >= 10
             std::cerr << "Box around " << boxcenter << " vanished!!! "
                       << "ID: " << id << "\n";
+            #endif
             out << "  <set"                                        "\n"
                 << "    xlink:href = \"#" << id  <<              "\"\n"
                 << "    attributeName = \"stroke\""                "\n"

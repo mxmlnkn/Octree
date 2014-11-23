@@ -6,8 +6,7 @@ ToDo:
   - later: parallelism
   - max depth
   - Find Error (Grow Up, Rejuvenate ausschließen ... )
-  - Add CheckIntegrity Method, which checks for parents, child-pointers, ...
-  - Test all methods singlehandedly
+  - Add CheckIntegrity Method, which checks for parents, child-pointers, are all points really inside their boxes?
   + Bigger goal: parallelize ...
   - two kind of errors: one after 61 moves -> Octree.tpp
   - Weird boxes arrangement after timestep 2 -> Svg.tpp
