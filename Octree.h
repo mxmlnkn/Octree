@@ -1,15 +1,12 @@
 /*
 ToDo:
-  - SVG Output
-  - Coarsening
-  - GetSize Function
-  - later: parallelism
+  - GetSize Function / Get Max Levels
   - max depth
-  - Find Error (Grow Up, Rejuvenate ausschließen ... )
-  - Add CheckIntegrity Method, which checks for parents, child-pointers, are all points really inside their boxes?
-  + Bigger goal: parallelize ...
-  - two kind of errors: one after 61 moves -> Octree.tpp
-  - Weird boxes arrangement after timestep 2 -> Svg.tpp
+  - Add CheckIntegrity Method, which checks for:
+      . parents
+      . child-pointers
+      . are all points really inside their boxes ?
+  = Bigger goal: parallelize 
 */
 
 #pragma once
