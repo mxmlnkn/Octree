@@ -37,7 +37,7 @@ int main( int argc, char **argv )
     tout.Open("out");
     
     
-    const int NValues = 100;
+    const int NValues = 5;
     int * data = (int*) malloc( sizeof(int)*NValues );
     for (int i=0; i<NValues; ++i)
         data[i] = i;
@@ -82,10 +82,10 @@ int main( int argc, char **argv )
     svgoutput.AnimateUpdated( tree2 ); */
     
 
-    std::normal_distribution<double> dist( 0, 0.1 );
+    std::normal_distribution<double> dist( 0, 0.5 );
     for (int t=0; t<1; t++) {
-        for (int i=0; i<63; i++) {
-            std::cout << " " << i << " ";
+        for (int i=0; i<1; i++) {
+            std::cout << "==" << i << "==" << std::endl;
             VecD pos = tree.FindData( &(data[i]) );
             VecD diffvec(0);
             diffvec[0] = dist(rng);

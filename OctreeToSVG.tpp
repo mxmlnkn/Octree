@@ -65,32 +65,32 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintGrid(void) {
     tododata tmp = { /* ichild */ 0, /* node */ this->tree.root };
     todo.push( tmp );
     while( !todo.empty() ) {
-        const Node * current = todo.top().node;
+        const Node * currentnode = todo.top().node;
         if ( todo.top().ichild == 0 ) {
+            Keyvalues toBeStored = { /*ID*/ NBoxesDrawn++, /*visible*/ true };
+            this->BoxesDrawn[ currentnode->center ] = toBeStored;
             /* Draw white stroked rectangle */
             /* We can just scale everything up, because Octree saves all data *
              * scaled down to a box at 0 with size 1 ! :)                     */
-            VecD upperleft = VecD(0.5) + current->center;
+            VecD upperleft = VecD(0.5) + currentnode->center;
             upperleft[1] = 1 - upperleft[1]; // flip along y-axis
-            upperleft -= 0.5*current->size;
+            upperleft -= 0.5*currentnode->size;
             upperleft *= imagesize;   // scale image up
             upperleft += imageborder;
-            VecD rect_size = current->size * imagesize;
-            size_t id = reinterpret_cast<size_t>(current);
-            this->BoxesDrawn[id] = 1;
+            VecD rect_size = currentnode->size * imagesize;
             out << "  <rect"                                       "\n"
-                << "     id     = \"" << id                   << "\"\n"
+                << "     id     = \"" << toBeStored.id        << "\"\n"
                 << "     x      = \"" << upperleft[0] << "px" << "\"\n"
                 << "     y      = \"" << upperleft[1] << "px" << "\"\n"
                 << "     width  = \"" << rect_size[0] << "px" << "\"\n"
                 << "     height = \"" << rect_size[1] << "px" << "\"\n"
                 << "  />"                                          "\n";
         }
-        if ( current->IsLeaf() )
+        if ( currentnode->IsLeaf() )
             todo.pop();
         else {
-            if ( current->getChildPtr( todo.top().ichild ) != NULL ) {
-                tmp.node   = current->getChildPtr( todo.top().ichild++ );
+            if ( currentnode->getChildPtr( todo.top().ichild ) != NULL ) {
+                tmp.node   = currentnode->getChildPtr( todo.top().ichild++ );
                 tmp.ichild = 0;
                 todo.push( tmp );
             } else {
@@ -143,26 +143,76 @@ void OctreeToSVG<T_DTYPE,T_DIM>::PrintPositions(void) {
 template<typename T_DTYPE, int T_DIM>
 void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
 {
+    /*std::cerr << "-BoxesDrawn-\n";
+    typename std::map<VecD,Keyvalues>::iterator it = BoxesDrawn.begin();
+    while( it != BoxesDrawn.end() ) {
+        std::cerr << BoxesDrawnIt->first << " => ("
+                  << BoxesDrawnIt->second.id << ","
+                  << BoxesDrawnIt->second.visible << ")\n";
+        ++it;
+    }*/
+
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
-    tododata tmp = { 0, this->tree.root };
+    tododata tmp = { 0, newtree.root };
     todo.push( tmp );
     while( !todo.empty() ) {
         const Node * currentnode = todo.top().node;
 
-        if ( todo.top().ichild == 0 ) {
+        if ( todo.top().ichild == 0 )
+        {
             VecD boxcenter = currentnode->center;
-            /* saved tree has some node which doesn't exist in newtree    */
-            if ( newtree.GetNodePtr( boxcenter ) == NULL ) {
-                std::cerr << "Box around " << boxcenter << " vanished!!!"
-                          << reinterpret_cast<size_t>( currentnode ) << "\n";
-                size_t id = reinterpret_cast<size_t>( currentnode );
+            BoxesDrawnIt   = BoxesDrawn.find( boxcenter );
+            /*std::cerr << boxcenter << " already drawn? "
+                      << !(BoxesDrawnIt == BoxesDrawn.end() )
+                      << " BoxesDrawnSize: " << BoxesDrawn.size(); */
+            if ( BoxesDrawnIt != BoxesDrawn.end() )
+                std::cerr << " Found: " << BoxesDrawnIt->first << " => ("
+                          << BoxesDrawnIt->second.id << ","
+                          << BoxesDrawnIt->second.visible << ")\n";
+            /* A new octant was created. We need to draw that first */
+            if ( BoxesDrawnIt == BoxesDrawn.end() ) {
+/* By setting visibility to false we ensure that in the If-case thereafter    *
+ * the stroke will be set to white per <set/>. We do not set it right now to  *
+ * white, because then it would be visible from the start !                   */
+                Keyvalues toBeStored = { NBoxesDrawn++, /*visible*/ false };
+                this->BoxesDrawn[ currentnode->center ] = toBeStored;
+                BoxesDrawnIt = BoxesDrawn.find( boxcenter );
+                
+                std::cerr << "Box around " << boxcenter << " was created !!! "
+                          << "ID : " << toBeStored.id << "(" 
+                          << BoxesDrawnIt->second.id << ")\n";
+
+                VecD upperleft = VecD(0.5) + currentnode->center;
+                upperleft[1] = 1 - upperleft[1]; // flip along y-axis
+                upperleft -= 0.5*currentnode->size;
+                upperleft *= imagesize;   // scale image up
+                upperleft += imageborder;
+                VecD rect_size = currentnode->size * imagesize;
+
+                out << "  <rect"                                       "\n"
+                    << "     id     = \"" << toBeStored.id        << "\"\n"
+                    << "     x      = \"" << upperleft[0] << "px" << "\"\n"
+                    << "     y      = \"" << upperleft[1] << "px" << "\"\n"
+                    << "     width  = \"" << rect_size[0] << "px" << "\"\n"
+                    << "     height = \"" << rect_size[1] << "px" << "\"\n"
+                    << "     style  = \"stroke:none\""                 "\n"
+                    << "  />"                                          "\n";
+            }
+            /* Some Box which was drawn, but is not visible, reappeard */
+            if (   BoxesDrawnIt != BoxesDrawn.end() and 
+                 ! BoxesDrawnIt->second.visible )
+            {
+                std::cerr << "Box around " << boxcenter << " reappeared !!! "
+                          << "ID : " << BoxesDrawnIt->second.id << "\n";
+
                 out << "  <set"                                        "\n"
-                    << "    xlink:href = \"#" << id  <<              "\"\n"
+                    << "    xlink:href = \"#" << BoxesDrawnIt->second.id << "\"\n"
                     << "    attributeName = \"stroke\""                "\n"
                     << "    begin = \"" << DUR*(currentTime+0.5) << "s\"\n"
-                    << "    to    = \"none\""                          "\n"
+                    << "    to    = \"white\""                         "\n"
                     << "  />"                                          "\n";
+                BoxesDrawnIt->second.visible = true;
             }
         }
 
@@ -216,7 +266,11 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                 ++i;
             }
             todo.pop();
-        } else {
+        }
+/* If the Current Node is not a leaf, then increment child-index and push the *
+ * next child to be processed                                                 */
+        else
+        {
             if ( currentnode->getChildPtr( todo.top().ichild ) != NULL ) {
                 tmp.node   = currentnode->getChildPtr( todo.top().ichild++ );
                 tmp.ichild = 0;
@@ -227,73 +281,28 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
         }
     }
 
+/* Now iterate trough all the Boxes which were already drawn at least once    *
+ * check if they are visible, if so, then check if they still exist in        *
+ * newtree. If not they will be set to not visible in the map and with <set/> */
 
-/* Do the Same again, but this time traverse newtree instead of the old tree  *
- * to find boxes and particles which appeared newly ! Copy-Paste-Programming  *
- * ... very bad                                                               */
-
- 
-    tododata tmp2 = { 0, newtree.root };
-    todo.push( tmp2 );
-    while( !todo.empty() ) {
-        const Node * currentnode = todo.top().node;
-
-        if ( todo.top().ichild == 0 ) {
-            VecD boxcenter = currentnode->center;
-            /* newtree has some node which doesn't exist in saved tree        */
-            if ( this->tree.GetNodePtr( boxcenter ) == NULL ) {
-                /*std::cerr << "Box around " << boxcenter << " appeared!!!"
-                          << reinterpret_cast<size_t>( currentnode ) << "\n"; */
-                /* Did it just reappear or is it completely new ?             */
-                size_t id = reinterpret_cast<size_t>( currentnode );
-                if ( this->BoxesDrawn.find( id ) == BoxesDrawn.end() ) {
-                    std::cerr << "Box around " << boxcenter << " appeared!!!"
-                          << reinterpret_cast<size_t>( currentnode ) << "\n"; 
-                    VecD upperleft = VecD(0.5) + currentnode->center;
-                    upperleft[1] = 1 - upperleft[1]; // flip along y-axis
-                    upperleft -= 0.5*currentnode->size;
-                    upperleft *= imagesize;   // scale image up
-                    upperleft += imageborder;
-                    VecD rect_size = currentnode->size * imagesize;
-                    this->BoxesDrawn[id] = 1;
-                    out << "  <rect"                                       "\n"
-                        << "     id     = \"" << id                   << "\"\n"
-                        << "     x      = \"" << upperleft[0] << "px" << "\"\n"
-                        << "     y      = \"" << upperleft[1] << "px" << "\"\n"
-                        << "     width  = \"" << rect_size[0] << "px" << "\"\n"
-                        << "     height = \"" << rect_size[1] << "px" << "\"\n"
-                        << "     style  = \"stroke:none\""                 "\n"
-                        << "  />"                                          "\n";
-                }
-                out << "  <set"                                        "\n"
-                    << "    xlink:href = \"#" << id  <<              "\"\n"
-                    << "    attributeName = \"stroke\""                "\n"
-                    << "    begin = \"" << DUR*(currentTime+0.5) << "s\"\n"
-                    << "    to    = \"white\""                         "\n"
-                    << "  />"                                          "\n";
-            }
+    BoxesDrawnIt = BoxesDrawn.begin();
+    while ( BoxesDrawnIt != BoxesDrawn.end() ) {
+        VecD boxcenter = BoxesDrawnIt->first;
+        int  id        = BoxesDrawnIt->second.id;
+        if ( BoxesDrawnIt->second.visible and 
+             newtree.GetNodePtr( boxcenter ) == NULL )
+        {
+            std::cerr << "Box around " << boxcenter << " vanished!!! "
+                      << "ID: " << id << "\n";
+            out << "  <set"                                        "\n"
+                << "    xlink:href = \"#" << id  <<              "\"\n"
+                << "    attributeName = \"stroke\""                "\n"
+                << "    begin = \"" << DUR*(currentTime+0.5) << "s\"\n"
+                << "    to    = \"none\""                          "\n"
+                << "  />"                                          "\n";
+            BoxesDrawnIt->second.visible = false;
         }
-
-        if ( currentnode->IsLeaf() ) {
-            int i = 0;
-            while ( currentnode->getDataPtr(i) != NULL ) {
-                T_DTYPE * datum = currentnode->getDataPtr(i)->object;
-                VecD oldpos = currentnode->getDataPtr(i)->pos;
-                VecD newpos = this->tree.FindData( datum ) / this->tree.size;
-                //if ( oldpos != newpos ) {
-                //} else { } /* NAN means the datum wasn't found in old tree */
-                ++i;
-            }
-            todo.pop();
-        } else {
-            if ( currentnode->getChildPtr( todo.top().ichild ) != NULL ) {
-                tmp.node   = currentnode->getChildPtr( todo.top().ichild++ );
-                tmp.ichild = 0;
-                todo.push(tmp);
-            } else {
-                todo.pop();
-            }
-        }
+        ++BoxesDrawnIt;
     }
 
     currentTime += 1;

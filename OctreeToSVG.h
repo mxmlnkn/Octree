@@ -30,8 +30,24 @@ private:
     int currentTime = 1;
     const int DUR = 2; //2s per update
     const int STROKE_WIDTH = 1;
-    std::map<size_t,int> BoxesDrawn;
-    std::map<char,int>::iterator BoxesDrawnIt;
+    
+    class OrCompareVecD {
+        public:
+        bool operator()( const VecD & a, const VecD & b ) const {
+            bool result = false;
+            for (int i=0; i<T_DIM; i++)
+                result = result or (a[i] < b[i]);
+            return result;
+    } };
+    
+/* Boxes Drawn is being called with the centers of each square, as those are  *
+ * unique. For each unique center a unique ID and a boolean, whether it is    *
+ * currently visible (the last <set/> was "stroke:white" or not. If a box can *
+ * be found in this map, than it must already have been drawn with <rect/>    */
+    typedef struct { int id; bool visible; } Keyvalues;
+    int NBoxesDrawn = 0;
+    std::map<VecD,Keyvalues,OrCompareVecD> BoxesDrawn;
+    typename std::map<VecD,Keyvalues,OrCompareVecD>::iterator BoxesDrawnIt;
 
 public:
     OctreeToSVG(void) { assert(false); }

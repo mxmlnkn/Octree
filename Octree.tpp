@@ -213,24 +213,29 @@ bool Node<T_DTYPE,T_DIM>::Rejuvenate( void )
     if ( this->HasOnlyLeaves() ) {
         int sumelements = 0;
         for ( int i=0; i < this->nchildren; ++i )
-            if ( this->children[i] != NULL )
-                sumelements += this->children[i]->data.size();
-#if DEBUG_OCTREE >= 9
-        std::cerr << "Rejuvenating Parent at " << this->center << " sized "
-                  << this->size << " if " << sumelements << " =< "
-                  << this->maxdata << std::endl;
-#endif
-        if ( sumelements <= this->maxdata ) {
+            if ( children[i] != NULL ) {
+                #if DEBUG_OCTREE >= 9
+                std::cerr << "Child[" << i << "] = " << children[i]->data.size()
+                          << std::endl;
+                #endif
+                sumelements += children[i]->data.size();
+            }
+        #if DEBUG_OCTREE >= 9
+        std::cerr << "Rejuvenating Parent at " << center << " sized "
+                  << size << " if " << sumelements << " =< "
+                  << maxdata << std::endl;
+        #endif
+        if ( sumelements <= maxdata ) {
 /* If we can collapse, then do so by copying all data into this node.         */
             assert( this->data.empty() );
-            for ( int i=0; i < this->nchildren; ++i )
-                if (  this->children[i] != this
-                  and this->children[i] != NULL ) {
+            for ( int i=0; i < nchildren; ++i )
+                if (  children[i] != this
+                  and children[i] != NULL ) {
                     this->data.splice( this->data.end(),
                                        this->children[i]->data );
                     assert( this->children[i]->data.empty() );
-                    delete this->children[i];
-                    this->children[i] = NULL;
+                    delete children[i];
+                    children[i] = NULL;
                 }
             return true;
         }
@@ -312,7 +317,7 @@ const typename Octree<T_DTYPE,T_DIM>::Nodetype * Octree<T_DTYPE,T_DIM>::GetNodeP
     while( ! tmp->IsLeaf() ) {
         if ( tmp->center == center )
             return tmp;
-        VecD direction = 2*VecI( center.GreaterThan( tmp->center )) - 1;
+        VecI direction = 2*VecI( center.GreaterThan( tmp->center )) - 1;
         tmp = tmp->children[ tmp->ConvertDirectionToNumber( direction ) ];
     }
     if ( tmp->center == center )
