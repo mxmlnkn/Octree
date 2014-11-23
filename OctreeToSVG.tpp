@@ -163,13 +163,17 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
         {
             VecD boxcenter = currentnode->center;
             BoxesDrawnIt   = BoxesDrawn.find( boxcenter );
-            /*std::cerr << boxcenter << " already drawn? "
+            #if DEBUG_OCTREE_SVG >= 10
+            std::cerr << boxcenter << " already drawn? "
                       << !(BoxesDrawnIt == BoxesDrawn.end() )
-                      << " BoxesDrawnSize: " << BoxesDrawn.size(); */
+                      << " BoxesDrawnSize: " << BoxesDrawn.size() << std::endl
+            #endif
             if ( BoxesDrawnIt != BoxesDrawn.end() )
+                #if DEBUG_OCTREE_SVG >= 10
                 std::cerr << " Found: " << BoxesDrawnIt->first << " => ("
                           << BoxesDrawnIt->second.id << ","
                           << BoxesDrawnIt->second.visible << ")\n";
+                #endif
             /* A new octant was created. We need to draw that first */
             if ( BoxesDrawnIt == BoxesDrawn.end() ) {
 /* By setting visibility to false we ensure that in the If-case thereafter    *
@@ -179,9 +183,11 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
                 this->BoxesDrawn[ currentnode->center ] = toBeStored;
                 BoxesDrawnIt = BoxesDrawn.find( boxcenter );
                 
+                #if DEBUG_OCTREE_SVG >= 10
                 std::cerr << "Box around " << boxcenter << " was created !!! "
                           << "ID : " << toBeStored.id << "(" 
                           << BoxesDrawnIt->second.id << ")\n";
+                #endif
 
                 VecD upperleft = VecD(0.5) + currentnode->center;
                 upperleft[1] = 1 - upperleft[1]; // flip along y-axis
@@ -220,17 +226,17 @@ void OctreeToSVG<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
             int i = 0;
             while ( currentnode->getDataPtr(i) != NULL ) {
                 T_DTYPE * datum = currentnode->getDataPtr(i)->object;
-                VecD oldpos = currentnode->getDataPtr(i)->pos;
-                VecD newpos = newtree.FindData( datum ) / this->tree.size;
+                VecD newpos = currentnode->getDataPtr(i)->pos;
+                VecD oldpos = this->tree.FindData( datum ) / this->tree.size;
                 if ( oldpos != newpos ) {
-#if DEBUG_OCTREE_SVG >= 10
+                    #if DEBUG_OCTREE_SVG >= 9
                     std::cerr << "Data " << datum << " = ";
                     if (datum!=NULL)
                         std::cerr << *datum;
                     else
                         std::cerr << "NULL";
                     std::cerr << " at " << oldpos << " deleted or moved!\n";
-#endif
+                    #endif
                     if ( newpos[0] == newpos[0] ) {
                         newpos += VecD(0.5);
                         newpos[1] = 1 - newpos[1];

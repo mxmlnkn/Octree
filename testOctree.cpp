@@ -37,7 +37,7 @@ int main( int argc, char **argv )
     tout.Open("out");
     
     
-    const int NValues = 5;
+    const int NValues = 61;
     int * data = (int*) malloc( sizeof(int)*NValues );
     for (int i=0; i<NValues; ++i)
         data[i] = i;
@@ -84,26 +84,34 @@ int main( int argc, char **argv )
 
     std::normal_distribution<double> dist( 0, 0.5 );
     for (int t=0; t<1; t++) {
-        for (int i=0; i<1; i++) {
+        for (int i=0; i<NValues; i++) {
             std::cout << "==" << i << "==" << std::endl;
             VecD pos = tree.FindData( &(data[i]) );
             VecD diffvec(0);
             diffvec[0] = dist(rng);
             diffvec[1] = dist(rng);
             VecD newpos = pos+diffvec;
-            /*if ( newpos[0] > +0.5*size[0] ) newpos[0] = ( 0.5*size[0] + newpos[0] ) % ( size[0]-1e-6 ) - 0.5*size[0];
-            if ( newpos[0] < -0.5*size[0] ) newpos[0] = ( 0.5*size[0] + newpos[0] ) % ( size[0]-1e-6 ) - 0.5*size[0];
-            if ( newpos[1] > +0.5*size[1] ) newpos[1] = ( 0.5*size[1] + newpos[1] ) % ( size[1]-1e-6 ) - 0.5*size[1];
-            if ( newpos[1] < -0.5*size[1] ) newpos[1] = ( 0.5*size[1] + newpos[1] ) % ( size[1]-1e-6 ) - 0.5*size[1];*/
-            if ( newpos[0] > +0.5*size[0] ) newpos[0] = +0.5*size[0] - 1e-6;
+            if ( newpos[0] > +0.5*size[0] )
+                newpos[0] = fmod( ( 0.5*size[0] + newpos[0] ) , 
+                                  ( size[0]-1e-6 ) ) - 0.5*size[0];
+            if ( newpos[0] < -0.5*size[0] )
+                newpos[0] = fmod( ( 0.5*size[0] + -newpos[0] ) ,
+                                  ( size[0]-1e-6 ) ) - 0.5*size[0];
+            if ( newpos[1] > +0.5*size[1] ) newpos[1] = 
+                fmod( ( 0.5*size[1] + newpos[1] ) ,
+                      ( size[1]-1e-6 ) ) - 0.5*size[1];
+            if ( newpos[1] < -0.5*size[1] ) newpos[1] = 
+                fmod( ( 0.5*size[1] + -newpos[1] ) , 
+                      ( size[1]-1e-6 ) ) - 0.5*size[1];
+            /*if ( newpos[0] > +0.5*size[0] ) newpos[0] = +0.5*size[0] - 1e-6;
             if ( newpos[0] < -0.5*size[0] ) newpos[0] = -0.5*size[0];
             if ( newpos[1] > +0.5*size[1] ) newpos[1] = +0.5*size[1] - 1e-6;
-            if ( newpos[1] < -0.5*size[1] ) newpos[1] = -0.5*size[1];
+            if ( newpos[1] < -0.5*size[1] ) newpos[1] = -0.5*size[1];*/
             
             tree.MoveData( pos, &(data[i]), newpos );
-            svgoutput.AnimateUpdated( tree );
             tout << tree;
         }
+         //   svgoutput.AnimateUpdated( tree );
         svgoutput.AnimateUpdated( tree );
     }
     

@@ -31,13 +31,14 @@ private:
     const int DUR = 2; //2s per update
     const int STROKE_WIDTH = 1;
     
-    class OrCompareVecD {
-        public:
+    /* Thanks to https://stackoverflow.com/questions/16362231/ */
+    struct OrCompareVecD {
         bool operator()( const VecD & a, const VecD & b ) const {
-            bool result = false;
-            for (int i=0; i<T_DIM; i++)
-                result = result or (a[i] < b[i]);
-            return result;
+            for (int i=0; i<T_DIM; i++) {
+                if (a[i] < b[i]) return true;
+                if (a[i] > b[i]) return false;
+            }
+            return false;
     } };
     
 /* Boxes Drawn is being called with the centers of each square, as those are  *
