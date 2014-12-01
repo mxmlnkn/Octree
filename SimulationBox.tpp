@@ -110,7 +110,7 @@ void SimulationBox<T_DIM,T_GUARDSIZE>::Init( VecD globsize,
     // Assuming localcells is the same for every process !!!
     this->abspos = coords * localcells / VecD( globalcells ) * globsize;
     for ( int timestep=0; timestep < this->ntimesteps; timestep++ )
-        this->t[timestep]->cells = BaseMatrix<CellData,T_DIM>( localcells + VecI(2*T_GUARDSIZE) );
+        this->t[timestep]->cells = CellMatrix( localcells + VecI(2*T_GUARDSIZE) );
 }
 
 #if DEBUG_SIMBOX >= 1

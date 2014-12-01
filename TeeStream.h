@@ -36,7 +36,7 @@ class TeeStream{
         ~TeeStream(void) {
             fileStream.close();
         }
-        template <class T> TeeStream& operator<<(T & val) {
+        template <class T> TeeStream& operator<<(T val) {
             fileStream << val;
             if ( this->verbosity == 1 )
                 std::cout << val;

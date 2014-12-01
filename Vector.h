@@ -70,4 +70,4 @@ template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
 
 template<typename T_DTYPE, int T_DIM>
-std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM>& v );
+std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM> v );

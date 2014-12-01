@@ -325,7 +325,7 @@ Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & rightha
 
 /* Enables cout << Vec<int,2>(1); This also works with fstream and therefore with tout */
 template<typename T_DTYPE, int T_DIM>
-std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM>& v ) {
+std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM> v ) {
     out << "(";
     for (int i=0; i<T_DIM-1; i++)
         out << v[i] << ",";

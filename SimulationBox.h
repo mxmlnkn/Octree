@@ -32,10 +32,12 @@ public:
     static const int guardsize = T_GUARDSIZE;
     
     /* Current Time on which Calculations are to be done or where done are    *
-     * held in t[0]. t[1] is the prior time step and so on                    */
+     * held in t[0]. t[1] is the prior time step and so on. TimeData struct   *
+	 * introduced so that it looks better: t[0]->cells[0] instead of          *
+	 * problematic t[0][0]                                                    */
     const int ntimesteps = TIMESTEPS_NEEDED_FOR_CALCULATION+1;
     typedef struct TimeDataStruct {
-        BaseMatrix<CellData,T_DIM> cells;
+        CellMatrix cells;
     } TimeData;
     TimeData * t[TIMESTEPS_NEEDED_FOR_CALCULATION+1]; // holds array to different worldmatrices at different times
                   // use array of pointers instead of simple array so I can
@@ -59,7 +61,7 @@ public:
     ~SimulationBox(void);
     bool inArea( const VecI & pos, const int & area ) const;
     IteratorType getIterator( const int area ) const;
-    void Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIM] );
+    void Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIM] = VecI(0) );
 #if DEBUG_SIMBOX >= 1
     void PrintValues( int timestep = 0 ) const;
 #endif

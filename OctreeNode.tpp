@@ -142,13 +142,16 @@ void Node<T_DTYPE,T_DIM>::GrowUp( void )
                             0.25*direction*size, 0.5*size );
     }
 /* Migrate data to child-leaf nodes. If it is too much data they will recursi-*
- * vely grow up to, which is not nice, but it shouldn't happen too often,     *
- * because we only added one element. For above to happen alle elements       *
- * need to be in the same next-gen octant                                     */
-    typename Datalist::iterator it = data.begin();
-    while( it != data.end() ) {
-        FindLeafContainingPos( it->pos )->InsertData( it->pos, it->object );
-        this->data.erase( it++ );
+ * vely grow up to (done by InsertData), which is not nice, but it shouldn't  *
+ * happen too often, because we only added one element. For above to happen   *
+ * all elements need to be in the same next-gen octant. If no data in this    *
+ * leaf, then data.begin() != data.end(), therefore the while loop won't be   *
+ * entered                                                                    */
+    typename Datalist::iterator it = this->data.begin();
+    while( it != this->data.end() ) {
+        this->FindLeafContainingPos(it->pos)->InsertData( it->pos, it->object );
+        this->data.erase( it );
+		it++;
     }
     assert( this->data.empty() );
 #if DEBUG_OCTREE_NODE >= 10

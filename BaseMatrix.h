@@ -78,6 +78,9 @@ public:
     typedef Vec<int,T_DIM> VecI;
     typedef T_DTYPE Datatype;
     
+	/* should only be used in conjunction with following copy constructor,    *
+	 * because this initializes a matrix of size 0 with no way to adjust the  *
+	 * the size thereafter                                                    */
     BaseMatrix( void );
     BaseMatrix( const BaseMatrix & m );
     ~BaseMatrix( void );

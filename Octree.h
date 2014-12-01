@@ -19,7 +19,9 @@ ToDo:
 #include <ctime> // only for debug in operator<<
 #include "Vector.h"
 
-#define OCTREE_MAX_OBJECTS_PER_LEAF 3
+#ifndef OCTREE_MAX_OBJECTS_PER_LEAF
+	#define OCTREE_MAX_OBJECTS_PER_LEAF 3
+#endif
 /* Sets max level depth to 10, meaning at maximum 8^10 = 2^30 leaf nodes can  *
  * be created. Much more doesn't make sense anyway, because of memory and     *
  * because dx i.e. size becomes so small, that the centers of neighbors       *

@@ -106,8 +106,8 @@ typedef Vec<double, SIMDIM> VecD;
 typedef Vec<int   , SIMDIM> VecI;
 
 #include "SimulationBox.h"
-typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // neded by Communicator.h
-typedef BaseMatrix<SimulationBox::CellData,SIMDIM> SimMatrix;
+typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // needed by Communicator.h
+typedef typename SimBox::CellMatrix SimMatrix;
 #include "Communicator.h"
 
 
