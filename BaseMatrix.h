@@ -111,21 +111,21 @@ BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( void ) {
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( const BaseMatrix & m ) {
     this->size = m.size;
-    this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+    this->data = new T_DTYPE[size.product()];
     memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
 }
 
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::~BaseMatrix( void ) {
     if ( this->data != NULL )
-        free( this->data );
+        delete[] this->data;
 }
 
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatrix & m) {
     this->~BaseMatrix();
     this->size = m.size;
-    this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+    this->data = new T_DTYPE[size.product()];
 
     memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
     return *this;
@@ -135,7 +135,7 @@ BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatri
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI size ) {
     this->size = size;
-    this->data = (T_DTYPE*) malloc( sizeof(T_DTYPE) * size.product() );
+    this->data = new T_DTYPE[size.product()];
 }
 
 /************************** Assignment Operators **************************/
