@@ -1,5 +1,5 @@
 CXX    = g++
-CFLAGS = -Wall -std=c++0x
+CFLAGS = -Wall -std=c++0x -g
 
 all : libpngwriter testOctree testMatrix MainYee Main
 
@@ -29,6 +29,18 @@ clean   :
 	rm -f MainYee
 	rm -f Main.exe
 	rm -f Main
+	rm -f output/*
+	rm -f Ex.webm
+	rm -f Ey.webm
+	rm -f Ez.webm
+	rm -f Hx.webm
+	rm -f Hy.webm
+	rm -f Hz.webm
 
 animation:
-	ffmpeg -i output/E_%05d.png out.webm
+	ffmpeg -i output/Ex_%05d.png Ex.webm
+	ffmpeg -i output/Ey_%05d.png Ey.webm
+	ffmpeg -i output/Ez_%05d.png Ez.webm
+	ffmpeg -i output/Hx_%05d.png Hx.webm
+	ffmpeg -i output/Hy_%05d.png Hy.webm
+	ffmpeg -i output/Hz_%05d.png Hz.webm
