@@ -132,11 +132,11 @@ int main( int argc, char **argv )
 
 			VecI xprev=pos; xprev[X]--;
 			VecI xnext=pos; xnext[X]++;
-			
-			/* Now update all E components */
-			double Hytcxn = x   < N_CELLS_X ? data[pos  ].H[0][Y] : 0;
-			double Hytcxp = x-1 >= 0        ? data[xprev].H[0][Y] : 0;
-			data[pos].E[0][Z] = data[pos].E[0][Z] + (Hytcxn - Hytcxp) * imp0;
+
+			/* Update all H components */
+			double Eztcxn = x+1 < N_CELLS_X ? data[xnext].E[0][Z] : 0;
+			double Eztcxp = x   >= 0        ? data[pos  ].E[0][Z] : 0;
+			data[pos].H[0][Y] = data[pos].H[0][Y] + 1. / data[pos].mu * (Eztcxn - Eztcxp );
 		}
 		
 		for ( int x = 0; x < N_CELLS_X; x++ )
@@ -146,12 +146,13 @@ int main( int argc, char **argv )
 
 			VecI xprev=pos; xprev[X]--;
 			VecI xnext=pos; xnext[X]++;
-
-			/* Update all H components */
-			double Eztcxn = x+1 < N_CELLS_X ? data[xnext].E[0][Z] : 0;
-			double Eztcxp = x   >= 0        ? data[pos  ].E[0][Z] : 0;
-			data[pos].H[0][Y] = data[pos].H[0][Y] + (Eztcxn - Eztcxp ) / imp0;
+			
+			/* Now update all E components */
+			double Hytcxn = x   < N_CELLS_X ? data[pos  ].H[0][Y] : 0;
+			double Hytcxp = x-1 >= 0        ? data[xprev].H[0][Y] : 0;
+			data[pos].E[0][Z] = data[pos].E[0][Z] + 1./data[pos].epsilon * (Hytcxn - Hytcxp);
 		}
+		
 		
 		std::cout << "E_z after Timestep: " << timestep << std::endl;
 		for ( int ix=0; ix < N_CELLS_X; ++ix ) {
