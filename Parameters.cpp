@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cstdlib>
 
+const int GUARDSIZE                    = 1;
+
 //componentsConfig.param
 const uint16_t SIMDIM                  = 3;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
@@ -21,13 +23,13 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-const int NUMBER_OF_CELLS_X            = 40;
-const int NUMBER_OF_CELLS_Y            = 10;
-const int NUMBER_OF_CELLS_Z            = 1;
+const int NUMBER_OF_CELLS_X            = 128;
+const int NUMBER_OF_CELLS_Y            = 96;
+const int NUMBER_OF_CELLS_Z            = 3;
 const int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
 const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
-const double CELL_SIZE_Y_SI            = 1./0.;
+const double CELL_SIZE_Y_SI            = CELL_SIZE_SI;
 const double CELL_SIZE_Z_SI            = 1./0.;
 const double DELTA_T_SI                = CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
 const uint16_t BOUNDARY_CONDITION      = 1;              //0:periodic, 1:reflecting, 2:adhering
