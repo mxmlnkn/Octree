@@ -58,20 +58,21 @@ typedef BaseMatrix<class YeeCell,SIMDIM> CellMatrix;
 #define N_CELLS_Y NUMBER_OF_CELLS_Y // should be same as above, because octree isn't able to have a different amount of equal sized cells in two directions !!!
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
 
-double t_spawn_func( double t ) {
-	double Nlambda  = 40;
-	double sigma = Nlambda/2.;
-	double t0    = Nlambda;
-	return sin(2.*M_PI*t/Nlambda);
-	return ( t < Nlambda ? 1.0 : 0.0 );
-	return exp(-pow(t-t0,2)/(2.*sigma*sigma));
-	return 1./(sigma*sqrt(2.*M_PI))*exp(-pow(t-t0,2)/(2.*sigma*sigma));
+double t_spawn_func( double t_SI ) {
+	double T_SI  = 40e-9 /* m */ / SPEED_OF_LIGHT_SI;
+	double sigma = T_SI/2.;
+	double t0    = 40;
+	return sin( 2.*M_PI*t_SI / T_SI );
+	return ( t_SI < T_SI ? 1.0 : 0.0 );
+	return exp(-pow(t_SI-t0,2)/(2.*sigma*sigma));
+	return 1./(sigma*sqrt(2.*M_PI))*exp(-pow(t_SI-t0,2)/(2.*sigma*sigma));
 }
 
 int main( int argc, char **argv )
 {
     tout.Open("out");
 
+	const double S = SPEED_OF_LIGHT_SI / ( CELL_SIZE_SI / DELTA_T_SI );
     tout << "MUE0                 : " << MUE0                       << "\n";
     tout << "EPS0                 : " << EPS0                       << "\n";
     tout << "SPEED_OF_LIGHT       : " << SPEED_OF_LIGHT             << "\n";
@@ -86,6 +87,7 @@ int main( int argc, char **argv )
     tout << "UNIT_MOMENTUM        : " << UNIT_MOMENTUM              << "\n";
     tout << "UNIT_ANGULAR_MOMENTUM: " << UNIT_ANGULAR_MOMENTUM      << "\n";
     tout << "ELECTRON_MASS        : " << ELECTRON_MASS              << "\n";
+    tout << "S                    : " << S                          << "\n";
     tout << "\n";
 
     /* create data buffer with cells initially with zeros in all entries      */
@@ -100,12 +102,12 @@ int main( int argc, char **argv )
 		data[i].rhoprime = 0;
 		data[i].sigma    = 0;
 	}
-	for ( int x = N_CELLS_X/2; x < N_CELLS_X/2+10; x++ )
+	for ( int x = LAMBDA_SI / CELL_SIZE_X_SI; x < LAMBDA_SI / CELL_SIZE_X_SI + 10; x++ )
 	for ( int y = 0; y < N_CELLS_Y; y++ ) {
 		const int wy = 40;
 		if ( y <=  N_CELLS_Y/2 - wy/2 or y >= N_CELLS_Y/2 + wy/2 ) {
 			VecI pos(GUARDSIZE); pos[0]=x; pos[1]=y;
-			data[pos].epsilon  = 2*EPS0;
+			data[pos].epsilon  = INF;//2*EPS0;
 			//data[pos].mu       = INF;
 		}
 	}
@@ -128,7 +130,7 @@ int main( int argc, char **argv )
 		VecI pos(GUARDSIZE); pos[X] = GUARDSIZE; pos[Z] = GUARDSIZE;
 		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
 			pos[Y] = y + GUARDSIZE;
-			data[pos].E[tcur][Z] = t_spawn_func( timestep );
+			data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
 		}
 
 		/**********************************************************************
@@ -316,7 +318,7 @@ int main( int argc, char **argv )
 		std::cout << std::endl;
 		#endif
 
-		if (timestep % 2 == 0) {
+		if (timestep % 1 == 0) {
 			/* Beware! PNGWriter begins counting with 1 in image coordinates */
 			static int framecounter = 0;
 			framecounter++;

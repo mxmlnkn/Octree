@@ -23,15 +23,15 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-const int NUMBER_OF_CELLS_X            = 128;
-const int NUMBER_OF_CELLS_Y            = 96;
+const int NUMBER_OF_CELLS_X            = 256;
+const int NUMBER_OF_CELLS_Y            = 256;
 const int NUMBER_OF_CELLS_Z            = 3;
 const int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
 const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
 const double CELL_SIZE_Y_SI            = CELL_SIZE_SI;
 const double CELL_SIZE_Z_SI            = 1./0.;
-const double DELTA_T_SI                = CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
+const double DELTA_T_SI                = 0.1*CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
 const uint16_t BOUNDARY_CONDITION      = 1;              //0:periodic, 1:reflecting, 2:adhering
 
 //particleConfig.param
@@ -51,6 +51,9 @@ const uint32_t PRINT_INTERVAL          = 100;
 const uint32_t PRINTF_INTERVAL         = 10;
 const uint32_t PRINTF_SIMDATA_INTERVAL = min( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
 // for dt = 1e-19 => Nprint = 10. for 1e-17 it prints every time step, so that we can see something
+
+//LASER:
+const double LAMBDA_SI                 = 40*CELL_SIZE_X_SI;
 
 //================================== Units ===================================//
 const double UNITCONV_keV_to_Joule     = 1.e3 * ELEMENTARY_CHARGE_SI;
