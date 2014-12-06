@@ -31,7 +31,7 @@ const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
 const double CELL_SIZE_Y_SI            = CELL_SIZE_SI;
 const double CELL_SIZE_Z_SI            = 1./0.;
-const double DELTA_T_SI                = 0.1*CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
+const double DELTA_T_SI                = 0.5*CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
 const uint16_t BOUNDARY_CONDITION      = 1;              //0:periodic, 1:reflecting, 2:adhering
 
 //particleConfig.param
@@ -54,6 +54,9 @@ const uint32_t PRINTF_SIMDATA_INTERVAL = min( int(ceil( 1e-18 / DELTA_T_SI )), 1
 
 //LASER:
 const double LAMBDA_SI                 = 40*CELL_SIZE_X_SI;
+
+//COLORS:
+
 
 //================================== Units ===================================//
 const double UNITCONV_keV_to_Joule     = 1.e3 * ELEMENTARY_CHARGE_SI;

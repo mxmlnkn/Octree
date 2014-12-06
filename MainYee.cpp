@@ -72,7 +72,7 @@ int main( int argc, char **argv )
 {
     tout.Open("out");
 
-	const double S = SPEED_OF_LIGHT_SI / ( CELL_SIZE_SI / DELTA_T_SI );
+	const double S = SPEED_OF_LIGHT * DELTA_T * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm();
     tout << "MUE0                 : " << MUE0                       << "\n";
     tout << "EPS0                 : " << EPS0                       << "\n";
     tout << "SPEED_OF_LIGHT       : " << SPEED_OF_LIGHT             << "\n";
@@ -363,7 +363,8 @@ int main( int argc, char **argv )
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
 			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
 				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].H[tnext][X], -data[pos].H[tnext][X], 0.0);
+				double val = data[pos].H[tnext][X] * MUE0 * SPEED_OF_LIGHT;
+				image.plot( ix+1,iy+1, val, -val, 0.0);
 			}
 			image.close();
 			}{
@@ -372,7 +373,8 @@ int main( int argc, char **argv )
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
 			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
 				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].H[tnext][Y], -data[pos].H[tnext][Y], 0.0);
+				double val = data[pos].H[tnext][Y] * MUE0 * SPEED_OF_LIGHT;
+				image.plot( ix+1,iy+1, val, -val, 0.0);
 			}
 			image.close();
 			}{
@@ -381,7 +383,8 @@ int main( int argc, char **argv )
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
 			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
 				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].H[tnext][Z], -data[pos].H[tnext][Z], 0.0);
+				double val = data[pos].H[tnext][Z] * MUE0 * SPEED_OF_LIGHT;
+				image.plot( ix+1,iy+1, val, -val, 0.0);
 			}
 			image.close();
 			}
