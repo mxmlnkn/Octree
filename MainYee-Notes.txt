@@ -41,7 +41,8 @@ ToDo:
 	- Absorbing Boundary Conditions
 	- DoubleSlit Setup with: 700nm wavelength, 200nm whide slits 1300nm apart
 	- Use SIMDIM correctly (but not everywhere, as YEE is 3D
-	
+	- Change definition of NCells to not include Guard!
+	- Antialiasing for slanted Material surfaces ???
 	
 \vec{H}=\vec{H}_0 e^{i\left( k_x\cdot x + k_y\cdot y - \omega \cdot t \right)}
 = \vec{H}_0 e^{i\left( \sqrt{ k_M^2 \left( 1+\frac{\sigma}{i\omega\epsilon_M} \right )\left( 1+\frac{\sigma^*}{i\omega\mu_M} \right )-(k_y^2) }}\cdot x +k_y\cdot y -\omega\cdot t\right)
@@ -52,3 +53,13 @@ ToDo:
 \\
 \text{ Noch auf ky unbestimmt}\Rightarrow\text{Nutze Ausbreitungsrichtung } \beta \Rightarrow \frac{\Re k_y}{\Re k_x}=\tan \beta\\
 \Rightarrow \Im k_y\text{ immernoch unbestimmt}
+
+ffmpeg -i output/Ez_%05d.png -c:v libx264 -crf 10 Ez.mkv
+
+
+_20degree_wave_right_half_sigma_2e4
+	Will sehen, wie nur der Teil orthogonal zur Grenzfläche absorbiert wird...
+_45degree_wave_right_half_n_1.33
+	Reflexion an Glas will ich sehen
+_45degree_wave_right_half_sigma2e4_sigmastar_2e4mu0_eps0_PMLx
+	wie _20degree_wave_right_half_sigma_2e4, nur dass hier aus sigma* entsprechend gesetzt wurde, sodass die Absorbtion der orthogonalkomponente dieses aml wirklich perfekt funktionieren sollte

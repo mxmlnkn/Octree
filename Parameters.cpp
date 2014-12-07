@@ -23,7 +23,7 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-const int NUMBER_OF_CELLS_X            = 256;
+const int NUMBER_OF_CELLS_X            = 384;
 const int NUMBER_OF_CELLS_Y            = 256;
 const int NUMBER_OF_CELLS_Z            = 3;
 const int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
@@ -33,6 +33,7 @@ const double CELL_SIZE_Y_SI            = CELL_SIZE_SI;
 const double CELL_SIZE_Z_SI            = 1./0.;
 const double DELTA_T_SI                = 0.5*CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
 const uint16_t BOUNDARY_CONDITION      = 1;              //0:periodic, 1:reflecting, 2:adhering
+const int isPeriodic[3]                = {0,0,0};
 
 //particleConfig.param
 const double SPECIES                   = 3;                    // 1:only electrons, 2:only ions, 3:both in equal parts (NUMBER_OF_PARTICLES_PER_CELL must be even!)

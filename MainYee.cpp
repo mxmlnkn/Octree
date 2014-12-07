@@ -60,12 +60,33 @@ typedef BaseMatrix<class YeeCell,SIMDIM> CellMatrix;
 
 double t_spawn_func( double t_SI ) {
 	double T_SI  = 40e-9 /* m */ / SPEED_OF_LIGHT_SI;
-	double sigma = T_SI/2.;
+	double sigmaE = T_SI/2.;
 	double t0    = 40;
 	return sin( 2.*M_PI*t_SI / T_SI );
 	return ( t_SI < T_SI ? 1.0 : 0.0 );
-	return exp(-pow(t_SI-t0,2)/(2.*sigma*sigma));
-	return 1./(sigma*sqrt(2.*M_PI))*exp(-pow(t_SI-t0,2)/(2.*sigma*sigma));
+	return exp(-pow(t_SI-t0,2)/(2.*sigmaE*sigmaE));
+}
+
+namespace TIME_SPAWN_FUNCTIONS {
+	double sinewave( double T, double t, double lambda = 1, double x = 0) {
+		return std::sin( 2.*M_PI*( x/lambda + t/T ) );
+	}
+	double sinewave2d( double T, double t, double kx = 0, double x = 0, double ky = 0, double y = 0) {
+		return std::sin(  kx*x + ky*y - 2.*M_PI*t/T );
+	}
+	double PSQ_STEP( double T, double t ) {
+		if ( t < 0 )
+			return 0;
+		else if (t < T/2)
+			return 0.5* pow( 1 + (t-T/2.)/(T/2.), 2 );
+		else if (t < T)
+			return 1 - 0.5* pow( 1 - (t-T/2.)/(T/2.), 2 );
+		else
+			return 1;
+	}
+	double gauss( double x, double mu=0, double sigmaE=1 ) {
+		return 1./(sigmaE*sqrt(2.*M_PI))*exp(-pow(x-mu,2)/(2.*sigmaE*sigmaE));
+	}
 }
 
 int main( int argc, char **argv )
@@ -95,13 +116,20 @@ int main( int argc, char **argv )
 	for ( int i = 0; i < SIMDIM; i++ )
 		size[i] = NUMBER_OF_CELLS[i];
 	CellMatrix data(size);
-
+	/* Spawn Material on right side with non-zero electrical resistance */
 	for ( int i = 0; i < data.getSize().product(); i++ ) {
-		data[i].epsilon    = EPS0;
-		data[i].mu         = MUE0;
-		data[i].rhoprime = 0;
-		data[i].sigma    = 2e3;
+		data[i].epsilon = EPS0;
+		data[i].mu      = MUE0;
+		data[i].sigmaE  = 0;
+		data[i].sigmaM  = 0;
+		if ( data.getVectorIndex( i )[0] > NUMBER_OF_CELLS_X-40-128 ) {
+			const double n  = 1.33; // = sqrt( eps_r * mue_r )
+			//data[i].epsilon = EPS0 * n*n;
+			data[i].sigmaE  = 2e4;
+			data[i].sigmaM  = 2e4 * MUE0/EPS0;
+		}
 	}
+	/* Spawn Barrier with one slit and perfectly reflecting material else */
 	/*for ( int x = LAMBDA_SI / CELL_SIZE_X_SI; x < LAMBDA_SI / CELL_SIZE_X_SI + 10; x++ )
 	for ( int y = 0; y < N_CELLS_Y; y++ ) {
 		const int wy = 40;
@@ -113,7 +141,7 @@ int main( int argc, char **argv )
 	}*/
 
 
-	for ( int timestep=0; timestep < 400; ++timestep )
+	for ( int timestep=0; timestep < 800; ++timestep )
 	{
 		const int X = 0;
 		const int Y = 1;
@@ -127,15 +155,48 @@ int main( int argc, char **argv )
 		tnext = 0; */
 
 		/* Function Generator on left side creates sine wave */
-		/*VecI pos(GUARDSIZE); pos[X] = GUARDSIZE; pos[Z] = GUARDSIZE;
+		/*VecI pos(GUARDSIZE);
 		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
-			pos[Y] = y + GUARDSIZE;
-			data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+			pos[Y] = GUARDSIZE + y;
+			//if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
+				data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+			//if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
+			//	data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
 		}*/
-		VecI pos(NUMBER_OF_CELLS); pos /= 2;
-		data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+		/* Function Generator on Cell in the Center */
+		/*VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[0]-=50;
+		data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI ); */
 
 		/**********************************************************************
+		 * Sine plane Wave going to Direction alpha and beginning line going  *
+		 * through pos0  y                                                    *
+		 *               ^                                                    *
+		 *               | \     e.g. p0 ( line includes p0! )                *
+		 *               |  --  /                                             *
+		 *               |    \     alpha                                     *
+		 *               |     --  /                                          *
+		 *               |_______\__________ x                                *
+         **********************************************************************/
+		double alpha  = 45. / 360. * 2*M_PI; // radian
+		double lambda = 10e-9 / UNIT_LENGTH;
+		VecI pos0(0); pos0[X] = 6*lambda;
+		double T0x    = lambda / SPEED_OF_LIGHT;
+		double T0y    = lambda / SPEED_OF_LIGHT;
+		double kx     = 2*M_PI/lambda * cos(alpha);
+		double ky     = 2*M_PI/lambda * sin(alpha);
+		//std::cout << "Spawning slanted sine wave: \n";
+		for (int j=0; j<2; j++) {
+			VecI pos( pos0+GUARDSIZE ); pos[Y]+=j;
+			for (int i=0; i<10*lambda; i++) {
+				pos[X]++;
+				data[pos].E[tcur][Z] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, timestep * DELTA_T, kx, i*CELL_SIZE_X, ky, j*CELL_SIZE_Y ) * TIME_SPAWN_FUNCTIONS::PSQ_STEP( T0y, timestep * DELTA_T );
+					//* TIME_SPAWN_FUNCTIONS::sinewave( T0y, timestep * DELTA_T );
+				//std::cout << data[pos].E[tcur][Z] << " ";
+			}
+			//std::cout << std::endl;
+		}
+		/**********************************************************************
+		 * Periodic Boundary Conditions for y-direction                       *
 		 * Initialize y-Guard with copied values to make boundaries periodic  *
 		 *             -------------                                          *
 		 *            |G G G G G G G|    Ny = 7, NGuard = 2                   *
@@ -155,30 +216,32 @@ int main( int argc, char **argv )
 		for ( int x = 0; x < N_CELLS_X; x++ )
 		for ( int z = 0; z < N_CELLS_Z; z++ )
 		for ( int y = 0; y < GUARDSIZE; y++ ) {
-			VecI posTo(0); posTo[X]=x; posTo[Z]=z;
-			VecI posFrom(posTo);
+			if (isPeriodic[Y] == 1) {
+				VecI posTo(0); posTo[X]=x; posTo[Z]=z;
+				VecI posFrom(posTo);
 
-			/* [x,Ny-1-2*NGuard+0] -> [x,0] */
-			posFrom[Y] = N_CELLS_Y-1-2*GUARDSIZE+y;
-			posTo[Y]   = y;
-			data[posTo].E[tcur] = data[posFrom].E[tcur];
+				/* [x,Ny-1-2*NGuard+0] -> [x,0] */
+				posFrom[Y] = N_CELLS_Y-1-2*GUARDSIZE+y;
+				posTo[Y]   = y;
+				data[posTo].E[tcur] = data[posFrom].E[tcur];
 
-			#if DEBUG_MAIN_YEE >= 100
-            if (timestep == 3)
-                std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
-                << "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << std::endl;
-			#endif
+				#if DEBUG_MAIN_YEE >= 100
+				if (timestep == 3)
+					std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
+					<< "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << std::endl;
+				#endif
 
-			/* [x,NGuard+0] -> [x,Ny-NGuard+0] */
-			posFrom[Y] = GUARDSIZE+y;
-			posTo  [Y] = N_CELLS_Y-GUARDSIZE+y;
-			data[posTo].E[tcur] = data[posFrom].E[tcur];
+				/* [x,NGuard+0] -> [x,Ny-NGuard+0] */
+				posFrom[Y] = GUARDSIZE+y;
+				posTo  [Y] = N_CELLS_Y-GUARDSIZE+y;
+				data[posTo].E[tcur] = data[posFrom].E[tcur];
 
-			#if DEBUG_MAIN_YEE >= 100
-            if (timestep == 3)
-                std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
-                << "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << "\n\n";
-			#endif
+				#if DEBUG_MAIN_YEE >= 100
+				if (timestep == 3)
+					std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
+					<< "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << "\n\n";
+				#endif
+			}
 		}
 
 
@@ -215,14 +278,13 @@ int main( int argc, char **argv )
 			VecI zprev=pos; zprev[Z]--;
 			VecI znext=pos; znext[Z]++;
 
-			/* Make it periodic in y-direction */
-			if (yprev[Y] <  0        ) yprev[Y] += N_CELLS_Y;
-			if (ynext[Y] >= N_CELLS_Y) ynext[Y] -= N_CELLS_Y;
+			assert(yprev[Y] >= 0);
+			assert(ynext[Y] < N_CELLS_Y);
 
 
 			/* Update all H components */
-			double nom = (1.0 + 0.5*data[pos].rhoprime*DELTA_T / data[pos].mu);
-			double Da  = (1.0-0.5*data[pos].rhoprime*DELTA_T/data[pos].mu)/nom;
+			double nom = (1.0 + 0.5*data[pos].sigmaM*DELTA_T / data[pos].mu);
+			double Da  = (1.0-0.5*data[pos].sigmaM*DELTA_T/data[pos].mu)/nom;
 			double Dbx = DELTA_T / ( data[pos].mu * CELL_SIZE_X ) / nom;
 			double Dby = DELTA_T / ( data[pos].mu * CELL_SIZE_Y ) / nom;
 			double Dbz = DELTA_T / ( data[pos].mu * CELL_SIZE_Z ) / nom;
@@ -274,8 +336,8 @@ int main( int argc, char **argv )
 			VecI zprev=pos; zprev[Z]--;
 			VecI znext=pos; znext[Z]++;
 
-			double nom = (1.0 + 0.5*data[pos].sigma*DELTA_T / data[pos].epsilon);
-			double Ca = (1.0 - 0.5*data[pos].sigma*DELTA_T / data[pos].epsilon)
+			double nom = (1.0 + 0.5*data[pos].sigmaE*DELTA_T / data[pos].epsilon);
+			double Ca = (1.0 - 0.5*data[pos].sigmaE*DELTA_T / data[pos].epsilon)
 					  / nom;
 			double Cbx = DELTA_T / ( data[pos].epsilon * CELL_SIZE_X ) / nom;
 			double Cby = DELTA_T / ( data[pos].epsilon * CELL_SIZE_Y ) / nom;

@@ -17,11 +17,11 @@ public:
 	//int internaltimestep;
 	double epsilon;  // relativ electric permittivity in this cell
 	double mu;       // magnetic permeability in this cell
-	double sigma;    // electric resistivity in this cell
-	double rhoprime; // magnetic resistivity in this cell
+	double sigmaE;    // electric resistivity in this cell
+	double sigmaM; // magnetic resistivity in this cell
 	
 	YeeCell(void) 
-	: epsilon(1), mu(1), sigma(0), rhoprime(0)
+	: epsilon(1), mu(1), sigmaE(0), sigmaM(0)
 	{}
 	~YeeCell(void) {}
 	/*VecD & E( int time ) {

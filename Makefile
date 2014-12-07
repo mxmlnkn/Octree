@@ -38,9 +38,9 @@ clean   :
 	rm -f Hz.webm
 
 animation:
-	ffmpeg -i output/Ex_%05d.png Ex.webm
-	ffmpeg -i output/Ey_%05d.png Ey.webm
-	ffmpeg -i output/Ez_%05d.png Ez.webm
-	ffmpeg -i output/Hx_%05d.png Hx.webm
-	ffmpeg -i output/Hy_%05d.png Hy.webm
-	ffmpeg -i output/Hz_%05d.png Hz.webm
+	ffmpeg -i output/Ex_%05d.png -c:v libvpx -crf 4 Ex.webm
+	ffmpeg -i output/Ey_%05d.png -c:v libvpx -crf 4 Ey.webm
+	ffmpeg -i output/Ez_%05d.png -c:v libvpx -crf 4 Ez.webm
+	ffmpeg -i output/Hx_%05d.png -c:v libvpx -crf 4 Hx.webm
+	ffmpeg -i output/Hy_%05d.png -c:v libvpx -crf 4 Hy.webm
+	ffmpeg -i output/Hz_%05d.png -c:v libvpx -crf 4 Hz.webm
