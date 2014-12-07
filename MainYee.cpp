@@ -100,9 +100,9 @@ int main( int argc, char **argv )
 		data[i].epsilon    = EPS0;
 		data[i].mu         = MUE0;
 		data[i].rhoprime = 0;
-		data[i].sigma    = 0;
+		data[i].sigma    = 2e3;
 	}
-	for ( int x = LAMBDA_SI / CELL_SIZE_X_SI; x < LAMBDA_SI / CELL_SIZE_X_SI + 10; x++ )
+	/*for ( int x = LAMBDA_SI / CELL_SIZE_X_SI; x < LAMBDA_SI / CELL_SIZE_X_SI + 10; x++ )
 	for ( int y = 0; y < N_CELLS_Y; y++ ) {
 		const int wy = 40;
 		if ( y <=  N_CELLS_Y/2 - wy/2 or y >= N_CELLS_Y/2 + wy/2 ) {
@@ -110,7 +110,7 @@ int main( int argc, char **argv )
 			data[pos].epsilon  = INF;//2*EPS0;
 			//data[pos].mu       = INF;
 		}
-	}
+	}*/
 
 
 	for ( int timestep=0; timestep < 400; ++timestep )
@@ -127,11 +127,13 @@ int main( int argc, char **argv )
 		tnext = 0; */
 
 		/* Function Generator on left side creates sine wave */
-		VecI pos(GUARDSIZE); pos[X] = GUARDSIZE; pos[Z] = GUARDSIZE;
+		/*VecI pos(GUARDSIZE); pos[X] = GUARDSIZE; pos[Z] = GUARDSIZE;
 		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
 			pos[Y] = y + GUARDSIZE;
 			data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
-		}
+		}*/
+		VecI pos(NUMBER_OF_CELLS); pos /= 2;
+		data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
 
 		/**********************************************************************
 		 * Initialize y-Guard with copied values to make boundaries periodic  *
@@ -306,7 +308,7 @@ int main( int argc, char **argv )
 		#if DEBUG_MAIN_YEE>=90
 		std::cout << "E_z after Timestep: " << timestep << std::endl;
 		for ( int ix=0; ix < 8; ++ix ) {
-		    VecI pos(GUARDSIZE); pos[X]=ix;
+		    VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[X]-=4; pos[X]+=ix;
 		    std::cout << data[pos].E[tnext][Z] << " ";
 		}
 		std::cout << std::endl;
