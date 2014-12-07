@@ -1,0 +1,54 @@
+Doesn't work with NCELLSZ==1 because of GUARDSIZE problems!
+upper elft corner looks weird... maybe because we actually should only have one H less than E?
+
+
+Image 63
+E_z after Timestep: 125
+0 -3.33067e-16 0.707107 0.587785 0.45399 0.309017 0.156434 -7.77156e-16
+H_y after Timestep: 125
+0 -19968.4 -16598.8 -12820.5 -8726.51 -4417.64 1.18234e-11 4417.64
+E_z after Timestep: 126
+0 -2.22045e-16 0.809017 0.707107 0.587785 0.45399 0.309017 0.156434
+H_y after Timestep: 126
+0 -22846.3 -19968.4 -16598.8 -12820.5 -8726.51 -4417.64 1.18234e-11
+Image 64
+E_z after Timestep: 127
+0 -2.22045e-16 0.734572 0.809017 0.707107 0.587785 0.45399 0.309017
+H_y after Timestep: 127
+0 -25161.7 -22846.3 -19968.4 -16598.8 -12820.5 -8726.51 -4417.64
+E_z after Timestep: 128
+0 -0.156434 39.9071 -18.9762 0.809017 0.707107 0.587785 0.45399
+H_y after Timestep: 128
+0 -31275.1 -20744 -22846.3 -19968.4 -16598.8 -12820.5 -8726.51
+Image 65
+E_z after Timestep: 129
+0 38.7996 -6160.04 4987.63 -1270.61 0.809017 0.707107 0.587785
+H_y after Timestep: 129
+0 1.06779e+06 -1.68358e+06 535879 -22846.3 -19968.4 -16598.8 -12820.5
+E_z after Timestep: 130
+0 -6122.23 734102 -740194 321662 -54673.6 0.809017 0.707107
+H_y after Timestep: 130
+0 -1.72917e+08 3.13122e+08 -1.76194e+08 3.58815e+07 -22846.3 -19968.4 -16598.8
+Image 66
+E_z after Timestep: 131
+0 727979 -7.0869e+07 8.15107e+07 -4.63419e+07 1.39395e+07 -1.77692e+06 0.809017
+H_y after Timestep: 131
+0 2.05578e+10 -4.13204e+10 2.98102e+10 -1.05917e+10 1.54396e+09 -22846.3 -19968.4
+
+ToDo:
+	- Output epsilon_r 1...max to black...white (maybe use 1/epislon_r to reduce problems with INF)
+	- output Ez red only! => Ez -> Ez / max(abs(Ez)) + 1
+	- Absorbing Boundary Conditions
+	- DoubleSlit Setup with: 700nm wavelength, 200nm whide slits 1300nm apart
+	- Use SIMDIM correctly (but not everywhere, as YEE is 3D
+	
+	
+\vec{H}=\vec{H}_0 e^{i\left( k_x\cdot x + k_y\cdot y - \omega \cdot t \right)}
+= \vec{H}_0 e^{i\left( \sqrt{ k_M^2 \left( 1+\frac{\sigma}{i\omega\epsilon_M} \right )\left( 1+\frac{\sigma^*}{i\omega\mu_M} \right )-(k_y^2) }}\cdot x +k_y\cdot y -\omega\cdot t\right)
+\\
+\Rightarrow k_x^2+k_y^2=\frac{\omega}{c_M}\left( 1+\frac{\sigma}{i\omega\epsilon_M} \right )\left( 1+\frac{\sigma^*}{i\omega\mu_M} \right )\Leftarrow\text{MWG: }\\
+\vec{\nabla}\times\vec{E}=-\left(\frac{\partial}{\partial t} \mu_M\vec{H} +\sigma^*\vec{H} \right)\\
+,\vec{\nabla}\times\vec{H}=\frac{\partial}{\partial t} \epsilon_M\vec{E}+\sigma\vec{E}
+\\
+\text{ Noch auf ky unbestimmt}\Rightarrow\text{Nutze Ausbreitungsrichtung } \beta \Rightarrow \frac{\Re k_y}{\Re k_x}=\tan \beta\\
+\Rightarrow \Im k_y\text{ immernoch unbestimmt}
