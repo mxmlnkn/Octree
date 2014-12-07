@@ -50,6 +50,10 @@ public:
     template<typename T_ETYPE> Vec  operator- (const Vec<T_ETYPE, T_DIM> & v) const;
     template<typename T_ETYPE> Vec  operator* (const Vec<T_ETYPE, T_DIM> & v) const;
     
+    template<typename T_ETYPE> Vec& operator+=(const T_ETYPE a);
+    template<typename T_ETYPE> Vec& operator-=(const T_ETYPE a);
+    template<typename T_ETYPE> Vec& operator*=(const T_ETYPE a);
+    template<typename T_ETYPE> Vec& operator/=(const T_ETYPE a);
     template<typename T_ETYPE> Vec  operator+ (const T_ETYPE a) const;
     template<typename T_ETYPE> Vec  operator- (const T_ETYPE a) const;
     template<typename T_ETYPE> Vec  operator* (const T_ETYPE a) const;

@@ -268,10 +268,41 @@ double Vec<T_DTYPE,T_DIM>::norm() const {
 // this could also be done with , but we want to save memory !
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+= (const T_ETYPE a) {
+    for (int i=0; i<T_DIM; i++)
+        this->data[i] += a;
+    return *this;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator-= (const T_ETYPE a) {
+    for (int i=0; i<T_DIM; i++)
+        this->data[i] -= a;
+    return *this;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*= (const T_ETYPE a) {
+    for (int i=0; i<T_DIM; i++)
+        this->data[i] *= a;
+    return *this;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/= (const T_ETYPE a) {
+    for (int i=0; i<T_DIM; i++)
+        this->data[i] /= a;
+    return *this;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
-    for (int i=0; i<T_DIM; i++)
-        tmp.data[i] += a;
+    tmp += a;
     return tmp;
 }
 
@@ -279,8 +310,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
-    for (int i=0; i<T_DIM; i++)
-        tmp.data[i] -= a;
+    tmp -= a;
     return tmp;
 }
 
@@ -288,8 +318,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator* (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
-    for (int i=0; i<T_DIM; i++)
-        tmp.data[i] *= a;
+    tmp *= a;
     return tmp;
 }
 
@@ -297,8 +326,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/ (const T_ETYPE a) const {
     Vec<T_DTYPE,T_DIM> tmp( *this );
-    for (int i=0; i<T_DIM; i++)
-        tmp.data[i] /= a;
+    tmp /= a;
     return tmp;
 }
 
