@@ -6,17 +6,17 @@ all : libpngwriter testOctree testMatrix MainYee Main
 libpngwriter    :
 	cd pngwriter; make all
 
-testOctree  :
+testOctree  : testOctree.cpp
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
-testMatrix  :
+testMatrix  : testMatrix.cpp
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
-MainYee : libpngwriter
+MainYee : libpngwriter MainYee.cpp
 	mkdir -p output
 	mpic++ $@.cpp -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter/ -L ./pngwriter/ -lz -lpngwriter -lpng
 
-Main    :
+Main    : Main.cpp
 	mpic++ $@.cpp -o $@.exe $(CFLAGS)
 
 clean   :
