@@ -6,7 +6,7 @@ all : libpngwriter testOctree testMatrix MainYee Main
 libpngwriter    :
 	cd pngwriter; make all
 
-testOctree  : testOctree.cpp
+testOctree  : testOctree.cpp OctreeNode.h OctreeNode.tpp OctreeToSvg.h OctreeToSvg.tpp
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
 testMatrix  : testMatrix.cpp

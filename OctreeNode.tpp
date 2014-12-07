@@ -4,6 +4,7 @@
 
 
 
+
 namespace Octree {
 
 /* This should only be used in conjunction with operator= !!                  */
@@ -150,8 +151,7 @@ void Node<T_DTYPE,T_DIM>::GrowUp( void )
     typename Datalist::iterator it = this->data.begin();
     while( it != this->data.end() ) {
         this->FindLeafContainingPos(it->pos)->InsertData( it->pos, it->object );
-        this->data.erase( it );
-		it++;
+        this->data.erase( it++ );
     }
     assert( this->data.empty() );
 #if DEBUG_OCTREE_NODE >= 10

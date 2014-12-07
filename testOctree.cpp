@@ -1,7 +1,8 @@
 /*
 
 rm testOctree.exe; g++ testOctree.cpp -o testOctree.exe -Wall -std=c++0x; ./testOctree.exe
- 
+make testOctree && ./testOctree.exe
+
 */
 
 #include <iostream>
