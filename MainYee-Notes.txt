@@ -57,9 +57,20 @@ ToDo:
 ffmpeg -i output/Ez_%05d.png -c:v libx264 -crf 10 Ez.mkv
 
 
-_20degree_wave_right_half_sigma_2e4
+009_20degree_wave_right_half_sigma_2e4
 	Will sehen, wie nur der Teil orthogonal zur Grenzfläche absorbiert wird...
-_45degree_wave_right_half_n_1.33
+010_45degree_wave_right_half_n_1.33
 	Reflexion an Glas will ich sehen
-_45degree_wave_right_half_sigma2e4_sigmastar_2e4mu0_eps0_PMLx
-	wie _20degree_wave_right_half_sigma_2e4, nur dass hier aus sigma* entsprechend gesetzt wurde, sodass die Absorbtion der orthogonalkomponente dieses aml wirklich perfekt funktionieren sollte
+011_45degree_wave_right_half_sigma2e4_sigmastar_2e4mu0_eps0_PMLx
+	wie _20degree_wave_right_half_sigma_2e4, nur dass hier aus sigma* entsprechend gesetzt wurde, sodass die Absorbtion der orthogonalkomponente dieses mal wirklich perfekt funktionieren sollte
+012_Totalreflexion_glass_to_air
+	evanescent fields can be seen behind glass :33. Weirdly S (2D) should have been 0.84, but nothing exponentially diverged when entering the air ...  (S1D) = 0.6 (all prior S notations used S(1D))
+		For stability in vacuum Delta_T=1 =< 1.17851=DELTA_X/sqrt(2)/c_M
+		For stability in glass  Delta_T=1 =< 1.56742=DELTA_X/sqrt(2)/c_M
+013_Totalreflexion_glass_to_air_S0.8
+	=> DELTA_T_SI = 0.8*CELL_SIZE_SI / SPEED_OF_LIGHT_SI => S(1D) = 0.8
+	Jetzt fliegt es schön hoch, sobald es Luft betritt, verhält sich sonst aber gutartig :)
+		For stability in vacuum Delta_T=1 =< 0.883883=DELTA_X/sqrt(2)/c_M
+		For stability in glass  Delta_T=1 =< 1.17557=DELTA_X/sqrt(2)/c_M
+014_verhidnerte_Totalreflexion
+	very geil :3

@@ -109,6 +109,8 @@ int main( int argc, char **argv )
     tout << "UNIT_ANGULAR_MOMENTUM: " << UNIT_ANGULAR_MOMENTUM      << "\n";
     tout << "ELECTRON_MASS        : " << ELECTRON_MASS              << "\n";
     tout << "S                    : " << S                          << "\n";
+	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << 1. / (SPEED_OF_LIGHT * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() ) << "=DELTA_X/sqrt(2)/c_M" << std::endl;
+	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << 1. / (SPEED_OF_LIGHT/1.33 * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() ) << "=DELTA_X/sqrt(2)/c_M" << std::endl;
     tout << "\n";
 
     /* create data buffer with cells initially with zeros in all entries      */
@@ -122,11 +124,12 @@ int main( int argc, char **argv )
 		data[i].mu      = MUE0;
 		data[i].sigmaE  = 0;
 		data[i].sigmaM  = 0;
-		if ( data.getVectorIndex( i )[0] > NUMBER_OF_CELLS_X-40-128 ) {
+		if ( data.getVectorIndex( i )[0] < NUMBER_OF_CELLS_X-40-128 or
+ 		     data.getVectorIndex( i )[0] > NUMBER_OF_CELLS_X-40-128+2  ) {
 			const double n  = 1.33; // = sqrt( eps_r * mue_r )
-			//data[i].epsilon = EPS0 * n*n;
-			data[i].sigmaE  = 2e4;
-			data[i].sigmaM  = 2e4 * MUE0/EPS0;
+			data[i].epsilon = EPS0 * n*n;
+			//data[i].sigmaE  = 2e4;
+			//data[i].sigmaM  = 2e4 * MUE0/EPS0;
 		}
 	}
 	/* Spawn Barrier with one slit and perfectly reflecting material else */
@@ -177,13 +180,14 @@ int main( int argc, char **argv )
 		 *               |     --  /                                          *
 		 *               |_______\__________ x                                *
          **********************************************************************/
-		double alpha  = 45. / 360. * 2*M_PI; // radian
-		double lambda = 10e-9 / UNIT_LENGTH;
+		double const n = 1.33;
+		double alpha   = 45. / 360. * 2*M_PI; //0.9*asin(1./n); // radian
+		double lambda  = 10e-9 / UNIT_LENGTH;
 		VecI pos0(0); pos0[X] = 6*lambda;
-		double T0x    = lambda / SPEED_OF_LIGHT;
-		double T0y    = lambda / SPEED_OF_LIGHT;
-		double kx     = 2*M_PI/lambda * cos(alpha);
-		double ky     = 2*M_PI/lambda * sin(alpha);
+		double T0x     = lambda / (SPEED_OF_LIGHT/n);
+		double T0y     = lambda / (SPEED_OF_LIGHT/n);
+		double kx      = 2*M_PI/lambda * cos(alpha);
+		double ky      = 2*M_PI/lambda * sin(alpha);
 		//std::cout << "Spawning slanted sine wave: \n";
 		for (int j=0; j<2; j++) {
 			VecI pos( pos0+GUARDSIZE ); pos[Y]+=j;
