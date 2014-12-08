@@ -34,16 +34,32 @@ typedef Vec<double,SIMDIM> VecI;
 int main( int argc, char **argv )
 {
     tout.Open("out");
-
-    int worldsize = 2;
-
+    
+    //int ORDERING = Octree::Ordering::Morton;
+    
+    
+/* Run this Programm for several Ordering Methods ! */
+for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
+/* Run this Programm for several world sizes ! */
+    std::ofstream resultsFile;
+    std::stringstream sOrdering;
+    switch (ORDERING) {
+        case 0: sOrdering << "Morton_"  ; break;
+        case 1: sOrdering << "GrayCode_"; break;
+        case 2: sOrdering << "Hilbert_" ; break;
+    } sOrdering << "Ordering_";
+    resultsFile.open( std::string("Octree_Benchmark_circle_minRecursion4_") + sOrdering.str() + std::string(".dat") );
+    resultsFile << "# worldsize totalTraffic interTraffic\n";
+    
+for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
+    
     VecD size(100), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
 
     /* refine all cells to some value */
     tout << "Initial homogenous Refinement\n";
 	Octree::Octree<int,SIMDIM>::iterator it;
-	int maxRecursion = 1;
+	int maxRecursion = 2;
 	for ( int i=0; i<maxRecursion; i++) {
         tout << i << "th Refinement\n";
 		it = tree.begin();
@@ -56,17 +72,24 @@ int main( int argc, char **argv )
 	}
 
     /* refine a subsection of the cells one more time */
-    /*tout << "Refinement of a subsection\n";
+    tout << "Refinement of a subsection\n";
+	it = tree.begin();
+	while ( it!=tree.end() ) {
+		if ( it->IsLeaf() and it->center.norm() < 0.4 )
+			(it++)->GrowUp();
+		else
+			++it;
+	}
 	it = tree.begin();
 	while ( it!=tree.end() ) {
 		if ( it->IsLeaf() and it->center.norm() < 0.25 )
 			(it++)->GrowUp();
 		else
 			++it;
-	}*/
-    
+	}
+
     /* refine a subsection of the cells one more time */
-    tout << "Refinement of a subsection\n";
+    /*tout << "Refinement of a subsection\n";
 	it = tree.begin();
 	while ( it!=tree.end() ) {
 		if ( it->IsLeaf() and it->center[0] > 0 )
@@ -75,7 +98,7 @@ int main( int argc, char **argv )
 			++it;
 	}
     VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
-    tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+    tree.FindLeafContainingPos( pos*tree.size )->GrowUp(); */
 
     /* Count Cells */
     tout << "Count Cells\n";
@@ -118,18 +141,26 @@ int main( int argc, char **argv )
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 
     /* Print tree to SVG */
-    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, std::string("octree") );
+    std::stringstream sWorldsize; sWorldsize << worldsize;
+    std::stringstream sOrdering;
+    switch (ORDERING) {
+        case 0: sOrdering << "Morton_"  ; break;
+        case 1: sOrdering << "GrayCode_"; break;
+        case 2: sOrdering << "Hilbert_" ; break;
+    } sOrdering << "Ordering_";
+    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, std::string("Octree_") + sOrdering.str() + std::string("worldsize_") + sWorldsize.str() );
     svgoutput.PrintGrid();
 
     /* Assign cells to all the processes */
     double cumulativeCosts = 0;
     int curRank = 0;
-	it = tree.begin( Octree::Ordering::GrayCode );
+    int currentTime  = 0;
+    double delay     = 1./64.; // 8 frames per second at max achievable
+    double rankDelay = 1./64.;
+    
+	it = tree.begin( ORDERING );
     Octree::Octree<int,SIMDIM>::iterator it0 = tree.begin();
     Octree::Octree<int,SIMDIM>::iterator it1 = tree.begin();
-    int currentTime  = 0;
-    double delay     = 0.125; // 8 frames per second at max achievable
-    double rankDelay = 0.25;
 	while ( it!=tree.end() ) {
 		if ( it->IsLeaf() ) {
 			cumulativeCosts += 1. / it->getSize().min();
@@ -138,12 +169,11 @@ int main( int argc, char **argv )
                 curRank++;
             }
             *(it->getDataPtr(0).object) = curRank;
-            
+
             /* Graphical output of traversal line */
             it0 = it1;
             it1 = it;
             if ( it0->IsLeaf() and it1->IsLeaf() ) {
-                std::cout << "Leaf at " << it0->center << "and at " << it1->center << "\n";
                 size_t id = reinterpret_cast<size_t>( it0->getDataPtr(0).object );
                 VecD r0 = svgoutput.convertToImageCoordinates( it0->center );
                 VecD r1 = svgoutput.convertToImageCoordinates( it1->center );
@@ -161,68 +191,96 @@ int main( int argc, char **argv )
                   << " xlink:href=\"#path" << id << "\""               "\n"
                   << " attributeName=\"stroke\""                       "\n"
                   << " begin=\"" << delay*double(currentTime) << "s\"" "\n"
-                  << " to   =\"#d000ff\""                              "\n"
+                  << " to   =\"#008000\""                              "\n"
                   << "/>"                                              "\n";
                 currentTime += rankDelay / delay;
             }
-            
+
             /* Graphical output of and cell-rank-mapping */
-            
+            svgoutput.boxesDrawnIt = svgoutput.boxesDrawn.find( it->center );
+            int id = svgoutput.boxesDrawnIt->second.id;
+            int r  = int( 128 * double(curRank+1) / double(worldsize) );
+            int g  = r;
+            int b  = r;
+            /*int r  = 255;;
+            int g  = 0;
+            int b  = 255 * double(curRank) / double(worldsize); */
+            svgoutput.out
+                << "<set"                                                "\n"
+                << " xlink:href=\"#" << id << "\""                       "\n"
+                << " attributeName=\"fill\""                             "\n"
+                << " begin=\"" << delay*double(currentTime) << "s\""     "\n"
+                << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+                << "/>"                                                  "\n";
 		}
         ++it;
 	}
 
     /* Count Neighbors intra- and interprocessdata to transmit */
-    //const int bytesPerCell = (6+4)*8;
     double * costs = new double[worldsize];
-	it = tree.begin();
+    for (int i=0; i<worldsize; ++i)
+        costs[i] = 0;
+
+    double interTraffic = 0;
+    double totalTraffic = 0;
+    const int bytesPerCell = (6+4)*8;
+
+	it = tree.begin( ORDERING );
 	while ( it!=tree.end() ) {
 		if ( it->IsLeaf() ) {
             costs[ *(it->getDataPtr(0).object) ] += 1. / it->getSize().min();
-            /* this should only work if the neighbors are smaller or equal size */
             int nNeighbors = 0;
-            VecI dir(0);
-            dir[0]=+1; dir[1]= 0;
-            nNeighbors += ( it->getNeighbor(dir) == NULL ) ? 0 : it->getNeighbor(dir)->countLeaves();
-            dir[0]=-1; dir[1]= 0;
-            nNeighbors += ( it->getNeighbor(dir) == NULL ) ? 0 : it->getNeighbor(dir)->countLeaves();
-            dir[0]= 0; dir[1]=+1;
-            nNeighbors += ( it->getNeighbor(dir) == NULL ) ? 0 : it->getNeighbor(dir)->countLeaves();
-            dir[0]= 0; dir[1]=-1;
-            nNeighbors += ( it->getNeighbor(dir) == NULL ) ? 0 : it->getNeighbor(dir)->countLeaves();
+            int nLeavesOnOtherNodes = 0;
+            int thisRank = *(it->getDataPtr(0).object);
 
-            std::cout << "Leaf at " << it->center << " needs data from "
-                      << nNeighbors << " neighbors:\n";
-            dir[0]=+1; dir[1]= 0;
-            /*std::cout << "   " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->center ) << " -> " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->countLeaves() ) << "\n";
-            dir[0]=-1; dir[1]= 0;
-            std::cout << "   " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->center ) << " -> " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->countLeaves() ) << "\n";
-            dir[0]= 0; dir[1]=+1;
-            std::cout << "   " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->center ) << " -> " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->countLeaves() ) << "\n";
-            dir[0]= 0; dir[1]=-1;
-            std::cout << "   " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->center ) << " -> " << ( ( it->getNeighbor(dir) == NULL ) ? 333 : it->getNeighbor(dir)->countLeaves() ) << "\n";
-            */
-            /* only correct up to a certain cellsize !!! */
-            /*const double smallestCellsize = 1e-8; // >> DBL_EPSILON
-            VecD neighborPos( it->center );
-            neighborPos[0] += 0.5*smallestCellsize;
-            tree->FindLeafContaining( neighborPos );
-            neighborPos = it->center;
-            neighborPos[0] -= 0.5*smallestCellsize;
-            tree->FindLeafContaining( neighborPos );
-            neighborPos = it->center;
-            neighborPos[1] += 0.5*smallestCellsize;
-            tree->FindLeafContaining( neighborPos );
-            neighborPos = it->center;
-            neighborPos[1] -= 0.5*smallestCellsize; */
+            VecI dir[4];
+            dir[0][0]=+1; dir[0][1]= 0;
+            dir[1][0]=-1; dir[1][1]= 0;
+            dir[2][0]= 0; dir[2][1]=+1;
+            dir[3][0]= 0; dir[3][1]=-1;
+
+            for ( int lindir = 0; lindir < 4; lindir++ ) {
+                Octree::Node<int,SIMDIM> * neighbor = it->getNeighbor( dir[lindir] );
+                if ( neighbor == NULL )
+                    continue;
+
+                nNeighbors += neighbor->countLeaves();
+
+                Octree::Octree<int,SIMDIM>::iterator itn = neighbor->begin();
+                while ( itn != neighbor->end() ) {
+                    if ( itn->IsLeaf() ) {
+                        int neighborRank = *(itn->getDataPtr(0).object);
+                        if ( thisRank != neighborRank )
+                            nLeavesOnOtherNodes++;
+                    }
+                    ++itn;
+                }
+            }
+
+            totalTraffic += bytesPerCell * nNeighbors;
+            interTraffic += bytesPerCell * nLeavesOnOtherNodes;
+
+            /*tout << it->center << " needs data from "
+                 << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n"; */
 		}
         ++it;
 	}
 
+    tout << "World Size      : " << worldsize << "\n";
+    tout << "Number of Cells : " << tree.root->countLeaves() << "\n";
     for (int i=0; i<worldsize; i++) {
-        std::cout << "Cost assigned to rank " << i << " is " << costs[i] << "\n";
+        tout << "Cost assigned to rank " << i << " is " << costs[i] << "\n";
     }
+    tout << "Total data to be read from neighbors : " << totalTraffic << "\n";
+    tout << "Data which needs to be communicated  : " << interTraffic << "\n";
+    
+    resultsFile << worldsize << " " << totalTraffic << " " << interTraffic << "\n";
 
     delete[] costs;
     free(data);
+
+} /* Run this Programm for several world sizes ! */
+    resultsFile.close();
+} /* Run this Programm for several Ordering Methods ! */
+
 }

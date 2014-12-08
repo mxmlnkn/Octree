@@ -46,9 +46,9 @@ public:
  * be found in this map, than it must already have been drawn with <rect/>    */
     typedef struct { int id; bool visible; } Keyvalues;
     typedef std::map<VecD,Keyvalues,StrictWeakOrderingVecD> VecDMap;
-    int NBoxesDrawn = 0;
-    VecDMap BoxesDrawn;
-    typename VecDMap::iterator BoxesDrawnIt;
+    int NboxesDrawn = 0;
+    VecDMap boxesDrawn;
+    typename VecDMap::iterator boxesDrawnIt;
 
 public:
     OctreeToSvg(void) { assert(false); }

@@ -3,6 +3,7 @@ ToDo:
     - different forms ( o and spiraling more and more to one point )
     - use different amount of overall cells
     - use different amount of ranks/nodes
+    - different space space filling curves -> assigning to ranks
   - Split Vector into TVec and normal Vec (only difference being template< int T_DIM> ... -.- => just scrap TVec ... or maybe compare speed !)
   - improve weighting, or else the last rank will receive increasingly more work for greater world sizes !
   - color process distribution (in time)
