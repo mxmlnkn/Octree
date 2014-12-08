@@ -1,0 +1,536 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg
+ xmlns:xlink = "http://www.w3.org/1999/xlink"
+ xmlns   = "http://www.w3.org/2000/svg">
+ width   = "840px"
+ height  = "840px"
+ version = "1.1"
+>
+<defs>
+  <style type="text/css">
+   rect {
+    fill : none;
+    stroke : white;
+    stroke-width : 1px
+   }
+   circle {
+    fill : red;
+    stroke : none
+   }
+  </style>
+</defs>
+<rect
+ x     ="0"
+ y     ="0"
+ width ="840"
+ height="840"
+ style ="fill:black;stroke:none"    
+/>
+<rect
+ id    ="0"
+ x     ="20px"
+ y     ="20px"
+ width ="800px"
+ height="800px"
+/>
+<rect
+ id    ="1"
+ x     ="420px"
+ y     ="20px"
+ width ="400px"
+ height="400px"
+/>
+<rect
+ id    ="2"
+ x     ="620px"
+ y     ="20px"
+ width ="200px"
+ height="200px"
+/>
+<rect
+ id    ="3"
+ x     ="420px"
+ y     ="20px"
+ width ="200px"
+ height="200px"
+/>
+<rect
+ id    ="4"
+ x     ="620px"
+ y     ="220px"
+ width ="200px"
+ height="200px"
+/>
+<rect
+ id    ="5"
+ x     ="420px"
+ y     ="220px"
+ width ="200px"
+ height="200px"
+/>
+<rect
+ id    ="6"
+ x     ="520px"
+ y     ="220px"
+ width ="100px"
+ height="100px"
+/>
+<rect
+ id    ="7"
+ x     ="420px"
+ y     ="220px"
+ width ="100px"
+ height="100px"
+/>
+<rect
+ id    ="8"
+ x     ="520px"
+ y     ="320px"
+ width ="100px"
+ height="100px"
+/>
+<rect
+ id    ="9"
+ x     ="420px"
+ y     ="320px"
+ width ="100px"
+ height="100px"
+/>
+<rect
+ id    ="10"
+ x     ="470px"
+ y     ="320px"
+ width ="50px"
+ height="50px"
+/>
+<rect
+ id    ="11"
+ x     ="495px"
+ y     ="320px"
+ width ="25px"
+ height="25px"
+/>
+<rect
+ id    ="12"
+ x     ="507.5px"
+ y     ="320px"
+ width ="12.5px"
+ height="12.5px"
+/>
+<rect
+ id    ="13"
+ x     ="495px"
+ y     ="320px"
+ width ="12.5px"
+ height="12.5px"
+/>
+<rect
+ id    ="14"
+ x     ="507.5px"
+ y     ="332.5px"
+ width ="12.5px"
+ height="12.5px"
+/>
+<rect
+ id    ="15"
+ x     ="495px"
+ y     ="332.5px"
+ width ="12.5px"
+ height="12.5px"
+/>
+<rect
+ id    ="16"
+ x     ="470px"
+ y     ="320px"
+ width ="25px"
+ height="25px"
+/>
+<rect
+ id    ="17"
+ x     ="495px"
+ y     ="345px"
+ width ="25px"
+ height="25px"
+/>
+<rect
+ id    ="18"
+ x     ="470px"
+ y     ="345px"
+ width ="25px"
+ height="25px"
+/>
+<rect
+ id    ="19"
+ x     ="420px"
+ y     ="320px"
+ width ="50px"
+ height="50px"
+/>
+<rect
+ id    ="20"
+ x     ="470px"
+ y     ="370px"
+ width ="50px"
+ height="50px"
+/>
+<rect
+ id    ="21"
+ x     ="420px"
+ y     ="370px"
+ width ="50px"
+ height="50px"
+/>
+<rect
+ id    ="22"
+ x     ="20px"
+ y     ="20px"
+ width ="400px"
+ height="400px"
+/>
+<rect
+ id    ="23"
+ x     ="420px"
+ y     ="420px"
+ width ="400px"
+ height="400px"
+/>
+<rect
+ id    ="24"
+ x     ="20px"
+ y     ="420px"
+ width ="400px"
+ height="400px"
+/>
+<set
+ xlink:href="#2"
+ attributeName="fill"
+ begin="0s"
+ to   ="rgb(16,16,16)"
+/>
+<line
+ id="path25769901684"
+ x1="720px" y1="120px"
+ x2="720px" y2="320px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901684"
+ attributeName="stroke"
+ begin="0s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#4"
+ attributeName="fill"
+ begin="0.015625s"
+ to   ="rgb(16,16,16)"
+/>
+<line
+ id="path25769901692"
+ x1="720px" y1="320px"
+ x2="570px" y2="270px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901692"
+ attributeName="stroke"
+ begin="0.015625s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#6"
+ attributeName="fill"
+ begin="0.03125s"
+ to   ="rgb(16,16,16)"
+/>
+<line
+ id="path25769901696"
+ x1="570px" y1="270px"
+ x2="570px" y2="370px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901696"
+ attributeName="stroke"
+ begin="0.03125s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#8"
+ attributeName="fill"
+ begin="0.046875s"
+ to   ="rgb(16,16,16)"
+/>
+<line
+ id="path25769901704"
+ x1="570px" y1="370px"
+ x2="513.75px" y2="326.25px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901704"
+ attributeName="stroke"
+ begin="0.046875s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#12"
+ attributeName="fill"
+ begin="0.0625s"
+ to   ="rgb(32,32,32)"
+/>
+<line
+ id="path25769901708"
+ x1="513.75px" y1="326.25px"
+ x2="513.75px" y2="338.75px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901708"
+ attributeName="stroke"
+ begin="0.0625s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#14"
+ attributeName="fill"
+ begin="0.078125s"
+ to   ="rgb(48,48,48)"
+/>
+<line
+ id="path25769901716"
+ x1="513.75px" y1="338.75px"
+ x2="501.25px" y2="338.75px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901716"
+ attributeName="stroke"
+ begin="0.078125s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#15"
+ attributeName="fill"
+ begin="0.09375s"
+ to   ="rgb(64,64,64)"
+/>
+<line
+ id="path25769901720"
+ x1="501.25px" y1="338.75px"
+ x2="501.25px" y2="326.25px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901720"
+ attributeName="stroke"
+ begin="0.09375s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#13"
+ attributeName="fill"
+ begin="0.109375s"
+ to   ="rgb(80,80,80)"
+/>
+<line
+ id="path25769901712"
+ x1="501.25px" y1="326.25px"
+ x2="482.5px" y2="332.5px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901712"
+ attributeName="stroke"
+ begin="0.109375s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#16"
+ attributeName="fill"
+ begin="0.125s"
+ to   ="rgb(96,96,96)"
+/>
+<line
+ id="path25769901724"
+ x1="482.5px" y1="332.5px"
+ x2="482.5px" y2="357.5px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901724"
+ attributeName="stroke"
+ begin="0.125s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#18"
+ attributeName="fill"
+ begin="0.140625s"
+ to   ="rgb(112,112,112)"
+/>
+<line
+ id="path25769901732"
+ x1="482.5px" y1="357.5px"
+ x2="507.5px" y2="357.5px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901732"
+ attributeName="stroke"
+ begin="0.140625s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#17"
+ attributeName="fill"
+ begin="0.15625s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901728"
+ x1="507.5px" y1="357.5px"
+ x2="495px" y2="395px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901728"
+ attributeName="stroke"
+ begin="0.15625s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#20"
+ attributeName="fill"
+ begin="0.171875s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901740"
+ x1="495px" y1="395px"
+ x2="445px" y2="395px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901740"
+ attributeName="stroke"
+ begin="0.171875s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#21"
+ attributeName="fill"
+ begin="0.1875s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901744"
+ x1="445px" y1="395px"
+ x2="445px" y2="345px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901744"
+ attributeName="stroke"
+ begin="0.1875s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#19"
+ attributeName="fill"
+ begin="0.203125s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901736"
+ x1="445px" y1="345px"
+ x2="470px" y2="270px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901736"
+ attributeName="stroke"
+ begin="0.203125s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#7"
+ attributeName="fill"
+ begin="0.21875s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901700"
+ x1="470px" y1="270px"
+ x2="520px" y2="120px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901700"
+ attributeName="stroke"
+ begin="0.21875s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#3"
+ attributeName="fill"
+ begin="0.234375s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901688"
+ x1="520px" y1="120px"
+ x2="220px" y2="220px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901688"
+ attributeName="stroke"
+ begin="0.234375s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#22"
+ attributeName="fill"
+ begin="0.25s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901748"
+ x1="220px" y1="220px"
+ x2="220px" y2="620px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901748"
+ attributeName="stroke"
+ begin="0.25s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#24"
+ attributeName="fill"
+ begin="0.265625s"
+ to   ="rgb(128,128,128)"
+/>
+<line
+ id="path25769901756"
+ x1="220px" y1="620px"
+ x2="620px" y2="620px"
+ style="stroke:none;stroke-width:3px"
+/>
+<set
+ xlink:href="#path25769901756"
+ attributeName="stroke"
+ begin="0.265625s"
+ to   ="#008000"
+/>
+<set
+ xlink:href="#23"
+ attributeName="fill"
+ begin="0.28125s"
+ to   ="rgb(128,128,128)"
+/>
+</svg>

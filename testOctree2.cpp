@@ -48,17 +48,17 @@ for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
         case 1: sOrdering << "GrayCode_"; break;
         case 2: sOrdering << "Hilbert_" ; break;
     } sOrdering << "Ordering_";
-    resultsFile.open( std::string("Octree_Benchmark_circle_minRecursion4_") + sOrdering.str() + std::string(".dat") );
+    resultsFile.open( std::string("Octree_Benchmark_point_minRecursion4_") + sOrdering.str() + std::string(".dat") );
     resultsFile << "# worldsize totalTraffic interTraffic\n";
     
 for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
     
     VecD size(100), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
-
-    /* refine all cells to some value */
-    tout << "Initial homogenous Refinement\n";
 	Octree::Octree<int,SIMDIM>::iterator it;
+    
+    /* refine all cells to some value */
+    /*tout << "Initial homogenous Refinement\n";
 	int maxRecursion = 2;
 	for ( int i=0; i<maxRecursion; i++) {
         tout << i << "th Refinement\n";
@@ -69,10 +69,10 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
 			else
 				++it;
 		}
-	}
+	}*/
 
     /* refine a subsection of the cells one more time */
-    tout << "Refinement of a subsection\n";
+    /*tout << "Refinement of a subsection\n";
 	it = tree.begin();
 	while ( it!=tree.end() ) {
 		if ( it->IsLeaf() and it->center.norm() < 0.4 )
@@ -86,7 +86,7 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
 			(it++)->GrowUp();
 		else
 			++it;
-	}
+	}*/
 
     /* refine a subsection of the cells one more time */
     /*tout << "Refinement of a subsection\n";
@@ -100,6 +100,11 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
     VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
     tree.FindLeafContainingPos( pos*tree.size )->GrowUp(); */
 
+    int maxRecursion = 6;
+    VecD pos(0); pos[0]=0.1; pos[1]=0.1;
+    for ( int i = 0; i < maxRecursion; ++i )
+        tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+    
     /* Count Cells */
     tout << "Count Cells\n";
     int NValues = 0;
