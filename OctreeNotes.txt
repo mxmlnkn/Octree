@@ -1,0 +1,37 @@
+ToDo:
+  - Benchmark Communication
+    - different forms ( o and spiraling more and more to one point )
+    - use different amount of overall cells
+    - use different amount of ranks/nodes
+  - Split Vector into TVec and normal Vec (only difference being template< int T_DIM> ... -.- => just scrap TVec ... or maybe compare speed !)
+  - improve weighting, or else the last rank will receive increasingly more work for greater world sizes !
+
+Parent at (0.25,0.25) with size (0.5,0.5)
+  Leaf at (0.125,0.125) with size (0.25,0.25)
+    (0.125,0.125) -> 1
+  Leaf at (0.125,0.375) with size (0.25,0.25)
+    (0.125,0.375) -> 1
+  Leaf at (0.375,0.125) with size (0.25,0.25)
+    (0.375,0.125) -> 1
+  Leaf at (0.375,0.375) with size (0.25,0.25)
+    (0.375,0.375) -> 1
+
+[countLeaves] (0.25,0.25)
+[countLeaves] (0.125,0.125)
+    [countLeaves] (0.0625,0.0625)
+    [countLeaves] (0.0625,0.1875)
+    [countLeaves] (0.1875,0.0625)  -> zum Fick man! warum wird das nicht angezeigt?
+    [countLeaves] (0.1875,0.1875)
+[countLeaves] (0.125,0.375)
+[countLeaves] (0.375,0.125)
+[countLeaves] (0.375,0.375)
+   (0.25,0.25) -> 7
+
+
+
+
+
+
+Done:
+  - Put Octree::iterator into OctreeNode and somehow wrap it to Octree
+

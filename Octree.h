@@ -61,6 +61,7 @@ public:
 public:
     VecD center, size;
     typedef class Node<T_DTYPE,T_DIM> Node;
+    typedef typename Node::iterator iterator;
     Node * root; // root can be leaf or child!
 
     Octree(void);
@@ -75,29 +76,13 @@ public:
     /* Returns false if datum not found */
     bool RemoveData( const VecD pos, T_DTYPE * const object );
     bool MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
+    Node * FindLeafContainingPos( const VecD & pos );
 
     /*bool CheckIntegrityParents( void );
     bool CheckIntegrityPositions( void );
     bool CheckIntegrityChilds( void ); */
     bool CheckIntegrity( void );
 
-    class iterator {
-    private:
-        typedef struct{ int ichild; Node* node; } tododata;
-        std::stack<tododata> todo;
-    public:
-        iterator(void);
-        iterator( Node * );
-        ~iterator(void);
-        iterator(const iterator &);
-        void operator= (const iterator &);
-
-        iterator& operator++(void);
-        bool operator==(const iterator &);
-        bool operator!=(const iterator &);
-        Node& operator*(void) const;
-        Node* operator->(void) const;
-    };
     iterator begin(void) const;
     iterator end(void) const;
 

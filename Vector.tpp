@@ -215,6 +215,29 @@ T_DTYPE Vec<T_DTYPE,T_DIM>::sum( void ) const {
     return tmp;
 }
 
+template<typename T_DTYPE, int T_DIM>
+T_DTYPE Vec<T_DTYPE,T_DIM>::min( void ) const {
+    T_DTYPE tmp = this->data[0];
+    for (int i=0; i<T_DIM; i++)
+        if ( this->data[i] < tmp )
+            tmp = this->data[i];
+    return tmp;
+}
+
+template<typename T_DTYPE, int T_DIM>
+T_DTYPE Vec<T_DTYPE,T_DIM>::max( void ) const {
+    T_DTYPE tmp = this->data[0];
+    for (int i=0; i<T_DIM; i++)
+        if ( this->data[i] > tmp )
+            tmp = this->data[i];
+    return tmp;
+}
+
+template<typename T_DTYPE, int T_DIM>
+T_DTYPE Vec<T_DTYPE,T_DIM>::mean( void ) const {
+    return this->sum() / double(T_DIM);
+}
+
 /*template<typename T_DTYPE> // only available for 3D
 Vec<T_DTYPE,3> Vec<T_DTYPE,3>::cross(const Vec<T_DTYPE,3> & b) const {
     Vec<T_DTYPE,3> res(0);

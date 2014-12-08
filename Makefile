@@ -5,14 +5,21 @@ all : libpngwriter testOctree testMatrix MainYee Main
 
 libpngwriter    :
 	cd pngwriter; make all
-
-testOctree  : testOctree.cpp OctreeNode.h OctreeNode.tpp OctreeToSvg.h OctreeToSvg.tpp
+Vector : Vector.tpp Vector.h
+	
+Octree : OctreeNode.h OctreeNode.tpp OctreeToSvg.h OctreeToSvg.tpp
+	
+	
+testOctree  : testOctree.cpp Vector Octree
+	g++ $@.cpp -o $@.exe $(CFLAGS)
+	
+testOctree2 : testOctree2.cpp Vector Octree
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
 testMatrix  : testMatrix.cpp
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
-MainYee : libpngwriter MainYee.cpp
+MainYee : libpngwriter MainYee.cpp YeeCell.h
 	mkdir -p output
 	mpic++ $@.cpp -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter/ -L ./pngwriter/ -lz -lpngwriter -lpng
 

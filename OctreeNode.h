@@ -48,21 +48,17 @@ private:
  * himself                                                                    */
     const int maxdata = OCTREE_MAX_OBJECTS_PER_LEAF;
     Datalist data;
-    
+
 /* converts 001 to (-1,-1,1), 101 to (-1,1,-1) and so on. With this we can    *
  * map 0...7 to all eight neighbors in an Octree or respectively 0...3 for a  *
  * Quadtree or 0...2^N-1 for a tree in N dimensions                           */
     VecI ConvertNumberToDirection( const int  ) const;
-    int  ConvertDirectionToNumber( const VecI ) const;
+/* If the direction contains an entry which is not 1 or -1 then it's not the  *
+ * format we expect => return -1                                              */
+    static int ConvertDirectionToNumber( const VecI );
 /* Traverses the Octree non-recursively deeper and deeper if necessary to     *
  * find the octant lead which encompasses a given position                    */
     Node * FindLeafContainingPos( const VecD & pos );
-/* Give birth to eight new children with the correct coordinates and sizes.   *
- * It's private, so no reason to not give this a funny name :)                */
-    void GrowUp(void);
-/* Tries to collapse all children into the parent                             */
-    bool Rejuvenate(void);
-    bool HasOnlyLeaves(void) const;
 
 public:
 /* Forbid empty constructor, because we always have to create a node with a   *
@@ -78,13 +74,44 @@ public:
  * if it has grown big enough, i.e. has exceeded OCTREE_MAX_OBJECTS_PER_LEAF  */
     Node(Node * const parent, VecD const cent, VecD const size);
 
-/* Some Functions granting read access to private variables                   */
-    const Node *     getChildPtr( const int i ) const;
-    const Datapoint * getDataPtr( const int i ) const;
+
+    class iterator {
+    private:
+        typedef struct{ int ichild; Node* node; } tododata;
+        std::stack<tododata> todo;
+    public:
+        iterator(void);
+        iterator( Node * );
+        ~iterator(void);
+        iterator(const iterator &);
+        void operator= (const iterator &);
+
+        iterator& operator++(void);
+        iterator operator++( int unused );
+        bool operator==(const iterator &);
+        bool operator!=(const iterator &);
+        Node& operator*(void) const;
+        Node* operator->(void) const;
+    };
+    iterator begin(void);
+    iterator end(void);
     
+    
+/* Some Functions granting read access to private variables                   */
+    const Node * getChildPtr( const int i ) const;
+    const Datapoint getDataPtr( const int i ) const;
+    VecD getSize( void ) const;
+
 /* Test if a point lies inside the space described by this node               */
     bool IsInside ( const VecD & pos ) const;
-    
+
+/* Give birth to eight new children with the correct coordinates and sizes.   *
+ * It's private, so no reason to not give this a funny name :)                */
+    void GrowUp(void);
+/* Tries to collapse all children into the parent                             */
+    bool Rejuvenate(void);
+    bool HasOnlyLeaves(void) const;
+
 /* This is for example needed to decide whether we have reached an end in our *
  * recursive search for some data                                             */
     bool IsLeaf( void ) const;
@@ -106,6 +133,15 @@ public:
  * becomes a parent, then the childs will return 1. This being calculated     *
  * with the parents member                                                    */
     int getLevel( void ) const;
+/* Returns total amount of leaves, including those contained by childnodes if *
+ * existing                                                                   */
+    int countLeaves( void );
+/* returns neighboring cell in direction. (doesn't work with diagonal         *
+ * neighbors yet! If the neighbor cell in that direction is larger and has no *
+ * childnodes, then that is returned. If this cell is larger than the neigh-  *
+ * boring cells in that direction, then the cell of same size will be returned*/
+    Node * getNeighbor( const VecI & direction );
+
     
 /* <> would also suffice after operator<< instead of <T_DTYPE,T_DIM>, but one *
  * of both is needed or else the linker can't find the appropriate template   *

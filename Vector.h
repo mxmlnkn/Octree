@@ -44,6 +44,9 @@ public:
     double norm2( void ) const;
     T_DTYPE product( void ) const;
     T_DTYPE sum( void ) const;
+    T_DTYPE min( void ) const;
+    T_DTYPE max( void ) const;
+    T_DTYPE mean( void ) const;
 
     template<typename T_ETYPE> Vec  operator+ (const Vec<T_ETYPE, T_DIM> & v) const;
     template<typename T_ETYPE> Vec& operator-=(const Vec<T_ETYPE, T_DIM> & v);
@@ -75,3 +78,5 @@ Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & rightha
 
 template<typename T_DTYPE, int T_DIM>
 std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM> v );
+
+#include "Vector.tpp"

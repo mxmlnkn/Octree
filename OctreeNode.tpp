@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG_OCTREE_NODE 8
+#define DEBUG_OCTREE_NODE 9
 
 
 
@@ -89,9 +89,11 @@ typename Node<T_DTYPE,T_DIM>::VecI Node<T_DTYPE,T_DIM>::ConvertNumberToDirection
 }
 
 template<typename T_DTYPE, int T_DIM>
-int Node<T_DTYPE,T_DIM>::ConvertDirectionToNumber( const VecI direction ) const {
+int Node<T_DTYPE,T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
     int tmp = 0;
     for (int i=0; i<T_DIM; ++i) {
+        if ( direction[i]!=-1 and direction[i]!=+1 )
+            return -1;
         tmp = ( tmp << 1) | (1+direction[i])/2;
     }
 #if DEBUG_OCTREE_NODE >= 11
@@ -101,7 +103,7 @@ int Node<T_DTYPE,T_DIM>::ConvertDirectionToNumber( const VecI direction ) const 
 }
 
 template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::Node * Node<T_DTYPE,T_DIM>::FindLeafContainingPos
+Node<T_DTYPE,T_DIM> * Node<T_DTYPE,T_DIM>::FindLeafContainingPos
 ( const VecD & pos ) {
 /* Prone to rounding errors :(, except if worldsize is e.g. 1 and center is   *
  * 0, because in that case all sizes and new centers will be in the form of   *
@@ -257,16 +259,22 @@ const typename Node<T_DTYPE,T_DIM>::Node * Node<T_DTYPE,T_DIM>::getChildPtr( con
 
 
 template<typename T_DTYPE, int T_DIM>
-const typename Node<T_DTYPE,T_DIM>::Datapoint * Node<T_DTYPE,T_DIM>::getDataPtr( const int i ) const {
+const typename Node<T_DTYPE,T_DIM>::Datapoint Node<T_DTYPE,T_DIM>::getDataPtr( const int i ) const {
     typename Node::Datalist::const_iterator it = data.begin();
+    Datapoint empty; empty.object = NULL;
     if ( it == data.end() )
-        return NULL;
+        return empty;
     for (int j=0; j<i; ++j) {
         ++it;
         if ( it == data.end() )
-            return NULL;
+            return empty;
     }
-    return &(*it);
+    return *it;
+}
+
+template<typename T_DTYPE, int T_DIM>
+typename Node<T_DTYPE,T_DIM>::VecD Node<T_DTYPE,T_DIM>::getSize( void ) const {
+    return this->size;
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -279,6 +287,103 @@ int Node<T_DTYPE,T_DIM>::getLevel( void ) const {
     }
     return level;
 }
+
+template<typename T_DTYPE, int T_DIM>
+int Node<T_DTYPE,T_DIM>::countLeaves( void ) {
+    int sum = 0;
+    iterator it = this->begin();
+    while( it != this->end() ) {
+        if ( (it++)->IsLeaf() )
+            sum +=1;
+    }
+    return sum;
+}
+
+/* returns neighboring cell in direction. (doesn't work with diagonal         *
+ * neighbors yet! If the neighbor cell in that direction is larger and has no *
+ * childnodes, then that is returned. If this cell is larger than the neigh-  *
+ * boring cells in that direction, then the cell of same size will be returned*/
+
+template<typename T_DTYPE, int T_DIM>
+Node<T_DTYPE,T_DIM> * Node<T_DTYPE,T_DIM>::getNeighbor( const VecI & targetDir ) {
+    Node * root = this;
+    while ( root->parent != NULL )
+        root = root->parent;
+    VecD theoreticalPosition = this->center + this->size * targetDir;
+    //std::cout << "theoreticalPosition: " << theoreticalPosition << "\n";
+    if ( not root->IsInside( theoreticalPosition) )
+        return NULL;
+    Node * neighbor = root->FindLeafContainingPos( theoreticalPosition );
+    while ( neighbor->size < this->size )
+        neighbor = neighbor->parent;
+    return neighbor;
+}
+/* old version... when thinking about going down again following vectors I    *
+ * saw that it's doable in much much less lines. Basically two steps:         *
+ *   a) try to neighbor anticipating it to be of the same size -> use         *
+ *      FindleafContaining. This will get smaller or larger node              *
+ *   b) As it's not very useful and deterministic to get a smaller node as a  *
+ *      neighbor, we have to go up until we have a node of the same size      */
+#if 1==0
+    Node * curNode     = this;
+    Node * curParent   = this->parent;
+    Node * curNeighbor = NULL;
+    int levelsUp       = 0;
+    VecI relPosNode; int relIndexNode;
+    while( curParent != NULL ) {
+        /* Find curNode in curParent to get the Position */
+        relPosNode = ( curParent->center - curNode->center ) / (curNode->Size / 2);
+        for (int i=0; i<VecI::dim; i++)
+            assert( relPosNode[i] == -1 or relPosNode[i] == +1 );
+        /* Now apply vector pointing to neighbor and see if resulting         *
+         * position is inside the current parent                              */
+        relIndexNode = this->ConvertDirectionToNumber( relPosNode + targetDir );
+        if ( relIndexNode != -1 ) {
+            /* Found neighbor :) => still have to go levelsUp down again. In  *
+             * the best case levelsUp is still 0, so we can return after this */
+            curNeighbor = curParent->children[relIndexNode];
+            break;
+        } else {
+            curParent = curParent->parent;
+            curNode   = curNode->parent;
+            levelsUp++;
+        }
+    }
+    /* if we couldn't find a neighbor, because we are e.g. at the border of   *
+     * the octree global area (and we are not periodic (yet) ), then return   *
+     * NULL                                                                   */
+    if ( curNeighbor == NULL )
+        return NULL
+    /* We want to find the neighbor of same size if possible, so go down as   *
+     * much levels as we did have to go up. Depending on the direction the    *
+     * target neighbor node is in and the position the Current Node is in the *
+     * current parent, we have to go down                                     *
+     *    +-----------+-----+-----+
+     *    |           |     |     |
+     *    |           |     |     |
+     *    |           |     |     |
+     *    | (0.5,0.5) |-----+-----+
+     *    |           |     |     |
+     *    |           |     |     |
+     *    |           |     |     |
+     *    +--+--+--+--+-----+-----+
+     *    |  |  |  | P|     |     |
+     *    +--+--+--+--+  T  |     |
+     *    |  |  |  |  |     |     |
+     *    +--+--+--+--+-----+-----+
+     *    |  |  |  |  |     |     |
+     *    +--+--+--+--+     |     |
+     *    |  |  |  |  |     |     |
+     *    +--+--+--+--+-----+-----+
+     */
+    VecI downDirection = ( this->parent->center - this->center ) / (this->Size / 2);
+    while ( levelsUp != 0 ) {
+        /* go down in correct direction */
+        levelsUp--;
+    }
+    return curNeighbor;
+}
+#endif
 
 
 } // namespace Octree

@@ -113,6 +113,12 @@ bool Octree<T_DTYPE,T_DIM>::RemoveData( const VecD pos, T_DTYPE * const object )
 }
 
 template<typename T_DTYPE, int T_DIM>
+typename Octree<T_DTYPE,T_DIM>::Node* Octree<T_DTYPE,T_DIM>::FindLeafContainingPos( const VecD & pos )
+{
+    return this->root->FindLeafContainingPos( pos / this->size );
+}
+
+template<typename T_DTYPE, int T_DIM>
 bool Octree<T_DTYPE,T_DIM>::MoveData( const VecD pos, T_DTYPE * const object,
 const VecD newpos ) {
     Node * tmp = this->root->FindLeafContainingPos( pos / this->size );
@@ -180,6 +186,20 @@ bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
     return !foundError;
 }
 
+
+/* returns iterator with only root-node in todo stack */
+template<typename T_DTYPE, int T_DIM>
+typename Octree<T_DTYPE,T_DIM>::iterator Octree<T_DTYPE,T_DIM>::begin( void ) const {
+    iterator it( this->root );
+    return it;
+}
+
+/* returns iterator with empty stack */
+template<typename T_DTYPE, int T_DIM>
+typename Octree<T_DTYPE,T_DIM>::iterator Octree<T_DTYPE,T_DIM>::end( void ) const {
+    iterator it;
+    return it;
+}
 
 
 } // namespace Octree
