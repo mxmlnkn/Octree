@@ -17,7 +17,7 @@ public:
     typedef class Octree<T_DTYPE,T_DIM> Octreetype;
     typedef class Node<T_DTYPE,T_DIM> Node;
     
-private:
+//private:
     std::ofstream out;
     Octreetype tree;
     const double borderx;
@@ -60,6 +60,7 @@ public:
     void PrintGrid(void);
     void PrintPositions(void);
     void AnimateUpdated( const Octreetype & newtree );
+    VecD convertToImageCoordinates( const VecD pos );
 };
 
 

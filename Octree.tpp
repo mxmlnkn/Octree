@@ -189,8 +189,8 @@ bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
 
 /* returns iterator with only root-node in todo stack */
 template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::iterator Octree<T_DTYPE,T_DIM>::begin( void ) const {
-    iterator it( this->root );
+typename Octree<T_DTYPE,T_DIM>::iterator Octree<T_DTYPE,T_DIM>::begin( int ordering ) const {
+    iterator it( this->root, ordering );
     return it;
 }
 

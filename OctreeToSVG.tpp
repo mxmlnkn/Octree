@@ -115,14 +115,14 @@ void OctreeToSvg<T_DTYPE,T_DIM>::PrintPositions(void) {
         const Node * current = todo.top().node;
         if ( current->IsLeaf() ) {
             int i = 0;
-            while ( current->getDataPtr(i) != NULL ) {
+            while ( current->getDataPtr(i).object != NULL ) {
                 /* Draw object into the world! */
                 /* out << it->pos * imagesize << *(it->object) */
-                VecD center( VecD(0.5) + current->getDataPtr(i)->pos );
+                VecD center( VecD(0.5) + current->getDataPtr(i).pos );
                 center[1] = 1 - center[1];
                 center *= imagesize;   // scale image up
                 center += imageborder;
-                size_t id = reinterpret_cast<size_t>( current->getDataPtr(i)->object );
+                size_t id = reinterpret_cast<size_t>( current->getDataPtr(i).object );
                 out << "<circle"                          "\n"
                     << " id=\"" << id                << "\"\n"
                     << " cx=\"" << center[0] << "px" << "\"\n"
@@ -228,9 +228,9 @@ void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
 
         if ( currentnode->IsLeaf() ) {
             int i = 0;
-            while ( currentnode->getDataPtr(i) != NULL ) {
-                T_DTYPE * datum = currentnode->getDataPtr(i)->object;
-                VecD newpos = currentnode->getDataPtr(i)->pos;
+            while ( currentnode->getDataPtr(i).object != NULL ) {
+                T_DTYPE * datum = currentnode->getDataPtr(i).object;
+                VecD newpos = currentnode->getDataPtr(i).pos;
                 VecD oldpos = this->tree.FindData( datum ) / this->tree.size;
                 if ( oldpos != newpos ) {
                     #if DEBUG_OCTREE_SVG >= 9
@@ -321,6 +321,14 @@ void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
     this->tree = newtree;
 }
 
+template<typename T_DTYPE, int T_DIM>
+typename OctreeToSvg<T_DTYPE,T_DIM>::VecD OctreeToSvg<T_DTYPE,T_DIM>::convertToImageCoordinates( VecD pos ) {
+    pos   += VecD(0.5);
+    pos[1] = 1 - pos[1];  // flip along y-axis
+    pos   *= imagesize;   // scale image up
+    pos   += imageborder;
+    return pos;
+}
 
 } // namespace Octree
 

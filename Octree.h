@@ -83,7 +83,7 @@ public:
     bool CheckIntegrityChilds( void ); */
     bool CheckIntegrity( void );
 
-    iterator begin(void) const;
+    iterator begin(int ordering = 0) const;
     iterator end(void) const;
 
     friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, Octree<T_DTYPE,T_DIM>& tree );

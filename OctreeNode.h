@@ -29,13 +29,13 @@ public:
  *     size = VecD(1), center = VecD(0)                                       */
     VecD center;
     VecD size;
-    
+
 private:
 /* Pointer of these are NULL, if its a leaf node. The mapping between array   *
  * index and position is being done by ConvertNumberToDirection    -------    *
- * and vice versa. So 0 is the lower left back octant, while      | 1 | 3 |   *
+ * and vice versa. So 0 is the lower left back octant, while      | 1 | 0 |   *
  * 1 is the lower left front octant and so on. They are not        -------    *
- * stored in the order they should be traversed , therefore a     | 0 | 2 |   *
+ * stored in the order they should be traversed , therefore a     | 3 | 2 |   *
  *  a traversing mapping additionally                              -------    */
     const int nchildren = compileTime::pow(2,T_DIM);
     Node * children[ compileTime::pow(2,T_DIM) ];
@@ -49,9 +49,10 @@ private:
     const int maxdata = OCTREE_MAX_OBJECTS_PER_LEAF;
     Datalist data;
 
-/* converts 001 to (-1,-1,1), 101 to (-1,1,-1) and so on. With this we can    *
- * map 0...7 to all eight neighbors in an Octree or respectively 0...3 for a  *
- * Quadtree or 0...2^N-1 for a tree in N dimensions                           */
+/* converts 001 to (+1,+1,-1), 101 to (-1,-1,+1) and so on. The binary        *
+ * representation is essentially treated as an array of sign bits. With this  *
+ * we can map 0...7 to all eight neighbors in an Octree or respectively 0...3 *
+ * for a Quadtree or 0...2^N-1 for a tree in N dimensions                     */
     VecI ConvertNumberToDirection( const int  ) const;
 /* If the direction contains an entry which is not 1 or -1 then it's not the  *
  * format we expect => return -1                                              */
@@ -77,11 +78,28 @@ public:
 
     class iterator {
     private:
-        typedef struct{ int ichild; Node* node; } tododata;
+        typedef struct{ int ichild; Node* node; int orientation; } tododata;
         std::stack<tododata> todo;
+    /* Ordering 0: Morton (Depth first traversal), 1: GrayCode, 2: Hilbert    */
+        int ordering;
+    /* [ordering method,see above][parentOrientiation][n-th child to traverse]*
+     * => child index like used to access children-array of a Node and        *
+     *  orientation for that child                                            *
+     * ToDo: Allocate and Calculate this dynamically on very first iterator   *
+     *       access. Also this only works for 2D !!!                          */
+        static struct orderingTableStruct {
+            struct {
+                int ordering   [2][4];
+                int orientation[2][4];
+            } GrayCode;
+            struct {
+                int ordering   [4][4];
+                int orientation[4][4];
+            } Hilbert;
+        } orderingTable;
     public:
         iterator(void);
-        iterator( Node * );
+        iterator( Node *, int ordering = 0 );
         ~iterator(void);
         iterator(const iterator &);
         void operator= (const iterator &);
@@ -93,10 +111,10 @@ public:
         Node& operator*(void) const;
         Node* operator->(void) const;
     };
-    iterator begin(void);
+    iterator begin(int ordering = 0);
     iterator end(void);
-    
-    
+
+
 /* Some Functions granting read access to private variables                   */
     const Node * getChildPtr( const int i ) const;
     const Datapoint getDataPtr( const int i ) const;
@@ -142,7 +160,7 @@ public:
  * boring cells in that direction, then the cell of same size will be returned*/
     Node * getNeighbor( const VecI & direction );
 
-    
+
 /* <> would also suffice after operator<< instead of <T_DTYPE,T_DIM>, but one *
  * of both is needed or else the linker can't find the appropriate template   *
  * global function                                                            */

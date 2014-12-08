@@ -5,14 +5,57 @@
 
 namespace Octree {
 
+namespace Ordering {
+    int Morton   = 0;
+    int GrayCode = 1;
+    int Hilbert  = 2;
+}
+
+template<typename T_DTYPE, int T_DIM>
+typename Node<T_DTYPE,T_DIM>::iterator::orderingTableStruct
+    Node<T_DTYPE,T_DIM>::iterator::orderingTable =
+          {
+            /* Gray-Code ordering */
+            { /* ordering Table */
+              { /* Row 0 meaning parent has orientation 0 */
+                /* Columns. 0th column contains index and orientation */
+                { 0,1,3,2 },
+                { 3,2,0,1 }
+              },
+              /* orientation Table */
+              { /* Row 0 meaning parent has orientation 0 */
+                /* Columns. 0th column contains index and orientation */
+                { 0,1,1,0 },
+                { 1,0,0,1 }
+              }
+            },
+            /* Hilbert ordering */
+            { /* ordering Table */
+              {
+                { 0,1,3,2 },
+                { 0,2,3,1 },
+                { 3,1,0,2 },
+                { 3,2,0,1 }
+              },
+              /* orientation Table */
+              {
+                { 1,0,0,2 },
+                { 0,1,1,3 },
+                { 3,2,2,0 },
+                { 2,3,3,1 }
+              }
+            }
+          };
 
 /* used by begin() */
 template<typename T_DTYPE, int T_DIM>
 Node<T_DTYPE,T_DIM>::iterator::iterator( void ) {}
 
 template<typename T_DTYPE, int T_DIM>
-Node<T_DTYPE,T_DIM>::iterator::iterator( Node * root ) {
-    tododata toBeStored = { /* child index */ 0, root };
+Node<T_DTYPE,T_DIM>::iterator::iterator( Node * root, int ordering )
+: ordering(ordering)
+{
+    tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
     todo.push( toBeStored );
 }
 
@@ -21,30 +64,68 @@ Node<T_DTYPE,T_DIM>::iterator::~iterator( void ) {}
 
 template<typename T_DTYPE, int T_DIM>
 Node<T_DTYPE,T_DIM>::iterator::iterator( const iterator & src ) {
-    this->todo = src.todo;
+    this->todo     = src.todo;
+    this->ordering = src.ordering;
 }
 
 template<typename T_DTYPE, int T_DIM>
 void Node<T_DTYPE,T_DIM>::iterator::operator=( const iterator & src ) {
-    this->todo = src.todo;
+    this->todo     = src.todo;
+    this->ordering = src.ordering;
 }
 
 template<typename T_DTYPE, int T_DIM>
 typename Node<T_DTYPE,T_DIM>::iterator& Node<T_DTYPE,T_DIM>::iterator::operator++( void ) {
+/* The iterator position is defined by what is currently at the top of the    *
+ * todo-stack. Therefore we try to add exactly one element to the stack top.  *
+ * If the stack top is a leaf, then that is the last iteration we were at, so *
+ * pop it and look at next element, which should be a parent. That parent     *
+ * also has save an ichild index specifying how much children we already      *
+ * pushed to the todo-stack from this parent. If all children already were    *
+ * pushed, then pop this parent. When pushing children no difference is being *
+ * whether the child is a leaf or a parent !                                  */
     while( !todo.empty() ) {
         const Node * currentNode = todo.top().node;
         if ( currentNode->IsLeaf() ) {
             todo.pop();
-        } else {
-            if ( currentNode->getChildPtr( todo.top().ichild ) != NULL ) {
-                tododata toBeStored = { /* child index */ 0,
-                               const_cast<Node*>( currentNode->getChildPtr( todo.top().ichild ) ) };
-                todo.top().ichild++;
-                todo.push(toBeStored);
-                return *this;
-            } else
-                todo.pop();
-        }
+        } else if ( todo.top().ichild < todo.top().node->nchildren ) {
+/* The first child being pushed is the root with an initial orientation of 0. *
+ * From that orientation we can derive the orientation and ordering for the   *
+ * childs. So instead of accessing children[0],children[1],... we access:     *
+ *   children[ orderingTable.Hilbert.ordering[0 <- root orientation ][0]      *
+ *   children[ orderingTable.Hilbert.ordering[0 <- root orientation ][1]      *
+ * The orientation of that child 0,1,... then is given by:                    *
+ *   children[ orderingTable.Hilbert.orientation[0][0,1,...]                  */
+            int childIndex       = -1;
+            int childOrientation = -1;
+            switch ( this->ordering ) {
+                case 0: 
+                    childIndex = todo.top().ichild;
+                    childOrientation = todo.top().orientation;
+                    break;
+                case 1:
+                    childIndex = this->orderingTable.GrayCode.ordering
+                        [todo.top().orientation][todo.top().ichild];
+                    childOrientation = orderingTable.GrayCode.orientation
+                        [todo.top().orientation][todo.top().ichild];
+                    break;
+                case 2: 
+                    childIndex = this->orderingTable.Hilbert.ordering
+                        [todo.top().orientation][todo.top().ichild];
+                    childOrientation = orderingTable.Hilbert.orientation
+                        [todo.top().orientation][todo.top().ichild];
+                    break;
+            }
+            const Node * childPtr = currentNode->getChildPtr( childIndex );
+            assert( childPtr != NULL );
+            /* child index we currently are at is first to begin with: 0 */
+            tododata toBeStored = { 0, const_cast<Node*>( childPtr ),
+                                    childOrientation                 };
+            todo.top().ichild++;
+            todo.push(toBeStored);
+            return *this;
+        } else /* all children of parents already pushed once */
+            todo.pop();
     }
     return *this;
 }
@@ -78,8 +159,8 @@ typename Node<T_DTYPE,T_DIM>::Node * Node<T_DTYPE,T_DIM>::iterator::operator->( 
 
 /* returns iterator with only root-node in todo stack */
 template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator Node<T_DTYPE,T_DIM>::begin( void ) {
-    iterator it( this );
+typename Node<T_DTYPE,T_DIM>::iterator Node<T_DTYPE,T_DIM>::begin( int ordering ) {
+    iterator it( this, ordering );
     return it;
 }
 
