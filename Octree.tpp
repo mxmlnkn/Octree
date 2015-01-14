@@ -148,7 +148,7 @@ const VecD newpos ) {
 template<typename T_DTYPE, int T_DIM>
 bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
     bool foundError = false;
-    typename Octree::Octree<T_DTYPE,T_DIM>::iterator it = this->begin();
+    typename Octree<T_DTYPE,T_DIM>::iterator it = this->begin();
     while( it != this->end() ) {
         if ( it->IsLeaf() ) {
             typename Node::Datalist::iterator dataIt = it->data.begin();

@@ -59,7 +59,7 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
 
     VecD size(100), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
-	Octree::Octree<int,SIMDIM>::iterator it;
+    Octree::Octree<int,SIMDIM>::iterator it;
 
     #define INITSETUP 5
     #if INITSETUP == 1
@@ -116,7 +116,7 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
             tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
     #endif
     #if INITSETUP == 5
-        int targetCells  = 200;
+        int targetCells  = 187;
         int currentCells = 1;
         while ( currentCells < targetCells ) {
             VecD pos(0);
@@ -129,14 +129,16 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
 
     /* Count Cells */
-    tout << "Count Cells\n";
+    tout << "Count Cells...";
     int NValues = 0;
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() )
-			NValues++;
+    it = tree.begin();
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() )
+            NValues++;
         ++it;
-	}
+    }
+    tout << NValues << std::endl;
+    tout << "Count Cells internally..." << tree.root->countLeaves() << std::endl;
 
     if ( worldsize > NValues )
         break;
@@ -148,26 +150,27 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
         data[i] = worldsize-1;
 
     /* Insert testDate (later YeeCell-Data or Absorbercelldata, or Guard) at  *
-     * the center of every lead node. By default all cells will be assigned   *
+     * the center of every leaf node. By default all cells will be assigned   *
      * to last rank                                                           */
     int dataInserted = 0;
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() ) {
+    it = tree.begin();
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() ) {
+            assert( dataInserted < NValues );
+            it->InsertData( it->center, &(data[dataInserted]) );
             ++dataInserted;
-			it->InsertData( it->center, &(data[dataInserted]) );
         }
         ++it;
-	}
+    }
 
     /* Calculate total costs of all cells. Could be done when counting cells  */
     double totalCosts = 0;
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() )
-			totalCosts += 1. / it->size.min();
-		++it;
-	}
+    it = tree.begin();
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() )
+            totalCosts += 1. / it->size.min();
+        ++it;
+    }
     double optimalCosts = totalCosts / double(worldsize);
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 
@@ -189,12 +192,12 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     double delay     = 1./64.; // 8 frames per second at max achievable with SVG
     double rankDelay = 1./64.;
 
-	it = tree.begin( ORDERING );
+    it = tree.begin( ORDERING );
     Octree::Octree<int,SIMDIM>::iterator it0 = tree.begin();
     Octree::Octree<int,SIMDIM>::iterator it1 = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() ) {
-			cumulativeCosts += 1. / it->getSize().min();
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() ) {
+            cumulativeCosts += 1. / it->getSize().min();
             if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
                 cumulativeCosts = 1. / it->getSize().min();
                 curRank++;
@@ -243,9 +246,9 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
                 << " begin=\"" << delay*double(currentTime) << "s\""     "\n"
                 << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
                 << "/>"                                                  "\n";
-		}
+        }
         ++it;
-	}
+    }
 
     /* Count Neighbors intra- and interprocessdata to transmit */
     double * costs = new double[worldsize];
@@ -256,9 +259,9 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     double totalTraffic = 0;
     const int bytesPerCell = (6+4)*8;
 
-	it = tree.begin( ORDERING );
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() ) {
+    it = tree.begin( ORDERING );
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() ) {
             costs[ *(it->getDataPtr(0).object) ] += 1. / it->getSize().min();
             int nNeighbors = 0;
             int nLeavesOnOtherNodes = 0;
@@ -293,9 +296,9 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
 
             //tout << it->center << " needs data from "
             //     << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n";
-		}
+        }
         ++it;
-	}
+    }
 
     tout << "Number of Cells : " << tree.root->countLeaves() << "\n";
     for (int i=0; i<worldsize; i++) {

@@ -170,7 +170,7 @@ void Node<T_DTYPE,T_DIM>::InsertData( const VecD pos, T_DTYPE * const object )
 /* Push back no matter of the final size. It will be split up when splitting  *
  * the octant to 8 new octants anyway                                         */
     this->data.push_back( packed );
-    if ( data.size() > this->maxdata )
+    if ( data.size() > (unsigned int)( this->maxdata ) )
         this->GrowUp();
 }
 
