@@ -1,5 +1,5 @@
 CXX    = g++
-CFLAGS = -Wall -std=c++0x -g
+CFLAGS = -Wall -std=c++0x -g -O0
 
 all : libpngwriter testOctree testMatrix MainYee Main
 

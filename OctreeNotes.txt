@@ -1,4 +1,8 @@
 ToDo:
+  - implement worst distribution (vierfarbenlandkarte)
+  - redo with equal weighting (everywhere 1000 cells)
+
+
   - Benchmark Communication
     - different forms ( o and spiraling more and more to one point )
     - use different amount of overall cells

@@ -78,13 +78,15 @@ public:
     bool MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
     Node * FindLeafContainingPos( const VecD & pos );
 
-    /*bool CheckIntegrityParents( void );
-    bool CheckIntegrityPositions( void );
-    bool CheckIntegrityChilds( void ); */
+/* Returns true, if it found not structural error. It checks for:             *
+ *  - Datapoint (particle) being inside the Octree-cell its bein stored in    *
+ *  - all children pointing to the parent in which they are being stored      *
+ *  - leaf nodes containing illegitimate children                             *
+ *  - pointer to childs being NULL / missing                                  */
     bool CheckIntegrity( void );
 
-    iterator begin(int ordering = 0) const;
-    iterator end(void) const;
+    typename Node::iterator begin(int ordering = 0) const;
+    typename Node::iterator end(void) const;
 
     friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, Octree<T_DTYPE,T_DIM>& tree );
 };

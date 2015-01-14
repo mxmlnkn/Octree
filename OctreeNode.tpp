@@ -130,6 +130,7 @@ Node<T_DTYPE,T_DIM> * Node<T_DTYPE,T_DIM>::FindLeafContainingPos
                   << 2*VecI( pos.GreaterThan( tmp->center )) - 1 << std::endl;
 #endif
     }
+    assert( tmp->IsLeaf() );
     return tmp;
 }
 

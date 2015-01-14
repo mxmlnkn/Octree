@@ -119,17 +119,28 @@ int main( int argc, char **argv )
 		size[i] = NUMBER_OF_CELLS[i];
 	CellMatrix data(size);
 	/* Spawn Material on right side with non-zero electrical resistance */
+    /* default initiaization */
 	for ( int i = 0; i < data.getSize().product(); i++ ) {
 		data[i].epsilon = EPS0;
 		data[i].mu      = MUE0;
 		data[i].sigmaE  = 0;
 		data[i].sigmaM  = 0;
+    }
+    
+    /* Result: 014 - broken total reflexion (two glass plates with small      *
+     *               vacuum/air slit inbetween                                */
+	/*for ( int i = 0; i < data.getSize().product(); i++ ) {
 		if ( data.getVectorIndex( i )[0] < NUMBER_OF_CELLS_X-40-128 or
  		     data.getVectorIndex( i )[0] > NUMBER_OF_CELLS_X-40-128+2  ) {
 			const double n  = 1.33; // = sqrt( eps_r * mue_r )
 			data[i].epsilon = EPS0 * n*n;
-			//data[i].sigmaE  = 2e4;
-			//data[i].sigmaM  = 2e4 * MUE0/EPS0;
+		}
+	}*/
+    /* Result 009: absorbing Material on right side */
+	for ( int i = 0; i < data.getSize().product(); i++ ) {
+		if ( data.getVectorIndex( i )[0] > 200 ) {
+			data[i].sigmaE  = 2e8;
+			data[i].sigmaM  = 2e8 * MUE0/EPS0;
 		}
 	}
 	/* Spawn Barrier with one slit and perfectly reflecting material else */

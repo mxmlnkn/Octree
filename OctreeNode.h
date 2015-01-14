@@ -117,6 +117,12 @@ public:
 
 /* Some Functions granting read access to private variables                   */
     const Node * getChildPtr( const int i ) const;
+/* Because this Octree initially was intended to hold Particles with          *
+ * attributes, it is possible to store MAX_OBJECTS_PER_LEAF void pointers     *
+ * The parameter i specifies which one of those pointers we want.             *
+ * This may become deprecated, as the Octree should be kept to its basic      *
+ * functionality. The user can store a pointer to an array himself, if he     *
+ * needs that                                                                 */
     const Datapoint getDataPtr( const int i ) const;
     VecD getSize( void ) const;
 

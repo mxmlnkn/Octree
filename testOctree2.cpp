@@ -7,8 +7,9 @@ make testOctree && ./testOctree.exe
 
 #include <iostream>
 #include <cmath>    // sin
-#include <cstdlib>  // malloc
+#include <cstdlib>  // malloc, rand
 #include <random>   // normal_distribution
+#include <ctime>    // time
 
 namespace compileTime {
 
@@ -31,13 +32,15 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 typedef Vec<double,SIMDIM> VecD;
 typedef Vec<double,SIMDIM> VecI;
 
+#define RANDOM_SEED 24756139
+
+
+
 int main( int argc, char **argv )
 {
     tout.Open("out");
-    
-    //int ORDERING = Octree::Ordering::Morton;
-    
-    
+    srand( RANDOM_SEED );
+
 /* Run this Programm for several Ordering Methods ! */
 for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
 /* Run this Programm for several world sizes ! */
@@ -49,62 +52,82 @@ for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
         case 2: sOrdering << "Hilbert_" ; break;
     } sOrdering << "Ordering_";
     resultsFile.open( std::string("Octree_Benchmark_point_minRecursion4_") + sOrdering.str() + std::string(".dat") );
-    resultsFile << "# worldsize totalTraffic interTraffic\n";
-    
-for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
-    
+    resultsFile << "# worldsize totalTraffic interTraffic messageCount\n" << std::flush;
+
+for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
+    tout << "World Size      : " << worldsize << "\n";
+
     VecD size(100), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
 	Octree::Octree<int,SIMDIM>::iterator it;
-    
+
+    #define INITSETUP 5
+    #if INITSETUP == 1
     /* refine all cells to some value */
-    /*tout << "Initial homogenous Refinement\n";
-	int maxRecursion = 2;
-	for ( int i=0; i<maxRecursion; i++) {
-        tout << i << "th Refinement\n";
-		it = tree.begin();
-		while ( it!=tree.end() ) {
-			if ( it->IsLeaf() )
-				(it++)->GrowUp();
-			else
-				++it;
-		}
-	}*/
+        tout << "Initial homogenous Refinement\n";
+        int maxRecursion = 2;
+        for ( int i=0; i<maxRecursion; i++) {
+            tout << i << "th Refinement\n";
+            it = tree.begin();
+            while ( it!=tree.end() ) {
+                if ( it->IsLeaf() )
+                    (it++)->GrowUp();
+                else
+                    ++it;
+            }
+        }
+    #endif
+    #if INITSETUP == 2
+        /* refine a subsection of the cells one more time */
+        tout << "Refinement of a subsection\n";
+        it = tree.begin();
+        while ( it!=tree.end() ) {
+            if ( it->IsLeaf() and it->center.norm() < 0.4 )
+                (it++)->GrowUp();
+            else
+                ++it;
+        }
+        it = tree.begin();
+        while ( it!=tree.end() ) {
+            if ( it->IsLeaf() and it->center.norm() < 0.25 )
+                (it++)->GrowUp();
+            else
+                ++it;
+        }
+    #endif
+    #if INITSETUP == 3
+        /* refine a subsection of the cells one more time */
+        tout << "Refinement of a subsection\n";
+        it = tree.begin();
+        while ( it!=tree.end() ) {
+            if ( it->IsLeaf() and it->center[0] > 0 )
+                (it++)->GrowUp();
+            else
+                ++it;
+        }
+        VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
+        tree.FindLeafContainingPos( pos*tree.size )->GrowUp(); */
+    #endif
+    #if INITSETUP == 4
+        /* refine cells including fixed point many times */
+        int maxRecursion = 10;
+        VecD pos(0); pos[0]=0.1; pos[1]=0.1;
+        for ( int i = 0; i < maxRecursion; ++i )
+            tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+    #endif
+    #if INITSETUP == 5
+        int targetCells  = 200;
+        int currentCells = 1;
+        while ( currentCells < targetCells ) {
+            VecD pos(0);
+            pos[0] = double(rand()) / double(RAND_MAX) - 0.5;
+            pos[1] = double(rand()) / double(RAND_MAX) - 0.5;
+            tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+            currentCells += 3;
+        }
+    #endif
+    std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
 
-    /* refine a subsection of the cells one more time */
-    /*tout << "Refinement of a subsection\n";
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() and it->center.norm() < 0.4 )
-			(it++)->GrowUp();
-		else
-			++it;
-	}
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() and it->center.norm() < 0.25 )
-			(it++)->GrowUp();
-		else
-			++it;
-	}*/
-
-    /* refine a subsection of the cells one more time */
-    /*tout << "Refinement of a subsection\n";
-	it = tree.begin();
-	while ( it!=tree.end() ) {
-		if ( it->IsLeaf() and it->center[0] > 0 )
-			(it++)->GrowUp();
-		else
-			++it;
-	}
-    VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
-    tree.FindLeafContainingPos( pos*tree.size )->GrowUp(); */
-
-    int maxRecursion = 6;
-    VecD pos(0); pos[0]=0.1; pos[1]=0.1;
-    for ( int i = 0; i < maxRecursion; ++i )
-        tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
-    
     /* Count Cells */
     tout << "Count Cells\n";
     int NValues = 0;
@@ -114,6 +137,9 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
 			NValues++;
         ++it;
 	}
+
+    if ( worldsize > NValues )
+        break;
 
     /* allocate data (which stores assigned ranks) to which pointers will     *
      * given to octree. And default it to the last rank                       */
@@ -160,9 +186,9 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
     double cumulativeCosts = 0;
     int curRank = 0;
     int currentTime  = 0;
-    double delay     = 1./64.; // 8 frames per second at max achievable
+    double delay     = 1./64.; // 8 frames per second at max achievable with SVG
     double rankDelay = 1./64.;
-    
+
 	it = tree.begin( ORDERING );
     Octree::Octree<int,SIMDIM>::iterator it0 = tree.begin();
     Octree::Octree<int,SIMDIM>::iterator it1 = tree.begin();
@@ -265,27 +291,30 @@ for ( int worldsize = 1; worldsize < 128; ++worldsize ) {
             totalTraffic += bytesPerCell * nNeighbors;
             interTraffic += bytesPerCell * nLeavesOnOtherNodes;
 
-            /*tout << it->center << " needs data from "
-                 << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n"; */
+            //tout << it->center << " needs data from "
+            //     << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n";
 		}
         ++it;
 	}
 
-    tout << "World Size      : " << worldsize << "\n";
     tout << "Number of Cells : " << tree.root->countLeaves() << "\n";
     for (int i=0; i<worldsize; i++) {
         tout << "Cost assigned to rank " << i << " is " << costs[i] << "\n";
     }
     tout << "Total data to be read from neighbors : " << totalTraffic << "\n";
     tout << "Data which needs to be communicated  : " << interTraffic << "\n";
-    
-    resultsFile << worldsize << " " << totalTraffic << " " << interTraffic << "\n";
 
+    resultsFile << worldsize << " " << totalTraffic << " " << interTraffic << "\n" << std::flush;
+
+    tout << "Freeing allocated memory for costs\n";
     delete[] costs;
+    tout << "Freeing allocated memory for data...\n";
     free(data);
+    tout << "OK\n";
 
 } /* Run this Programm for several world sizes ! */
+    tout << "Closing File now\n";
     resultsFile.close();
 } /* Run this Programm for several Ordering Methods ! */
-
+    tout << "Exiting Program now\n";
 }
