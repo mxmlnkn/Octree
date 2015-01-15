@@ -1,0 +1,10 @@
+Functionality:
+  - stores matrix of structs, e.g. cells
+  - supplies iterators to iterate over core, border and guard of that matrix.
+    iterators can be dereferenced to get matrix elements / cells
+  - stores arbitrary number of versions of matrix elements which can be 
+    cycled through. Thought to be used with timestepping algorithms which need
+    to access older timesteps, or just for storing newly calculated data 
+    without overwriting current ones by using this as some kind of swap feature
+        TIMESTEPS_NEEDED_FOR_CALCULATION
+    If above is set to 2, it basically acts as a swap or double buffer

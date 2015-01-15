@@ -99,47 +99,42 @@ My Raw Matrix with Guard(size=2) is  My Raw Matrix with Guard(size=2) is
 #include <mpi.h>
 #include <time.h>
 
-#include "TeeStream.h"
+#include "teestream/TeeStream.h"
 
-#include "Vector.h"
+#include "math/TVector.h"
 typedef Vec<double, SIMDIM> VecD;
 typedef Vec<int   , SIMDIM> VecI;
 
-#include "SimulationBox.h"
-typedef SimulationBox::SimulationBox<SIMDIM,GUARDSIZE> SimBox; // needed by Communicator.h
+#include "Cell.h"
+#include "simbox/SimulationBox.h"
+typedef SimulationBox::SimulationBox<SIMDIM,CellData> SimBox; // needed by Communicator.h
 typedef typename SimBox::CellMatrix SimMatrix;
 #include "Communicator.h"
-
-
-#include "Vector.tpp"
-#include "SimulationBoxIterator.tpp"
-#include "SimulationBox.tpp"
-
 
 using namespace std;
 
 
-
-
 int main( int argc, char **argv )
 {
-    SimBox & simBox = SimBox::getInstance();
-    CommTopo<SIMDIM> & comBox = CommTopo<SIMDIM>::getInstance();
+    SimBox simBox;
+    CommTopo<SIMDIM> comBox(simBox);
     tout.Open( string(""), comBox.rank );
     srand( clock() * comBox.rank );
 
-    /* Init( VecD globsize, VecI globalcells, VecI localcells, int mpicoords[T_DIMENSION] ) */
-    simBox.Init( 10, 10, 5, comBox.coords );
+    /* init( VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages ) */
+    VecD abspos;
+    abspos[0] = comBox.coords[0];
+    abspos[1] = comBox.coords[1];
+    simBox.init( abspos*5, 5, 1, GUARDSIZE, 3 );
 
     SimBox::IteratorType it = simBox.getIterator( SimulationBox::CORE + SimulationBox::BORDER );
     VecD globcoords = simBox.getGlobalPosition( it );
 
     for ( it=it.begin(); it!=it.end(); ++it ) {
-        VecD globsize   = simBox.globsize;
         VecD globcoords = simBox.getGlobalPosition( it );
         (simBox.t[0]->cells)[it.icell].value = (5 +
-          int( 5*sin(2.*M_PI * globcoords[0]/globsize[0] ) *
-                 sin(2.*M_PI * globcoords[1]/globsize[1] )
+          int( 5*sin(2.*M_PI * globcoords[0]/2. ) *
+                 sin(2.*M_PI * globcoords[1]/2. )
           ) ) % 10;
         // simBox[it].value = globcoords[1];
     }
@@ -244,7 +239,7 @@ int main( int argc, char **argv )
     tout << "========================================" << endl
          << "Add all 4 (2D) neighbors to cell on Core" << endl
          << "========================================" << endl << flush;
-    simBox.CopyCurrentToPriorTimestep();
+    simBox.copyCurrentToPriorTimestep();
     comBox.StartGuardUpdate( 1 ); //  Sends Border data from last timestep (t[1])
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it ) {
         (simBox.t[0]->cells)[it.icell].value +=

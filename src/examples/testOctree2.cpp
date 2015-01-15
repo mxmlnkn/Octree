@@ -116,7 +116,7 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
             tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
     #endif
     #if INITSETUP == 5
-        int targetCells  = 187;
+        int targetCells  = 200;
         int currentCells = 1;
         while ( currentCells < targetCells ) {
             VecD pos(0);
@@ -309,15 +309,10 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
 
     resultsFile << worldsize << " " << totalTraffic << " " << interTraffic << "\n" << std::flush;
 
-    tout << "Freeing allocated memory for costs\n";
     delete[] costs;
-    tout << "Freeing allocated memory for data...\n";
     free(data);
-    tout << "OK\n";
 
 } /* Run this Programm for several world sizes ! */
-    tout << "Closing File now\n";
     resultsFile.close();
 } /* Run this Programm for several Ordering Methods ! */
-    tout << "Exiting Program now\n";
 }

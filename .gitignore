@@ -47,3 +47,7 @@
 
 *.stackdump
 *.zip
+
+Knowledge/*
+output/* 
+src/output/* 

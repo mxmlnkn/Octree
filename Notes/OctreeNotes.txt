@@ -1,6 +1,6 @@
 ToDo:
   - implement worst distribution (vierfarbenlandkarte)
-  - redo with equal weighting (everywhere 1000 cells)
+  - redo with equal weighting (in every octree cell e.g. 100x100 cells)
 
 
   - Benchmark Communication
@@ -42,3 +42,6 @@ Parent at (0.25,0.25) with size (0.5,0.5)
 Done:
   - Put Octree::iterator into OctreeNode and somehow wrap it to Octree
 
+valgrind --vgdb=yes --vgdb-error=0 ./testOctree2.exe
+gdb ./testOctree2.exe
+(gdb) target remote | vgdb

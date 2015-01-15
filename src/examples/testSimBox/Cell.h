@@ -1,17 +1,14 @@
 #pragma once
 
-namespace SimulationBox {
+#include <iostream>
 
 typedef struct CellDataStruct {
     int value;
     // standard copy assignment operator should suffice
 } CellData;
 
-
-} // namespace SimulationBox
-
 /* Enables cout << Cell; This also works with fstream and therefore with tout */
-ostream& operator<<( ostream& out, const SimulationBox::CellData cell ) {
+std::ostream& operator<<( std::ostream& out, const CellData cell ) {
     out << cell.value;
     return out;
 }

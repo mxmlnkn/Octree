@@ -3,8 +3,8 @@
 #include <mpi.h>
 #include <cstdlib>   // malloc
 #include <iostream>
-#include "Vector.h"
-#include "SimulationBox.h"
+#include "math/TVector.h"
+#include "simbox/SimulationBox.h"
 #include "Directions.h"
 
 using namespace std;
@@ -26,11 +26,6 @@ private:
       CommTopo& operator=(const CommTopo&);     // Don't implement
 
 public:
-    static CommTopo& getInstance(void)
-    {
-        static CommTopo instance; // Guaranteed to be destroyed.
-        return instance;
-    }
     ~CommTopo() {
         free( this->neighbors );
         free( this->sendrequests );
@@ -40,7 +35,6 @@ public:
     };
 
     VecI getBorderSizeInDirection( const int & direction ) const {
-        SimBox & simbox = SimBox::getInstance();
         VecI size  = simbox.localcells;
         /* squash the cube (CORE+BORDER) we want to send to guardsize in each *
          * direction we want to sent it to, e.g.                              *
@@ -56,7 +50,6 @@ public:
     }
 
     VecI getBorderPositionInDirection( const int & direction ) const {
-        SimBox & simbox = SimBox::getInstance();
         VecI pos ( simbox.guardsize );
         VecI v( getDirectionVector<T_DIM>( direction ) );
         for ( int axis=0; axis<T_DIM; ++axis )
@@ -75,7 +68,7 @@ public:
         VecI v( getDirectionVector<T_DIM>( direction ) );
         for ( int axis=0; axis<T_DIM; ++axis ) {
             assert( abs(v[axis]) <= 1 );
-            pos[axis] += v[axis]*SimBox::getInstance().guardsize;
+            pos[axis] += v[axis]*simbox.guardsize;
         }
         return pos;
     }
@@ -90,6 +83,7 @@ public:
     int  periodic[T_DIM];
     int  nthreads[T_DIM];
     int  coords  [T_DIM];
+    SimBox simbox;
 
     /* Because of reasons when accessing and direction conversion, these      *
      * also have an array element for the rank itself at [0] = (0,0,0) !!!    */
@@ -117,7 +111,7 @@ public:
             VecI size = this->getBorderSizeInDirection    (direction);
             VecI pos  = this->getBorderPositionInDirection(direction);
 
-            sendmatrices[direction] = SimBox::getInstance().t[timestep]->cells.getPartialMatrix( pos, size );
+            sendmatrices[direction] = simbox.t[timestep]->cells.getPartialMatrix( pos, size );
             MPI_Isend( sendmatrices[direction].data, sendmatrices[direction].getSize().product()
                        * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
                        neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
@@ -179,7 +173,7 @@ public:
                      << endl << flush;
             #endif
 
-            SimBox::getInstance().t[timestep]->cells.insertMatrix( pos, recvmatrices[direction] );
+            simbox.t[timestep]->cells.insertMatrix( pos, recvmatrices[direction] );
         }
     };
 
@@ -202,10 +196,12 @@ public:
     }
 #endif
 
-private:
-
     /* Constructor */
     CommTopo(void) {
+        std::cerr << "Communicator needs to be given a simbox handle when constructed!\n";
+    }
+    
+    CommTopo( SimBox & simbox ) : simbox(simbox) {
         for (int i=0; i<T_DIM; i++) {
             this->periodic[i] = true;
             this->nthreads[i] = 0;
