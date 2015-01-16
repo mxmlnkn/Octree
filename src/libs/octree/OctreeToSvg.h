@@ -8,18 +8,21 @@
 
 namespace Octree {
 
-template<typename T_DTYPE, int T_DIM>
+template<int T_DIM>
 class OctreeToSvg {
 public:
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
     const int dim = T_DIM;
-    typedef class Octree<T_DTYPE,T_DIM> Octreetype;
-    typedef class Node<T_DTYPE,T_DIM> Node;
+    typedef class Octree<T_DIM> Octreetype;
+    typedef class Node<T_DIM> Node;
     
 //private:
     std::ofstream out;
+    
     Octreetype tree;
+    const Octreetype * treesrc;
+    
     const double borderx;
     const double bordery;
     const double height;

@@ -7,10 +7,16 @@
 #include "octree/Octree.h"
 #include "simbox/SimulationBox.h"
 #include "Directions.h"
+#include "teestream/TeeStream.h"
 
 #ifndef DEBUG_COMMUNICATOR
     #define DEBUG_COMMUNICATOR 1
 #endif
+
+struct CommData {
+    int rank;
+    int weighting;
+};
 
 template<typename T_OCTREE>
 class OctreeCommunicator{
@@ -24,7 +30,16 @@ private:
       OctreeCommunicator& operator=(const OctreeCommunicator&);     // Don't implement
 
 public:
-    
+    int  rank, worldsize;
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int  processor_name_length;
+
+    T_OCTREE & tree;
+    const int COMM_HEADER_INDEX = 0;
+    CommData* comDataPtr;
+
+    int NLeaves;
+    double totalCosts, optimalCosts;
 
 #if 1==0
     VecI getBorderSizeInDirection( const int & direction ) const {
@@ -67,11 +82,7 @@ public:
     }
 #endif
 
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int  processor_name_length;
-    int  rank, worldsize;
 
-    T_OCTREE & tree;
 #if 1==0
     /* Because of reasons when accessing and direction conversion, these      *
      * also have an array element for the rank itself at [0] = (0,0,0) !!!    */
@@ -186,45 +197,16 @@ public:
     }
 #endif
 
-    /******************************* Constructor ******************************/
-    OctreeCommunicator(void) {
-        std::cerr << "Communicator needs to be given an octree handle when constructed!\n";
-    }
+    OctreeCommunicator(void);
+    OctreeCommunicator(T_OCTREE& tree);
+    ~OctreeCommunicator();
 
-    OctreeCommunicator( T_OCTREE & tree ) : rank(0), worldsize(1), tree(tree) {
-        /* Initialize MPI */
-        /*MPI_Init(NULL, NULL);
-        MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
-        MPI_Get_processor_name(processor_name, &processor_name_length);*/
-#if 1==0
-        /* TODO */
-        nneighbors = 0;
-        terr << "Number of neighboring processes     : " << nneighbors;
-        terr << "Border size to send ( per process ) : ";
-        
-        this->nneighbors = nneighbors;
-        this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
-        this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-        this->sendrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-        this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
-        this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
-        if ( neighbors == NULL or recvrequests == NULL or sendrequests == NULL )
-            terr << "Couldn't allocate Memory!";
-        for (int i=0; i<=nneighbors; i++) {
-            sendrequests[i] = MPI_REQUEST_NULL;
-            recvrequests[i] = MPI_REQUEST_NULL;
-        }
-#endif
-    }
-
-    /******************************** Destructor ******************************/
-    ~OctreeCommunicator() {
-#if 1==0
-        free( this->neighbors );
-        free( this->sendrequests );
-        free( this->recvrequests );
-        free( this->sendmatrices );
-        free( this->recvmatrices );
-#endif
-    }
+    /* this allocates memory for commdata, which will be hooked into every    *
+     * octree cell. After this function therefore GrowUp shouldn't and can't  *
+     * be called anymore, because GrowUp assumes empty Octree cells. This     *
+     * therefore 'finalizes' the octree. This also sets the weighting         *
+     * todo: take argument for weighting function/operator                    */
+    void initCommData(void);
 };
+
+#include "Communicator.tpp"

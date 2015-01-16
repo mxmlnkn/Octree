@@ -91,15 +91,19 @@ int main( int argc, char **argv )
 {
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
     VecD globSize(100), globCenter(0.5*globSize);
-    typedef typename Octree::Octree<int,SIMDIM> OctreeType;
+    typedef typename Octree::Octree<SIMDIM> OctreeType;
     OctreeType tree( globCenter, globSize );
     OctreeCommunicator<OctreeType> comBox(tree);
+    if ( comBox.rank != 0) {
+        std::cerr << "Disable tout verbosity on rank " << comBox.rank << "\n";
+        tout.verbosity = 0;
+    }
     tout.Open("out",comBox.rank);
     terr.Open("err",comBox.rank);
     /* Initialize SVG output file */
     std::stringstream filename;
     filename << "Octree_worldsize-" << comBox.worldsize << "_rank-" << comBox.rank;
-    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, filename.str() );
+    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, filename.str() );
 
     /**************************** Print Parameters ****************************/
     srand(RANDOM_SEED);
@@ -153,20 +157,22 @@ int main( int argc, char **argv )
             /* acos in [0,2*pi] */
             double phi = acos( (linex-M[0])/R );
             lphi.push_back( phi );
-            lphi.push_back( fmod( 2*M_PI + 2*M_PI - phi, 2*M_PI+FLT_EPSILON ) );
+            /* also add value mirrored at y-axis to stack */
+            lphi.push_back( 2*M_PI-phi );
         }
         double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
         double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
         for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
             /* asin in [-pi,pi] */
             double phi = asin( (liney-M[1])/R );
-            lphi.push_back( fmod( 2*M_PI + phi, 2*M_PI+FLT_EPSILON ) );
-            lphi.push_back( fmod( 2*M_PI + M_PI - phi, 2*M_PI+FLT_EPSILON ) );
+            lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
+            /* also add value mirrored at x-axis to stack */
+            lphi.push_back( M_PI-phi );
         }
         lphi.sort();
 
         /* Echo all found angles */
-        #if DEBUG_MAIN_YEE >= 99
+        #if DEBUG_MAIN_YEE >= 100
             tout << "Angle list contains:";
             for (it=lphi.begin(); it!=lphi.end(); ++it)
                 tout << ' ' << *it;
@@ -178,9 +184,12 @@ int main( int argc, char **argv )
         for (it=lphi.begin(); it!=lphi.end(); ++it) {
             VecD pos(0);
             std::list<double>::iterator itnext = it;
-            if ( ++itnext == lphi.end() )
+            double phi;
+            if ( ++itnext == lphi.end() ) {
                 itnext = lphi.begin();
-            double phi = 0.5 * (*itnext + *it);
+                phi = 0.5 * (2*M_PI + *itnext + *it);
+            } else
+                phi = 0.5 * (*itnext + *it);
             pos[0] = M[0] + R*cos(phi);
             pos[1] = M[1] + R*sin(phi);
             OctreeType::Node * node = tree.FindLeafContainingPos(pos);
@@ -188,15 +197,36 @@ int main( int argc, char **argv )
                 node->GrowUp();
         }
     }
-    std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
-    
-    //MPI_Finalize(); // doesn't work in destructor :S
+    tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
+    svgoutput.PrintGrid();
+
+    /**************************************************************************/
+    /* (2) Distribute weighting and octree cells to processes *****************/
+    /**************************************************************************/
+    comBox.initCommData();
+    //comBox.distributeCells();
+    //comBox.allocateOwnCells();
+
+    MPI_Finalize(); // doesn't work in destructor :S
     return 0;
 
 
     /**************************************************************************/
     /* (5) Create data buffer with cells initially with zeros in all entries **/
     /**************************************************************************/
+    /* Insert testDate (later YeeCell-Data or Absorbercelldata, or Guard) at  *
+     * the center of every leaf node. By default all cells will be assigned   *
+     * to last rank                                                           */
+    /*int dataInserted = 0;
+    it = tree.begin();
+    while ( it!=tree.end() ) {
+        if ( it->IsLeaf() ) {
+            assert( dataInserted < NValues );
+            it->InsertData( it->center, &(data[dataInserted]) );
+            ++dataInserted;
+        }
+        ++it;
+    }*/
 
 	VecI size(0);
 	for ( int i = 0; i < SIMDIM; i++ )

@@ -6,22 +6,22 @@
 namespace Octree {
 
 /****************************** Copy Constructor ******************************/
-template<typename T_DTYPE, int T_DIM>
-Octree<T_DTYPE,T_DIM>::Octree( const Octree & src ) {
+template<int T_DIM>
+Octree<T_DIM>::Octree( const Octree & src ) {
     this->center  = src.center;
     this->size    = src.size;
     this->root    = new Node( NULL, VecD(0), VecD(1) );
     *(this->root) = *(src.root);
 }
 
-template<typename T_DTYPE, int T_DIM>
-Octree<T_DTYPE,T_DIM>::~Octree( void ) {
+template<int T_DIM>
+Octree<T_DIM>::~Octree( void ) {
     delete this->root;
 }
 
 /****************************** Copy Assignment *******************************/
-template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::Octree& Octree<T_DTYPE,T_DIM>::operator=(const Octree & src)
+template<int T_DIM>
+typename Octree<T_DIM>::Octree& Octree<T_DIM>::operator=(const Octree & src)
 {
     this->center = src.center;
     this->size   = src.size;
@@ -35,23 +35,23 @@ typename Octree<T_DTYPE,T_DIM>::Octree& Octree<T_DTYPE,T_DIM>::operator=(const O
 }
 
 /********************************* Constructor ********************************/
-template<typename T_DTYPE, int T_DIM>
-Octree<T_DTYPE,T_DIM>::Octree( const VecD center, const VecD size )
+template<int T_DIM>
+Octree<T_DIM>::Octree( const VecD center, const VecD size )
 : center( center ), size( size ), root( NULL ) {
 /* root Node has no parent, therefore it's parent is set to NULL !            */
     this->root = new Node( NULL, VecD(0), VecD(1) );
 }
 
-template<typename T_DTYPE, int T_DIM>
-Octree<T_DTYPE,T_DIM>::Octree( void )
+template<int T_DIM>
+Octree<T_DIM>::Octree( void )
 : center( VecD(0) ), size( VecD(1) ), root( NULL ) {
     this->root = new Node( NULL, VecD(0), VecD(1) );
 }
 
 
 /********************************* GetNodePtr *********************************/
-template<typename T_DTYPE, int T_DIM>
-const typename Octree<T_DTYPE,T_DIM>::Node * Octree<T_DTYPE,T_DIM>::GetNodePtr
+template<int T_DIM>
+const typename Octree<T_DIM>::Node * Octree<T_DIM>::GetNodePtr
 ( const VecD center ) const
 {
     const Node * tmp = this->root;
@@ -73,9 +73,9 @@ const typename Octree<T_DTYPE,T_DIM>::Node * Octree<T_DTYPE,T_DIM>::GetNodePtr
  * The child number will be incremented after completely traversing that      *
  * child. If child number is higher than can be indexed we are at the end and *
  * that corresponding node can be popped from the stack                       */
-template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
-( T_DTYPE * const object ) const {
+template<int T_DIM>
+typename Octree<T_DIM>::VecD Octree<T_DIM>::FindData
+( void * const object ) const {
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { 0, this->root };
@@ -86,7 +86,7 @@ typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
             typename Node::Datalist::const_iterator it = current->data.begin();
             while ( it != current->data.end() ) {
                 if ( it->object == object )
-                    return center + it->pos*size;
+                    return toGlobalCoords(it->pos);
                 ++it;
             }
             todo.pop();
@@ -103,73 +103,34 @@ typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
 }
 
 /********************************* InsertData *********************************/
-template<typename T_DTYPE, int T_DIM>
-void Octree<T_DTYPE,T_DIM>::InsertData( const VecD pos, T_DTYPE * const object ) {
-    const VecD intpos = (pos - center) / size;
-    this->root->FindLeafContainingPos(intpos)->
-                InsertData(intpos,object);
+template<int T_DIM>
+void Octree<T_DIM>::InsertData( const VecD pos, void * const object ) {
+    const VecD intpos = toInternalCoords(pos);
+    this->root->FindLeafContainingPos(intpos)->data.push_back(object);
 }
 
 /********************************* RemoveData *********************************/
-template<typename T_DTYPE, int T_DIM>
-bool Octree<T_DTYPE,T_DIM>::RemoveData( const VecD pos, T_DTYPE * const object ) {
-    const VecD intpos = (pos - center) / size;
-    return this->root->FindLeafContainingPos(intpos)->RemoveData(intpos,object);
-}
-
-/*************************** FindLeafContainingPos ****************************/
-template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::Node* Octree<T_DTYPE,T_DIM>::FindLeafContainingPos( const VecD & pos ) {
-    const VecD intpos = (pos - center) / size;
-    return this->root->FindLeafContainingPos(intpos);
-}
-
-/********************************** MoveData **********************************/
-template<typename T_DTYPE, int T_DIM>
-bool Octree<T_DTYPE,T_DIM>::MoveData( const VecD pos, T_DTYPE * const object,
-const VecD newpos ) {
-    const VecD intpos    = (   pos - center) / size;
-    const VecD intnewpos = (newpos - center) / size;
-    Node * tmp = this->root->FindLeafContainingPos(intpos);
-/* If the new position is still inside the same octant, then we don't need to *
- * relocate it and we can simply search for the correct data in the list and  *
- * change the position                                                        */
-    typename Node::Datalist::iterator it = tmp->data.begin();
-    while ( it != tmp->data.end() ) {
-        if ( it->object == object )
-            break;
-        ++it;
-    }
-    if (it == tmp->data.end())
+template<int T_DIM>
+bool Octree<T_DIM>::RemoveData( const VecD pos, const int index ) {
+    typename Node::Datalist data = root->FindLeafContainingPos(toInternalCoords(pos))->data;
+    if ( index >= data.size() )
         return false;
-    if ( tmp->IsInside(intnewpos) )
-        it->pos = intnewpos;
-/* If the new position will change the parent leaf of that object, then it's  *
- * being relocated by removing and inserting it anew (could be optimized)     */
-    else {
-        this->RemoveData( pos   , object );
-        this->InsertData( newpos, object );
-    }
+    data.erase( data.begin() + index );
     return true;
 }
 
+/*************************** FindLeafContainingPos ****************************/
+template<int T_DIM>
+typename Octree<T_DIM>::Node* Octree<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
+    return this->root->FindLeafContainingPos(toInternalCoords(pos));
+}
+
 /******************************* CheckIntegrity *******************************/
-template<typename T_DTYPE, int T_DIM>
-bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
+template<int T_DIM>
+bool Octree<T_DIM>::CheckIntegrity( void ) {
     bool foundError = false;
-    typename Octree<T_DTYPE,T_DIM>::iterator it = this->begin();
+    typename Octree<T_DIM>::iterator it = this->begin();
     while( it != this->end() ) {
-        if ( it->IsLeaf() ) {
-            typename Node::Datalist::iterator dataIt = it->data.begin();
-            while ( dataIt != it->data.end() ) {
-                if ( ! it->IsInside( dataIt->pos ) ) {
-                    foundError = true;
-                    std::cerr << "Node at " << this->size * it->center << " sized " << this->size * it->size << " contains child it can't manage: " << dataIt->pos << " -> " << *(dataIt->object) << " !\n";
-                }
-                ++dataIt;
-            }
-        }
-        
         /* Count children and check their parents */
         int nchilds = 0;
         for (int i=0; i < it->nchildren; ++i) {
@@ -196,28 +157,39 @@ bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
 }
 
 /*********************************** begin ************************************/
-template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::Node::iterator Octree<T_DTYPE,T_DIM>::begin( int ordering ) const {
+template<int T_DIM>
+typename Octree<T_DIM>::Node::iterator Octree<T_DIM>::begin( int ordering ) const {
     typename Node::iterator it( this->root, ordering );
     return it;
 }
 
 /************************************ end *************************************/
-template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::Node::iterator Octree<T_DTYPE,T_DIM>::end( void ) const {
+template<int T_DIM>
+typename Octree<T_DIM>::Node::iterator Octree<T_DIM>::end( void ) const {
     typename Node::iterator it;
     return it;
 }
+
+template<int T_DIM>
+typename Octree<T_DIM>::VecD Octree<T_DIM>::toInternalCoords( const VecD pos ) const {
+    return (pos - center) / size;
+}
+
+template<int T_DIM>
+typename Octree<T_DIM>::VecD Octree<T_DIM>::toGlobalCoords( const VecD pos ) const {
+    return center + pos*size;
+}
+
 
 
 } // namespace Octree
 
 /******************************** Debug output ********************************/
 
-template<typename T_DTYPE, int T_DIM>
-std::ostream& operator<<( std::ostream& out, Octree::Octree<T_DTYPE,T_DIM>& tree ) {
-    typedef typename Octree::Octree<T_DTYPE,T_DIM>::Node Node;
-    typename Octree::Octree<T_DTYPE,T_DIM>::iterator it = tree.begin();
+template<int T_DIM>
+std::ostream& operator<<( std::ostream& out, Octree::Octree<T_DIM>& tree ) {
+    typedef typename Octree::Octree<T_DIM>::Node Node;
+    typename Octree::Octree<T_DIM>::iterator it = tree.begin();
     while( it != tree.end() ) {
         if ( it->IsLeaf() ) {
             for ( int i=0; i < it->getLevel(); ++i )

@@ -34,20 +34,20 @@ ToDo:
 
 namespace Octree {
 
-template<typename T_DTYPE, int T_DIM> class Octree;
+template<int T_DIM> class Octree;
 
 }
 
 /* This outputs a nice formatted version of the tree.                         */
-template<typename T_DTYPE, int T_DIM>
+template<int T_DIM>
 std::ostream& operator<<( std::ostream& out,
-                          Octree::Octree<T_DTYPE,T_DIM>& tree );
+                          Octree::Octree<T_DIM>& tree );
 
 #include "OctreeNode.h"
 
 namespace Octree {
 
-template<typename T_DTYPE, int T_DIM>
+template< int T_DIM>
 class Octree {
 public:
     typedef Vec<double,T_DIM> VecD;
@@ -56,7 +56,7 @@ public:
 
 public:
     VecD center, size;
-    typedef class Node<T_DTYPE,T_DIM> Node;
+    typedef class Node<T_DIM> Node;
     typedef typename Node::iterator iterator;
     Node * root; // root can be leaf or child!
 
@@ -69,13 +69,12 @@ public:
     ~Octree(void);
     Octree& operator=(const Octree &);
     
-    VecD FindData( T_DTYPE * const object ) const;
+    VecD FindData( void * const object ) const;
     /* Returns Pointer of Node with its center equaling exactly the given one */
     const Node * GetNodePtr( const VecD center ) const;
-    void InsertData( const VecD pos, T_DTYPE * const object );
+    void InsertData( const VecD pos, void * const object );
     /* Returns false if datum not found */
-    bool RemoveData( const VecD pos, T_DTYPE * const object );
-    bool MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
+    bool RemoveData( const VecD pos, const int index );
     Node * FindLeafContainingPos( const VecD & pos );
 
     /* Returns true, if it found not structural error. It checks for:         *
@@ -90,7 +89,10 @@ public:
     /* returns iterator with empty stack */
     typename Node::iterator end(void) const;
 
-    friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, Octree<T_DTYPE,T_DIM>& tree );
+    friend std::ostream& operator<< <T_DIM>( std::ostream& out, Octree<T_DIM>& tree );
+    /* internal coords have a range of [-0.5,0.5] in every dimension */
+    VecD toInternalCoords( const VecD pos ) const;
+    VecD toGlobalCoords( const VecD pos ) const;
 };
 
 

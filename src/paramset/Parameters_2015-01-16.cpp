@@ -24,7 +24,7 @@ const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF
 
 //GridConfig.param
 const int INITIAL_OCTREE_REFINEMENT    = 2; // yiels pow(INIT_..., [4,8]) octree cells minimum
-const int MAX_OCTREE_REFINEMENT        = 6; // yiels pow(INIT_..., [4,8]) octree cells minimum
+const int MAX_OCTREE_REFINEMENT        = 7; // yiels pow(INIT_..., [4,8]) octree cells minimum
 const int NUMBER_OF_CELLS_X            = 1024; // these is for the INITIAL_OCTREE_REFINEMENT ...
 const int NUMBER_OF_CELLS_Y            = 512;  // ... real number of cells will be higher
 const int NUMBER_OF_CELLS_Z            = 3;    // ... at critical places

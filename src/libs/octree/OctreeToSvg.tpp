@@ -1,19 +1,17 @@
 #pragma once
 
-
-#define DEBUG_OCTREE_SVG 0
-
+#ifndef DEBUG_OCTREE_SVG
+    #define DEBUG_OCTREE_SVG 0
+#endif
 
 namespace Octree {
 
-
-
-
-template<typename T_DTYPE, int T_DIM>
-OctreeToSvg<T_DTYPE,T_DIM>::OctreeToSvg (
-  const Octree<T_DTYPE,T_DIM> & tree,
+/******************************** Constructor *********************************/
+template<int T_DIM>
+OctreeToSvg<T_DIM>::OctreeToSvg (
+  const Octreetype & tree,
   const std::string filename )
-: tree( tree ), borderx( 20 ), bordery( 20 ), height( 800 ),
+: tree( tree ), treesrc( &tree ), borderx( 20 ), bordery( 20 ), height( 800 ),
   width( height / tree.size[1] * tree.size[0] )
 {
     /* Create Timestamp and rank strings for filenames */
@@ -62,8 +60,11 @@ OctreeToSvg<T_DTYPE,T_DIM>::OctreeToSvg (
 }
 
 
-template<typename T_DTYPE, int T_DIM>
-void OctreeToSvg<T_DTYPE,T_DIM>::PrintGrid(void) {
+template<int T_DIM>
+void OctreeToSvg<T_DIM>::PrintGrid(void) {
+    /* Update internal copy of the tree, before printing */
+    this->tree = *(this->treesrc);
+
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { /* ichild */ 0, /* node */ this->tree.root };
@@ -105,8 +106,11 @@ void OctreeToSvg<T_DTYPE,T_DIM>::PrintGrid(void) {
 }
 
 
-template<typename T_DTYPE, int T_DIM>
-void OctreeToSvg<T_DTYPE,T_DIM>::PrintPositions(void) {
+template<int T_DIM>
+void OctreeToSvg<T_DIM>::PrintPositions(void) {
+    /* Update internal copy of the tree, before printing */
+    this->tree = *(this->treesrc);
+
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { 0, this->tree.root };
@@ -144,8 +148,8 @@ void OctreeToSvg<T_DTYPE,T_DIM>::PrintPositions(void) {
     }
 }
 
-template<typename T_DTYPE, int T_DIM>
-void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
+template<int T_DIM>
+void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
 {
     /*std::cerr << "-boxesDrawn-\n";
     typename std::map<VecD,Keyvalues>::iterator it = boxesDrawn.begin();
@@ -226,10 +230,12 @@ void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
             }
         }
 
+/* Find and animate moved data/particles (outdated), because pos not saved */
+#if 1==0
         if ( currentnode->IsLeaf() ) {
             int i = 0;
-            while ( currentnode->getDataPtr(i).object != NULL ) {
-                T_DTYPE * datum = currentnode->getDataPtr(i).object;
+            while ( currentnode->data[i] != NULL ) {
+                void * datum = currentnode->getDataPtr(i).object;
                 VecD newpos = currentnode->getDataPtr(i).pos;
                 VecD oldpos = this->tree.FindData( datum ) / this->tree.size;
                 if ( oldpos != newpos ) {
@@ -277,6 +283,7 @@ void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
             }
             todo.pop();
         }
+#endif
 /* If the Current Node is not a leaf, then increment child-index and push the *
  * next child to be processed                                                 */
         else
@@ -321,8 +328,8 @@ void OctreeToSvg<T_DTYPE,T_DIM>::AnimateUpdated( const Octreetype & newtree )
     this->tree = newtree;
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename OctreeToSvg<T_DTYPE,T_DIM>::VecD OctreeToSvg<T_DTYPE,T_DIM>::convertToImageCoordinates( VecD pos ) {
+template<int T_DIM>
+typename OctreeToSvg<T_DIM>::VecD OctreeToSvg<T_DIM>::convertToImageCoordinates( VecD pos ) {
     pos   += VecD(0.5);
     pos[1] = 1 - pos[1];  // flip along y-axis
     pos   *= imagesize;   // scale image up

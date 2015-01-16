@@ -11,9 +11,9 @@ namespace Ordering {
     int Hilbert  = 2;
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator::orderingTableStruct
-    Node<T_DTYPE,T_DIM>::iterator::orderingTable =
+template<int T_DIM>
+typename Node<T_DIM>::iterator::orderingTableStruct
+    Node<T_DIM>::iterator::orderingTable =
           {
             /* Gray-Code ordering */
             { /* ordering Table */
@@ -48,34 +48,34 @@ typename Node<T_DTYPE,T_DIM>::iterator::orderingTableStruct
           };
 
 /* used by begin() */
-template<typename T_DTYPE, int T_DIM>
-Node<T_DTYPE,T_DIM>::iterator::iterator( void ) {}
+template<int T_DIM>
+Node<T_DIM>::iterator::iterator( void ) {}
 
-template<typename T_DTYPE, int T_DIM>
-Node<T_DTYPE,T_DIM>::iterator::iterator( Node * root, int ordering )
+template<int T_DIM>
+Node<T_DIM>::iterator::iterator( Node * root, int ordering )
 : ordering(ordering)
 {
     tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
     todo.push( toBeStored );
 }
 
-template<typename T_DTYPE, int T_DIM>
-Node<T_DTYPE,T_DIM>::iterator::~iterator( void ) {}
+template<int T_DIM>
+Node<T_DIM>::iterator::~iterator( void ) {}
 
-template<typename T_DTYPE, int T_DIM>
-Node<T_DTYPE,T_DIM>::iterator::iterator( const iterator & src ) {
+template<int T_DIM>
+Node<T_DIM>::iterator::iterator( const iterator & src ) {
     this->todo     = src.todo;
     this->ordering = src.ordering;
 }
 
-template<typename T_DTYPE, int T_DIM>
-void Node<T_DTYPE,T_DIM>::iterator::operator=( const iterator & src ) {
+template<int T_DIM>
+void Node<T_DIM>::iterator::operator=( const iterator & src ) {
     this->todo     = src.todo;
     this->ordering = src.ordering;
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator& Node<T_DTYPE,T_DIM>::iterator::operator++( void ) {
+template<int T_DIM>
+typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
 /* The iterator position is defined by what is currently at the top of the    *
  * todo-stack. Therefore we try to add exactly one element to the stack top.  *
  * If the stack top is a leaf, then that is the last iteration we were at, so *
@@ -130,43 +130,43 @@ typename Node<T_DTYPE,T_DIM>::iterator& Node<T_DTYPE,T_DIM>::iterator::operator+
     return *this;
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator Node<T_DTYPE,T_DIM>::iterator::operator++( int unused ) {
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int unused ) {
     iterator tmp( *this );
 	++(*this);
 	return tmp;
 }
 
-template<typename T_DTYPE, int T_DIM>
-bool Node<T_DTYPE,T_DIM>::iterator::operator==( const iterator & src ) {
+template<int T_DIM>
+bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
     assert(false);
 }
 
-template<typename T_DTYPE, int T_DIM>
-bool Node<T_DTYPE,T_DIM>::iterator::operator!=( const iterator & src ) {
+template<int T_DIM>
+bool Node<T_DIM>::iterator::operator!=( const iterator & src ) {
     return (this->todo.size()) != (src.todo.size());
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::Node & Node<T_DTYPE,T_DIM>::iterator::operator*( void ) const {
+template<int T_DIM>
+typename Node<T_DIM>::Node & Node<T_DIM>::iterator::operator*( void ) const {
     return *(this->todo.top().node);
 }
 
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::Node * Node<T_DTYPE,T_DIM>::iterator::operator->( void ) const {
+template<int T_DIM>
+typename Node<T_DIM>::Node * Node<T_DIM>::iterator::operator->( void ) const {
     return this->todo.top().node;
 }
 
 /* returns iterator with only root-node in todo stack */
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator Node<T_DTYPE,T_DIM>::begin( int ordering ) {
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::begin( int ordering ) {
     iterator it( this, ordering );
     return it;
 }
 
 /* returns iterator with empty stack */
-template<typename T_DTYPE, int T_DIM>
-typename Node<T_DTYPE,T_DIM>::iterator Node<T_DTYPE,T_DIM>::end( void ) {
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::end( void ) {
     iterator it;
     return it;
 }
