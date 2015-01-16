@@ -2,7 +2,6 @@
 
 #include "SimulationBox.h"
 
-
 namespace SimulationBox {
 
 /* static members can't be defined in a class declaration, that's why we need *
@@ -39,16 +38,29 @@ bool InArea( const VecI & pos, const int & area, const VecI & localcells, int gu
     return allor;
 }
 
+/********************************* Constructor ********************************/
 template<int T_DIM, typename T_CELLDATA>
-SimulationBox<T_DIM,T_CELLDATA>::SimulationBox( void ) {
-    for (int i=0; i<this->ntimesteps; i++)
-        this->t[i] = (TimeData*) malloc( sizeof(TimeData) );
-};
+SimulationBox<T_DIM,T_CELLDATA>::SimulationBox( 
+    VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages
+) : ntimesteps(bufferpages), abspos(abspos), localcells(localcells), cellsize(cellsize),
+    guardsize(guardsize)
+{
+    t = (TimeData**) malloc( ntimesteps * sizeof(TimeData*) );
+    for (int i=0; i<this->ntimesteps; i++) {
+        t[i] = (TimeData*) malloc( sizeof(TimeData) );
+        t[i]->cells = CellMatrix( localcells + VecI(2*this->guardsize) );
+    }
+}
 
+/********************************* Destructor *********************************/
 template<int T_DIM, typename T_CELLDATA>
 SimulationBox<T_DIM,T_CELLDATA>::~SimulationBox(void) {
-    for (int i=0; i<this->ntimesteps; i++)
-        free( this->t[i] );
+    if ( t != NULL ) {
+        for (int i=0; i<this->ntimesteps; i++)
+            if ( this->t[i] != NULL )
+                free( this->t[i] );
+        free(t);
+    }
 }
 
 template<int T_DIM, typename T_CELLDATA>
@@ -59,35 +71,21 @@ bool SimulationBox<T_DIM,T_CELLDATA>::inArea( const VecI & pos, const int & area
 /******************************** getIterator *********************************/
 template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::IteratorType SimulationBox<T_DIM,T_CELLDATA>::getIterator( const int area ) const {
-    return IteratorType( area, localcells + VecI(2*this->guardsize) );
-}
-
-/************************************ init ************************************/
-template<int T_DIM, typename T_CELLDATA>
-void SimulationBox<T_DIM,T_CELLDATA>::init( 
-    VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages
-) {
-    this->cellsize   = cellsize;
-    this->localcells = localcells;
-    this->abspos     = abspos;
-    this->ntimesteps = bufferpages;
-    for ( int timestep=0; timestep < this->ntimesteps; timestep++ )
-        this->t[timestep]->cells = CellMatrix( localcells + VecI(2*this->guardsize) );
-    t = malloc( ntimesteps * sizeof(TimeData) );
+    return IteratorType( area, localcells + VecI(2*guardsize), guardsize );
 }
 
 #if DEBUG_SIMBOX >= 1
 template<int T_DIM, typename T_CELLDATA>
 void SimulationBox<T_DIM,T_CELLDATA>::PrintValues( int timestep ) const {
-    std::cout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << std::endl;
+    tout << "My Raw Matrix with Guard(size=" << guardsize << ") is" << std::endl;
     VecI size = this->t[timestep]->cells.getSize();
     VecI ind(0);
     for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
         for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-            std::cout << this->t[timestep]->cells[ ind ].value << " ";
-        std::cout << std::endl;
+            tout << this->t[timestep]->cells[ ind ].value << " ";
+        tout << std::endl;
     }
-    std::cout << std::endl << std::flush;
+    tout << std::endl << std::flush;
 
     /* Wait a bit till everything is flushed out, to not get scrambled output */
     double t0 = MPI_Wtime();
@@ -98,7 +96,7 @@ void SimulationBox<T_DIM,T_CELLDATA>::PrintValues( int timestep ) const {
 /****************************** getGlobalPosition *****************************/
 template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::VecD SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition ( const IteratorType it ) const {
-    return abspos + ( VecD(it.icell) * cellsize );
+    return abspos + VecD(it.icell)*cellsize;
 }
 
 /************************* copyCurrentToPriorTimestep ************************/

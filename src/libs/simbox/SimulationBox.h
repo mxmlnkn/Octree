@@ -4,8 +4,9 @@
 #include <iostream>
 #include "math/TVector.h"
 #include "math/TBaseMatrix.h"
-#include "simbox/SimulationBoxDefines.h"
-#include "simbox/SimulationBoxIterator.h"
+#include "SimulationBoxDefines.h"
+#include "SimulationBoxIterator.h"
+#include "teestream/TeeStream.h"
 
 #define DEBUG_SIMBOX 1
 #define TIMESTEPS_NEEDED_FOR_CALCULATION 2
@@ -47,9 +48,10 @@ bool InArea( const VecI & pos, const int & area, const VecI & localcells, int gu
 
 template<int T_DIM, typename T_CELLDATA>
 class SimulationBox {
+private:
+    /* Forbid copying ( this->t is very problematic! ). Also don't implement! */
+    SimulationBox( SimulationBox & a );
 public:
-    SimulationBox( void );
-
     /* Definitions and Aliases */
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
@@ -72,17 +74,17 @@ public:
      * cyclically swap the time pointers, instead of the whole data itself !  */
     TimeData ** t;
 
-    int guardsize;
-    VecD cellsize;
-    VecI localcells; // cells in this SimulationBox/Matrix/Octree cell
     VecD abspos;  // of lower (or better upper ???) left point (without Guard)
+    VecI localcells; // cells in this SimulationBox/Matrix/Octree cell
+    VecD cellsize;
+    int guardsize;
 
+    SimulationBox( VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages );
     ~SimulationBox(void);
 
     bool inArea( const VecI & pos, const int & area ) const;
     IteratorType getIterator( const int area ) const;
 
-    void init( VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages );
     #if DEBUG_SIMBOX >= 1
         void PrintValues( int timestep = 0 ) const;
     #endif
@@ -96,3 +98,4 @@ public:
 } // namespace SimulationBox
 
 #include "SimulationBox.tpp"
+#include "SimulationBoxIterator.tpp"

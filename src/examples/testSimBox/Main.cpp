@@ -116,16 +116,20 @@ using namespace std;
 
 int main( int argc, char **argv )
 {
-    SimBox simBox;
-    CommTopo<SIMDIM> comBox(simBox);
-    tout.Open( string(""), comBox.rank );
-    srand( clock() * comBox.rank );
+    /* VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages */
+    SimBox simBox( 0, 5, 1, GUARDSIZE, 3 );
+    //MPI_Init( NULL, NULL );
 
-    /* init( VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages ) */
+    CommTopo<SIMDIM> comBox(simBox);
+#if 1==0
+    tout.Open( string("out"), comBox.rank );
+    terr.Open( string("err"), comBox.rank );
+    srand( clock() * comBox.rank );
+    
     VecD abspos;
     abspos[0] = comBox.coords[0];
     abspos[1] = comBox.coords[1];
-    simBox.init( abspos*5, 5, 1, GUARDSIZE, 3 );
+    simBox.abspos = abspos*5;
 
     SimBox::IteratorType it = simBox.getIterator( SimulationBox::CORE + SimulationBox::BORDER );
     VecD globcoords = simBox.getGlobalPosition( it );
@@ -133,13 +137,13 @@ int main( int argc, char **argv )
     for ( it=it.begin(); it!=it.end(); ++it ) {
         VecD globcoords = simBox.getGlobalPosition( it );
         (simBox.t[0]->cells)[it.icell].value = (5 +
-          int( 5*sin(2.*M_PI * globcoords[0]/2. ) *
-                 sin(2.*M_PI * globcoords[1]/2. )
+          int( 5*sin(2.*M_PI * globcoords[0]/10. ) *
+                 sin(2.*M_PI * globcoords[1]/10. )
           ) ) % 10;
         // simBox[it].value = globcoords[1];
     }
 
-    // Set guard to 0 (not really necessary, only looks better)
+    tout << "Set guard to 0 (not really necessary, only looks better)\n";
     for ( it=simBox.getIterator( SimulationBox::GUARD ).begin(); it!=it.end(); ++it )
         simBox.t[0]->cells[it.icell].value = 0;
 
@@ -183,8 +187,8 @@ int main( int argc, char **argv )
         int size[SIMDIM] = {3,4};
         int  pos[SIMDIM] = {0,3};
         SimMatrix mat = simBox.t[0]->cells.getPartialMatrix( VecI(pos), VecI(size) );
-        tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size)
-             << " in matrix of rank 0: " << endl;
+        tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size) 
+             << " [(row,col)] in matrix of rank 0: " << endl;
         for (int i=0; i<size[0]; i++) {
             for (int j=0; j<size[1]; j++) {
                 int ind[SIMDIM] = {i,j};
@@ -271,9 +275,9 @@ int main( int argc, char **argv )
         (simBox.t[0]->cells)[it.icell].value = 0;
 
     simBox.PrintValues();
-
+#endif
     MPI_Finalize(); // doesn't work in destructor :S
-
+    return 0;
 }
 
 

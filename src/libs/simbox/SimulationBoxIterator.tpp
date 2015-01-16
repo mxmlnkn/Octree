@@ -7,7 +7,7 @@ namespace SimulationBox {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 Iterator<T_DIM>::Iterator( const int area, const VecI ncells, const int guardsize )
-: guardsize(guardsize), area(area), ncells(ncells) {
+: area(area), ncells(ncells), guardsize(guardsize) {
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
     assert( area != CORE+GUARD ); // more difficult to implement,

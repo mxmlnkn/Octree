@@ -27,11 +27,13 @@ private:
 
 public:
     ~CommTopo() {
+#if 1==0
         free( this->neighbors );
         free( this->sendrequests );
         free( this->recvrequests );
         free( this->sendmatrices );
         free( this->recvmatrices );
+#endif
     };
 
     VecI getBorderSizeInDirection( const int & direction ) const {
@@ -83,7 +85,7 @@ public:
     int  periodic[T_DIM];
     int  nthreads[T_DIM];
     int  coords  [T_DIM];
-    SimBox simbox;
+    SimBox & simbox;
 
     /* Because of reasons when accessing and direction conversion, these      *
      * also have an array element for the rank itself at [0] = (0,0,0) !!!    */
@@ -202,16 +204,17 @@ public:
     }
     
     CommTopo( SimBox & simbox ) : simbox(simbox) {
+#if 1==0
         for (int i=0; i<T_DIM; i++) {
             this->periodic[i] = true;
             this->nthreads[i] = 0;
         }
-
         int nneighbors = 1;
         for (int i=0; i<T_DIM; i++)
             nneighbors *= 3;
         nneighbors--;
         terr << "Number of Neighbors: " << nneighbors;
+        
         this->nneighbors = nneighbors;
         this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
         this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
@@ -224,9 +227,10 @@ public:
             sendrequests[i] = MPI_REQUEST_NULL;
             recvrequests[i] = MPI_REQUEST_NULL;
         }
-
+#endif
         /* Initialize MPI */
         MPI_Init(NULL, NULL);
+#if 1==0
         MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
         MPI_Get_processor_name(processor_name, &processor_name_length);
 
@@ -243,6 +247,7 @@ public:
             MPI_Cart_rank( this->communicator, ( VecI(this->coords) +
                 getDirectionVector<T_DIM>( direction ) ), &(neighbors[direction]));
         }
+#endif
     }
 
 };
