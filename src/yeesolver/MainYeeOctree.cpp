@@ -13,11 +13,6 @@ Done:
 
 */
 
-#ifndef M_PI
-#   define M_PI 3.14159265358979323846
-#endif
-#define INF (1.0/0.0)
-
 namespace compileTime {
 
 /* Compile time power (also exact for integers) */
@@ -45,6 +40,7 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
 #include "Communicator.h"
+#include "Colors.h"
 
 #define DEBUG_MAIN_YEE 99
 
@@ -93,7 +89,8 @@ int main( int argc, char **argv )
     VecD globSize(100), globCenter(0.5*globSize);
     typedef typename Octree::Octree<SIMDIM> OctreeType;
     OctreeType tree( globCenter, globSize );
-    OctreeCommunicator<OctreeType> comBox(tree);
+    typedef OctreeCommunicator<OctreeType> OctreeCommType;
+    OctreeCommType comBox(tree);
     if ( comBox.rank != 0) {
         std::cerr << "Disable tout verbosity on rank " << comBox.rank << "\n";
         tout.verbosity = 0;
@@ -203,8 +200,32 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (2) Distribute weighting and octree cells to processes *****************/
     /**************************************************************************/
+
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() and not it->data.empty() )
+        tout << "CHECK: Somehow data existing! Size: " << it->data.size() << " data: " << it->data[0] << "\n";
+    
+
     comBox.initCommData();
-    //comBox.distributeCells();
+    comBox.distributeCells();
+    
+    /* Graphical output of cell-rank-mapping */
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() ) {
+        svgoutput.boxesDrawnIt = svgoutput.boxesDrawn.find( it->center );
+        int id = svgoutput.boxesDrawnIt->second.id;
+        int curRank = ((typename OctreeCommType::CommData *)it->data[OctreeCommType::COMM_HEADER_INDEX])->rank;
+        int r  = Colors::getRed  ( Colors::BuPu[curRank % 9] );
+        int g  = Colors::getGreen( Colors::BuPu[curRank % 9] );
+        int b  = Colors::getBlue ( Colors::BuPu[curRank % 9] );
+        svgoutput.out
+            << "<set"                                                "\n"
+            << " xlink:href=\"#" << id << "\""                       "\n"
+            << " attributeName=\"fill\""                             "\n"
+//            << " begin=\"" << 0 << "s\""                             "\n"
+            << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+            << "/>"                                                  "\n";
+    }
     //comBox.allocateOwnCells();
 
     MPI_Finalize(); // doesn't work in destructor :S

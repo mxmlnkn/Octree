@@ -13,11 +13,6 @@
     #define DEBUG_COMMUNICATOR 1
 #endif
 
-struct CommData {
-    int rank;
-    int weighting;
-};
-
 template<typename T_OCTREE>
 class OctreeCommunicator{
 private:
@@ -29,13 +24,18 @@ private:
       OctreeCommunicator(const OctreeCommunicator&);                // Don't Implement
       OctreeCommunicator& operator=(const OctreeCommunicator&);     // Don't implement
 
-public:
+public:    
+    struct CommData {
+        int rank;
+        int weighting;
+    };
+
     int  rank, worldsize;
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int  processor_name_length;
 
     T_OCTREE & tree;
-    const int COMM_HEADER_INDEX = 0;
+    static const int COMM_HEADER_INDEX;
     CommData* comDataPtr;
 
     int NLeaves;
@@ -207,6 +207,8 @@ public:
      * therefore 'finalizes' the octree. This also sets the weighting         *
      * todo: take argument for weighting function/operator                    */
     void initCommData(void);
+    /* initCommData needs to be called before this ! */
+    void distributeCells(void);
 };
 
 #include "Communicator.tpp"

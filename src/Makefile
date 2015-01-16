@@ -13,17 +13,17 @@ TBaseMatrix : libs/math/TBaseMatrix.h
 
 Octree : libs/octree/OctreeNode.h libs/octree/OctreeNode.tpp libs/octree/OctreeToSvg.h libs/octree/OctreeToSvg.tpp
 
-testOctree  : examples/testOctree.cpp Vector Octree
+testOctree  : examples/testOctree.cpp TVector Octree
 	rm -f $@.exe
-	g++ $@.cpp -o $@.exe $(CFLAGS)
+	g++ $< -o $@.exe $(CFLAGS)
 
-testOctree2 : examples/testOctree2.cpp Vector Octree
+testOctree2 : examples/testOctree2.cpp TVector Octree
 	rm -f $@.exe
-	g++ $@.cpp -o $@.exe $(CFLAGS)
+	g++ $< -o $@.exe $(CFLAGS)
 
 testMatrix  : examples/testMatrix.cpp
 	rm -f $@.exe
-	g++ $@.cpp -o $@.exe $(CFLAGS)
+	g++ $< -o $@.exe $(CFLAGS)
 
 MainYee : yeesolver/MainYee.cpp yeesolver/YeeCell.h libpngwriter
 	mkdir -p output

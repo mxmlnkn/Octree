@@ -5,12 +5,6 @@
 
 namespace Octree {
 
-namespace Ordering {
-    int Morton   = 0;
-    int GrayCode = 1;
-    int Hilbert  = 2;
-}
-
 template<int T_DIM>
 typename Node<T_DIM>::iterator::orderingTableStruct
     Node<T_DIM>::iterator::orderingTable =
@@ -99,17 +93,17 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
             int childIndex       = -1;
             int childOrientation = -1;
             switch ( this->ordering ) {
-                case 0: 
+                case Ordering::Morton: 
                     childIndex = todo.top().ichild;
                     childOrientation = todo.top().orientation;
                     break;
-                case 1:
+                case Ordering::GrayCode:
                     childIndex = this->orderingTable.GrayCode.ordering
                         [todo.top().orientation][todo.top().ichild];
                     childOrientation = orderingTable.GrayCode.orientation
                         [todo.top().orientation][todo.top().ichild];
                     break;
-                case 2: 
+                case Ordering::Hilbert: 
                     childIndex = this->orderingTable.Hilbert.ordering
                         [todo.top().orientation][todo.top().ichild];
                     childOrientation = orderingTable.Hilbert.orientation

@@ -10,6 +10,7 @@ make testOctree && ./testOctree.exe
 #include <cstdlib>  // malloc, rand
 #include <random>   // normal_distribution
 #include <ctime>    // time
+#include "paramset/Parameters_2015-01-16.cpp"
 
 namespace compileTime {
 
@@ -55,11 +56,12 @@ for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
 for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     tout << "World Size      : " << worldsize << "\n";
 
-    VecD size(100), center(0);
-    Octree::Octree<int,SIMDIM> tree( center, size );
-    Octree::Octree<int,SIMDIM>::iterator it;
+    VecD size(100), center(50), globSize(size), globCenter(center);
+    typedef Octree::Octree<SIMDIM> OctreeType;
+    Octree::Octree<SIMDIM> tree( center, size );
+    Octree::Octree<SIMDIM>::iterator it;
 
-    #define INITSETUP 5
+    #define INITSETUP 6
     #if INITSETUP == 1
     /* refine all cells to some value */
         tout << "Initial homogenous Refinement\n";
@@ -124,6 +126,72 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
             currentCells += 3;
         }
     #endif
+    #if INITSETUP == 6
+    /**************************************************************************/
+    /* (1) Setup Octree Refinement ********************************************/
+    /**************************************************************************/
+
+    /********* refine all cells to initial homogenous min-Refinement **********/
+    for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
+        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
+            if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
+    }
+    /*********************** Refine certain boundaries ************************/
+    assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
+    VecD M(0.5*globSize);          // center of circle
+    double R = 0.2*globSize.min(); // radius of circle
+    for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
+        /* Get all circle angles, where it intersects with a cell border */
+        std::list<double> lphi;
+        std::list<double>::iterator it;
+        VecD cellsize = globSize / pow(2,lvl);
+        double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
+        double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
+        for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
+            /* acos in [0,2*pi] */
+            double phi = acos( (linex-M[0])/R );
+            lphi.push_back( phi );
+            /* also add value mirrored at y-axis to stack */
+            lphi.push_back( 2*M_PI-phi );
+        }
+        double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
+        double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
+        for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
+            /* asin in [-pi,pi] */
+            double phi = asin( (liney-M[1])/R );
+            lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
+            /* also add value mirrored at x-axis to stack */
+            lphi.push_back( M_PI-phi );
+        }
+        lphi.sort();
+
+        /* Echo all found angles */
+        #if DEBUG_MAIN_YEE >= 100
+            tout << "Angle list contains:";
+            for (it=lphi.begin(); it!=lphi.end(); ++it)
+                tout << ' ' << *it;
+            tout << '\n';
+        #endif
+
+        /* Grow up all cells, with which the circle intersects. Find them by  *
+         * using an angle between to successive circle intersection angles    */
+        for (it=lphi.begin(); it!=lphi.end(); ++it) {
+            VecD pos(0);
+            std::list<double>::iterator itnext = it;
+            double phi;
+            if ( ++itnext == lphi.end() ) {
+                itnext = lphi.begin();
+                phi = 0.5 * (2*M_PI + *itnext + *it);
+            } else
+                phi = 0.5 * (*itnext + *it);
+            pos[0] = M[0] + R*cos(phi);
+            pos[1] = M[1] + R*sin(phi);
+            OctreeType::Node * node = tree.FindLeafContainingPos(pos);
+            if ( node->getLevel() == lvl )
+                node->GrowUp();
+        }
+    }
+    #endif
     std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
 
     /* Count Cells */
@@ -151,15 +219,13 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
      * the center of every leaf node. By default all cells will be assigned   *
      * to last rank                                                           */
     int dataInserted = 0;
-    it = tree.begin();
-    while ( it!=tree.end() ) {
+    for ( it = tree.begin( ORDERING ); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) {
             assert( dataInserted < NValues );
-            it->InsertData( it->center, &(data[dataInserted]) );
+            assert( it->data.empty() );
+            it->data.push_back( &(data[dataInserted]) );
             ++dataInserted;
         }
-        ++it;
-    }
 
     /* Calculate total costs of all cells. Could be done when counting cells  */
     double totalCosts = 0;
@@ -180,7 +246,7 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
         case 1: sOrdering << "GrayCode_"; break;
         case 2: sOrdering << "Hilbert_" ; break;
     } sOrdering << "Ordering_";
-    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, std::string("Octree_") + sOrdering.str() + std::string("worldsize_") + sWorldsize.str() );
+    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, std::string("Octree_") + sOrdering.str() + std::string("worldsize_") + sWorldsize.str() );
     svgoutput.PrintGrid();
 
     /* Assign cells to all the processes */
@@ -190,23 +256,22 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     double delay     = 1./64.; // 8 frames per second at max achievable with SVG
     double rankDelay = 1./64.;
 
-    it = tree.begin( ORDERING );
-    Octree::Octree<int,SIMDIM>::iterator it0 = tree.begin();
-    Octree::Octree<int,SIMDIM>::iterator it1 = tree.begin();
-    while ( it!=tree.end() ) {
+    Octree::Octree<SIMDIM>::iterator it0 = tree.begin();
+    Octree::Octree<SIMDIM>::iterator it1 = tree.begin();
+    for ( it = tree.begin( ORDERING ); it!=tree.end(); ++it ) {
         if ( it->IsLeaf() ) {
             cumulativeCosts += 1. / it->getSize().min();
             if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
                 cumulativeCosts = 1. / it->getSize().min();
                 curRank++;
             }
-            *(it->getDataPtr(0).object) = curRank;
+            *((int*)it->data[0]) = curRank;
 
             /* Graphical output of traversal line */
             it0 = it1;
             it1 = it;
             if ( it0->IsLeaf() and it1->IsLeaf() ) {
-                size_t id = reinterpret_cast<size_t>( it0->getDataPtr(0).object );
+                size_t id = reinterpret_cast<size_t>( it0->data[0] );
                 VecD r0 = svgoutput.convertToImageCoordinates( it0->center );
                 VecD r1 = svgoutput.convertToImageCoordinates( it1->center );
                 /* Spawn invisible line element */
@@ -245,7 +310,6 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
                 << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
                 << "/>"                                                  "\n";
         }
-        ++it;
     }
 
     /* Count Neighbors intra- and interprocessdata to transmit */
@@ -260,10 +324,10 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     it = tree.begin( ORDERING );
     while ( it!=tree.end() ) {
         if ( it->IsLeaf() ) {
-            costs[ *(it->getDataPtr(0).object) ] += 1. / it->getSize().min();
+            costs[ *((int*)it->data[0]) ] += 1. / it->getSize().min();
             int nNeighbors = 0;
             int nLeavesOnOtherNodes = 0;
-            int thisRank = *(it->getDataPtr(0).object);
+            int thisRank = *((int*)it->data[0]);
 
             VecI dir[4];
             dir[0][0]=+1; dir[0][1]= 0;
@@ -272,16 +336,16 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
             dir[3][0]= 0; dir[3][1]=-1;
 
             for ( int lindir = 0; lindir < 4; lindir++ ) {
-                Octree::Node<int,SIMDIM> * neighbor = it->getNeighbor( dir[lindir] );
+                Octree::Node<SIMDIM> * neighbor = it->getNeighbor( dir[lindir] );
                 if ( neighbor == NULL )
                     continue;
 
                 nNeighbors += neighbor->countLeaves();
 
-                Octree::Octree<int,SIMDIM>::iterator itn = neighbor->begin();
+                Octree::Octree<SIMDIM>::iterator itn = neighbor->begin();
                 while ( itn != neighbor->end() ) {
                     if ( itn->IsLeaf() ) {
-                        int neighborRank = *(itn->getDataPtr(0).object);
+                        int neighborRank = *((int*)itn->data[0]);
                         if ( thisRank != neighborRank )
                             nLeavesOnOtherNodes++;
                     }

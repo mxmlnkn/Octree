@@ -1,5 +1,8 @@
 #pragma once
 
+template<typename T_OCTREE>
+const int OctreeCommunicator<T_OCTREE>::COMM_HEADER_INDEX = 0;
+
 /******************************* Constructor ******************************/
 template<typename T_OCTREE>
 OctreeCommunicator<T_OCTREE>::OctreeCommunicator(void) {
@@ -58,23 +61,51 @@ void OctreeCommunicator<T_OCTREE>::initCommData(void) {
      * the last rank                                                          */
     this->NLeaves = tree.root->countLeaves();
     this->comDataPtr = (CommData*) malloc( sizeof(CommData)*NLeaves );
-    /* Insert Pointers to array elements of allocated chunk into octree,      *
-     * assign weighting and rank (default last rank) and caclulate total weig.*/
+    /* Insert Pointers to array elements of allocated chunk into octree and   *
+     * assign weighting and caclulate total weighting and optimalCosts        */
     int dataInserted = 0;
     this->totalCosts = 0;
-    for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it )
+    for ( typename T_OCTREE::iterator it = tree.begin( 1 ); it!=tree.end(); ++it ) {
+        tout << it->center << "\n";
         if ( it->IsLeaf() ) {
             assert( dataInserted < NLeaves );
+            assert( it->data.empty() );
+            //it->data.push_back( &(comDataPtr[dataInserted]) );
+            ++dataInserted;
+        }
+   }
+   /* for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it ) {
+        tout << it->center << "\n";
+        if ( it->IsLeaf() ) {
+            assert( dataInserted < NLeaves );
+            if ( ! it->data.empty() )
+                tout << "Somehow data existing! Size: " << it->data.size() << " data: " << it->data[0] << "\n";
             assert( it->data.empty() );
             it->data.push_back( &(comDataPtr[dataInserted]) );
             ++dataInserted;
 
             assert( COMM_HEADER_INDEX == 0 );
-            ((CommData*)it->data[COMM_HEADER_INDEX])->rank      = worldsize-1;
             ((CommData*)it->data[COMM_HEADER_INDEX])->weighting = 1. / it->size.min();
 
             this->totalCosts += ((CommData*)it->data[COMM_HEADER_INDEX])->weighting;
         }
+    }*/
     this->optimalCosts = totalCosts / double(worldsize);
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
+}
+
+template<typename T_OCTREE>
+void OctreeCommunicator<T_OCTREE>::distributeCells(void) {
+    /* Assign cells to all the processes */
+    double cumulativeCosts = 0;
+    int curRank = 0;
+    for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) {
+            cumulativeCosts += 1. / it->getSize().min();
+            if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
+                cumulativeCosts = 1. / it->getSize().min();
+                curRank++;
+            }
+            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = curRank;
+        }
 }

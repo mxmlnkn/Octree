@@ -47,6 +47,12 @@ std::ostream& operator<<( std::ostream& out,
 
 namespace Octree {
 
+namespace Ordering {
+    const int Morton   = 0;
+    const int GrayCode = 1;
+    const int Hilbert  = 2;
+}
+
 template< int T_DIM>
 class Octree {
 public:
@@ -85,7 +91,7 @@ public:
     bool CheckIntegrity( void );
 
     /* returns iterator with only root-node in todo stack */
-    typename Node::iterator begin(int ordering = 0) const;
+    typename Node::iterator begin(int ordering = Ordering::Morton) const;
     /* returns iterator with empty stack */
     typename Node::iterator end(void) const;
 
