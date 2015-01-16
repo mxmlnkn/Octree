@@ -30,6 +30,7 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 
 #include <iostream>
 #include <cmath>    // sin
+#include <cfloat>   // FLT_EPSILON
 #include <cstdlib>  // malloc, srand, rand, RAND_MAX
 #include <random>   // normal_distribution
 #include <pngwriter.h>
@@ -120,11 +121,11 @@ int main( int argc, char **argv )
     tout << "S                    : " << S                          << "\n";
     const double xoverc = 1. / (SPEED_OF_LIGHT * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
 	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << xoverc << "=DELTA_X/sqrt(2)/c_M" << std::endl;
-    if ( xoverc > DELTA_T )
+    if ( xoverc < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
     const double xovercm = 1. / (SPEED_OF_LIGHT/1.33 * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
 	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << xovercm << "=DELTA_X/sqrt(2)/c_M";
-    if ( xovercm > DELTA_T )
+    if ( xovercm < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
     tout << "\n";
 
@@ -133,9 +134,9 @@ int main( int argc, char **argv )
     /**************************************************************************/
 
     /********* refine all cells to initial homogenous min-Refinement **********/
-    for ( int i=0; i<INITIAL_OCTREE_REFINEMENT; i++) {
+    for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
-            if ( it->IsLeaf() ) it->GrowUp();
+            if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
     }
     /*********************** Refine certain boundaries ************************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
@@ -149,16 +150,18 @@ int main( int argc, char **argv )
         double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
         double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
         for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
+            /* acos in [0,2*pi] */
             double phi = acos( (linex-M[0])/R );
-            lphi.push_back ( phi );
-            lphi.push_back ( 2*M_PI - phi );
+            lphi.push_back( phi );
+            lphi.push_back( fmod( 2*M_PI + 2*M_PI - phi, 2*M_PI+FLT_EPSILON ) );
         }
         double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
         double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
         for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
+            /* asin in [-pi,pi] */
             double phi = asin( (liney-M[1])/R );
-            lphi.push_back ( phi );
-            lphi.push_back ( 2*M_PI - phi );
+            lphi.push_back( fmod( 2*M_PI + phi, 2*M_PI+FLT_EPSILON ) );
+            lphi.push_back( fmod( 2*M_PI + M_PI - phi, 2*M_PI+FLT_EPSILON ) );
         }
         lphi.sort();
 
@@ -181,7 +184,7 @@ int main( int argc, char **argv )
             pos[0] = M[0] + R*cos(phi);
             pos[1] = M[1] + R*sin(phi);
             OctreeType::Node * node = tree.FindLeafContainingPos(pos);
-            if (node->size >= cellsize)
+            if ( node->getLevel() == lvl )
                 node->GrowUp();
         }
     }

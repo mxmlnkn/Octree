@@ -10,8 +10,6 @@ template<typename T_DTYPE, int T_DIM>
 Octree<T_DTYPE,T_DIM>::Octree( const Octree & src ) {
     this->center  = src.center;
     this->size    = src.size;
-    if (this->root != NULL)
-        delete this->root;
     this->root    = new Node( NULL, VecD(0), VecD(1) );
     *(this->root) = *(src.root);
 }
@@ -39,7 +37,7 @@ typename Octree<T_DTYPE,T_DIM>::Octree& Octree<T_DTYPE,T_DIM>::operator=(const O
 /********************************* Constructor ********************************/
 template<typename T_DTYPE, int T_DIM>
 Octree<T_DTYPE,T_DIM>::Octree( const VecD center, const VecD size )
-: center( center ), size( size ) {
+: center( center ), size( size ), root( NULL ) {
 /* root Node has no parent, therefore it's parent is set to NULL !            */
     this->root = new Node( NULL, VecD(0), VecD(1) );
 }

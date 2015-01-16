@@ -51,10 +51,10 @@ Node<T_DTYPE,T_DIM>::~Node( void ) {
             delete this->children[i];
 }
 
-/* Constructor */
+/******************************** Constructor *********************************/
 template<typename T_DTYPE, int T_DIM>
 Node<T_DTYPE,T_DIM>::Node(Node * const parent, VecD const cent, VecD const size)
-: parent( parent ), center( cent ), size( size ) {
+: parent( parent ), center( cent ), size( size ), nchildren( compileTime::pow(2,T_DIM) ) {
     for (int i=0; i<nchildren; i++)
         this->children[i] = NULL;
 }
