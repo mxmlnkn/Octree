@@ -4,13 +4,9 @@
 
 namespace SimulationBox {
 
-/* static members can't be defined in a class declaration, that's why we need *
- * these seemingly useless lines to actually allocate the memory space for    *
- * those variables                                                            */
-template<int T_DIM, typename T_CELLDATA>
-const int SimulationBox<T_DIM, T_CELLDATA>::dim;
-
-bool InArea( const VecI & pos, const int & area, const VecI & localcells, int guardsize ) {
+template<int T_DIM>
+bool InArea( const Vec<int,T_DIM> & pos, const int & area, const Vec<int,T_DIM> & localcells, int guardsize ) {
+    typedef Vec<int,T_DIM> VecI;
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
 
@@ -40,7 +36,7 @@ bool InArea( const VecI & pos, const int & area, const VecI & localcells, int gu
 
 /********************************* Constructor ********************************/
 template<int T_DIM, typename T_CELLDATA>
-SimulationBox<T_DIM,T_CELLDATA>::SimulationBox( 
+SimulationBox<T_DIM,T_CELLDATA>::SimulationBox(
     VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages
 ) : ntimesteps(bufferpages), abspos(abspos), localcells(localcells), cellsize(cellsize),
     guardsize(guardsize)

@@ -17,7 +17,7 @@ ToDo:
 #include <list>
 #include <stack>
 #include <ctime> // only for debug in operator<<
-#include "Vector.h"
+#include "math/TVector.h"
 
 #ifndef OCTREE_MAX_OBJECTS_PER_LEAF
 	#define OCTREE_MAX_OBJECTS_PER_LEAF 3
@@ -43,13 +43,9 @@ template<typename T_DTYPE, int T_DIM>
 std::ostream& operator<<( std::ostream& out,
                           Octree::Octree<T_DTYPE,T_DIM>& tree );
 
-
 #include "OctreeNode.h"
 
-
 namespace Octree {
-
-
 
 template<typename T_DTYPE, int T_DIM>
 class Octree {
@@ -65,12 +61,16 @@ public:
     Node * root; // root can be leaf or child!
 
     Octree(void);
+    /* This is a feature of Octree. It can convert the fixed internal sizes   *
+     * and positions of OctreeNode to arbitrary ones. Internal sizes are      *
+     * fixed to avoid floating point rounding errors                          */
     Octree(const VecD center, const VecD size);
     Octree(const Octree &);
     ~Octree(void);
     Octree& operator=(const Octree &);
-
+    
     VecD FindData( T_DTYPE * const object ) const;
+    /* Returns Pointer of Node with its center equaling exactly the given one */
     const Node * GetNodePtr( const VecD center ) const;
     void InsertData( const VecD pos, T_DTYPE * const object );
     /* Returns false if datum not found */
@@ -78,14 +78,16 @@ public:
     bool MoveData( const VecD pos, T_DTYPE * const object, const VecD newpos );
     Node * FindLeafContainingPos( const VecD & pos );
 
-/* Returns true, if it found not structural error. It checks for:             *
- *  - Datapoint (particle) being inside the Octree-cell its bein stored in    *
- *  - all children pointing to the parent in which they are being stored      *
- *  - leaf nodes containing illegitimate children                             *
- *  - pointer to childs being NULL / missing                                  */
+    /* Returns true, if it found not structural error. It checks for:         *
+     *  - Datapoint (particle) being inside the Octree-cell its bein stored in*
+     *  - all children pointing to the parent in which they are being stored  *
+     *  - leaf nodes containing illegitimate children                         *
+     *  - pointer to childs being NULL / missing                              */
     bool CheckIntegrity( void );
 
+    /* returns iterator with only root-node in todo stack */
     typename Node::iterator begin(int ordering = 0) const;
+    /* returns iterator with empty stack */
     typename Node::iterator end(void) const;
 
     friend std::ostream& operator<< <T_DTYPE,T_DIM>( std::ostream& out, Octree<T_DTYPE,T_DIM>& tree );

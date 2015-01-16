@@ -5,17 +5,13 @@
 
 namespace Octree {
 
-
-/* Should only be used in conjunction with operator= !! */
-template<typename T_DTYPE, int T_DIM>
-Octree<T_DTYPE,T_DIM>::Octree( void )
-: center( VecD(0) ), size( VecD(0) ), root( NULL ) {}
-
-/* Copy Constructor */
+/****************************** Copy Constructor ******************************/
 template<typename T_DTYPE, int T_DIM>
 Octree<T_DTYPE,T_DIM>::Octree( const Octree & src ) {
     this->center  = src.center;
     this->size    = src.size;
+    if (this->root != NULL)
+        delete this->root;
     this->root    = new Node( NULL, VecD(0), VecD(1) );
     *(this->root) = *(src.root);
 }
@@ -25,21 +21,22 @@ Octree<T_DTYPE,T_DIM>::~Octree( void ) {
     delete this->root;
 }
 
-/* Copy Assignment */
+/****************************** Copy Assignment *******************************/
 template<typename T_DTYPE, int T_DIM>
 typename Octree<T_DTYPE,T_DIM>::Octree& Octree<T_DTYPE,T_DIM>::operator=(const Octree & src)
 {
     this->center = src.center;
     this->size   = src.size;
-    if (this->root != NULL) {
+    if (this->root != NULL)
         delete this->root;
-        this->root = new Node( NULL, VecD(0), VecD(1) );
-    }
+    this->root = new Node( NULL, VecD(0), VecD(1) );
+    /* copy root of src to newly allocated space of this object's root */
     *(this->root) = *(src.root);
     this->root->parent = NULL;
     return *this;
 }
 
+/********************************* Constructor ********************************/
 template<typename T_DTYPE, int T_DIM>
 Octree<T_DTYPE,T_DIM>::Octree( const VecD center, const VecD size )
 : center( center ), size( size ) {
@@ -47,6 +44,14 @@ Octree<T_DTYPE,T_DIM>::Octree( const VecD center, const VecD size )
     this->root = new Node( NULL, VecD(0), VecD(1) );
 }
 
+template<typename T_DTYPE, int T_DIM>
+Octree<T_DTYPE,T_DIM>::Octree( void )
+: center( VecD(0) ), size( VecD(1) ), root( NULL ) {
+    this->root = new Node( NULL, VecD(0), VecD(1) );
+}
+
+
+/********************************* GetNodePtr *********************************/
 template<typename T_DTYPE, int T_DIM>
 const typename Octree<T_DTYPE,T_DIM>::Node * Octree<T_DTYPE,T_DIM>::GetNodePtr
 ( const VecD center ) const
@@ -72,8 +77,7 @@ const typename Octree<T_DTYPE,T_DIM>::Node * Octree<T_DTYPE,T_DIM>::GetNodePtr
  * that corresponding node can be popped from the stack                       */
 template<typename T_DTYPE, int T_DIM>
 typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
-( T_DTYPE * const object ) const
-{
+( T_DTYPE * const object ) const {
     typedef struct{ int ichild; const Node* node; } tododata;
     std::stack<tododata> todo;
     tododata tmp = { 0, this->root };
@@ -84,7 +88,7 @@ typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
             typename Node::Datalist::const_iterator it = current->data.begin();
             while ( it != current->data.end() ) {
                 if ( it->object == object )
-                    return this->size * it->pos;
+                    return center + it->pos*size;
                 ++it;
             }
             todo.pop();
@@ -100,28 +104,35 @@ typename Octree<T_DTYPE,T_DIM>::VecD Octree<T_DTYPE,T_DIM>::FindData
     return VecD( NAN );
 }
 
+/********************************* InsertData *********************************/
 template<typename T_DTYPE, int T_DIM>
 void Octree<T_DTYPE,T_DIM>::InsertData( const VecD pos, T_DTYPE * const object ) {
-    this->root->FindLeafContainingPos( pos / this->size )->
-                InsertData( pos / this->size, object );
+    const VecD intpos = (pos - center) / size;
+    this->root->FindLeafContainingPos(intpos)->
+                InsertData(intpos,object);
 }
 
+/********************************* RemoveData *********************************/
 template<typename T_DTYPE, int T_DIM>
-bool Octree<T_DTYPE,T_DIM>::RemoveData( const VecD pos, T_DTYPE * const object )
-{
-    return this->root->FindLeafContainingPos( pos / this->size )->RemoveData( pos / this->size, object );
+bool Octree<T_DTYPE,T_DIM>::RemoveData( const VecD pos, T_DTYPE * const object ) {
+    const VecD intpos = (pos - center) / size;
+    return this->root->FindLeafContainingPos(intpos)->RemoveData(intpos,object);
 }
 
+/*************************** FindLeafContainingPos ****************************/
 template<typename T_DTYPE, int T_DIM>
-typename Octree<T_DTYPE,T_DIM>::Node* Octree<T_DTYPE,T_DIM>::FindLeafContainingPos( const VecD & pos )
-{
-    return this->root->FindLeafContainingPos( pos / this->size );
+typename Octree<T_DTYPE,T_DIM>::Node* Octree<T_DTYPE,T_DIM>::FindLeafContainingPos( const VecD & pos ) {
+    const VecD intpos = (pos - center) / size;
+    return this->root->FindLeafContainingPos(intpos);
 }
 
+/********************************** MoveData **********************************/
 template<typename T_DTYPE, int T_DIM>
 bool Octree<T_DTYPE,T_DIM>::MoveData( const VecD pos, T_DTYPE * const object,
 const VecD newpos ) {
-    Node * tmp = this->root->FindLeafContainingPos( pos / this->size );
+    const VecD intpos    = (   pos - center) / size;
+    const VecD intnewpos = (newpos - center) / size;
+    Node * tmp = this->root->FindLeafContainingPos(intpos);
 /* If the new position is still inside the same octant, then we don't need to *
  * relocate it and we can simply search for the correct data in the list and  *
  * change the position                                                        */
@@ -133,18 +144,18 @@ const VecD newpos ) {
     }
     if (it == tmp->data.end())
         return false;
-    if ( tmp->IsInside( newpos / this->size ) )
-        it->pos = newpos / this->size;
+    if ( tmp->IsInside(intnewpos) )
+        it->pos = intnewpos;
 /* If the new position will change the parent leaf of that object, then it's  *
  * being relocated by removing and inserting it anew (could be optimized)     */
     else {
-        RemoveData( pos   , object );
-        InsertData( newpos, object );
+        this->RemoveData( pos   , object );
+        this->InsertData( newpos, object );
     }
     return true;
 }
 
-
+/******************************* CheckIntegrity *******************************/
 template<typename T_DTYPE, int T_DIM>
 bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
     bool foundError = false;
@@ -186,15 +197,14 @@ bool Octree<T_DTYPE,T_DIM>::CheckIntegrity( void ) {
     return !foundError;
 }
 
-
-/* returns iterator with only root-node in todo stack */
+/*********************************** begin ************************************/
 template<typename T_DTYPE, int T_DIM>
 typename Octree<T_DTYPE,T_DIM>::Node::iterator Octree<T_DTYPE,T_DIM>::begin( int ordering ) const {
     typename Node::iterator it( this->root, ordering );
     return it;
 }
 
-/* returns iterator with empty stack */
+/************************************ end *************************************/
 template<typename T_DTYPE, int T_DIM>
 typename Octree<T_DTYPE,T_DIM>::Node::iterator Octree<T_DTYPE,T_DIM>::end( void ) const {
     typename Node::iterator it;

@@ -1,16 +1,16 @@
 /*
 
-rm testOctree.exe; g++ testOctree.cpp -o testOctree.exe -Wall -std=c++0x; ./testOctree.exe
-
 ToDo:
-  - check courant criterium !!! (automatically)
   - Check for energy conservation automatically (problematic for initial wave)
   - draw double slit into png in gray and shift wave from red-green to only red
   - calculate and draw into the png the intensity after the obstacle
-  - Introduce SI and internal Units!
-  - above is for CELL_SIZE_X = 1.0
   - for CELL_SIZE_X = 5.0 the wave doesn't move to the right :S?
   - why no tprev needed like in 1D wave equation ...
+Done:
+  - check courant criterium !!! (automatically)
+  - Introduce SI and internal Units!
+  - above is for CELL_SIZE_X = 1.0
+
 */
 
 #ifndef M_PI
@@ -18,41 +18,38 @@ ToDo:
 #endif
 #define INF (1.0/0.0)
 
-
-#include <iostream>
-#include <cmath>    // sin
-#include <cstdlib>  // malloc, srand, rand, RAND_MAX
-#include <random>   // normal_distribution
-
-#include <pngwriter.h>
-
-#define DEBUG_MAIN_YEE 99
-
 namespace compileTime {
 
 /* Compile time power (also exact for integers) */
 template<typename T>
-inline constexpr T pow(const T base, unsigned const exponent) {
+inline constexpr T pow(const T base, unsigned const int exponent) {
     return exponent == 0 ? 1 : base * pow<T>(base, exponent-1);
 }
 
 } // compileTime
 
-
-/* General libraries */
+#include <iostream>
+#include <cmath>    // sin
+#include <cstdlib>  // malloc, srand, rand, RAND_MAX
+#include <random>   // normal_distribution
+#include <pngwriter.h>
+#include <list>
 #include "math/TVector.h"
 #include "math/TVector.tpp"
 #include "math/TBaseMatrix.h"
 #include "teestream/TeeStream.h"
-
-/* Simulation Code Includes */
-#include "paramset/Parameters_2014-12-07.cpp"
-typedef Vec<double,SIMDIM> VecD;
-typedef Vec<int   ,SIMDIM> VecI;
+#include "paramset/Parameters_2015-01-16.cpp"
 #define YEE_CELL_TIMESTEPS_TO_SAVE 2
 #include "YeeCell.h"
-typedef BaseMatrix<class YeeCell,SIMDIM> CellMatrix;
+#include "octree/Octree.h"
+#include "octree/OctreeToSvg.h"
+#include "Communicator.h"
 
+#define DEBUG_MAIN_YEE 99
+
+typedef Vec<double,SIMDIM> VecD;
+typedef Vec<int   ,SIMDIM> VecI;
+typedef BaseMatrix<class YeeCell,SIMDIM> CellMatrix;
 
 #define N_CELLS_X NUMBER_OF_CELLS_X // should be power of two, because of octree !
 #define N_CELLS_Y NUMBER_OF_CELLS_Y // should be same as above, because octree isn't able to have a different amount of equal sized cells in two directions !!!
@@ -91,8 +88,20 @@ namespace TIME_SPAWN_FUNCTIONS {
 
 int main( int argc, char **argv )
 {
-    tout.Open("out");
+    /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
+    VecD globSize(100), globCenter(0.5*globSize);
+    typedef typename Octree::Octree<int,SIMDIM> OctreeType;
+    OctreeType tree( globCenter, globSize );
+    OctreeCommunicator<OctreeType> comBox(tree);
+    tout.Open("out",comBox.rank);
+    terr.Open("err",comBox.rank);
+    /* Initialize SVG output file */
+    std::stringstream filename;
+    filename << "Octree_worldsize-" << comBox.worldsize << "_rank-" << comBox.rank;
+    Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, filename.str() );
 
+    /**************************** Print Parameters ****************************/
+    srand(RANDOM_SEED);
 	const double S = SPEED_OF_LIGHT * DELTA_T * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm();
     tout << "MUE0                 : " << MUE0                       << "\n";
     tout << "EPS0                 : " << EPS0                       << "\n";
@@ -109,11 +118,83 @@ int main( int argc, char **argv )
     tout << "UNIT_ANGULAR_MOMENTUM: " << UNIT_ANGULAR_MOMENTUM      << "\n";
     tout << "ELECTRON_MASS        : " << ELECTRON_MASS              << "\n";
     tout << "S                    : " << S                          << "\n";
-	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << 1. / (SPEED_OF_LIGHT * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() ) << "=DELTA_X/sqrt(2)/c_M" << std::endl;
-	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << 1. / (SPEED_OF_LIGHT/1.33 * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() ) << "=DELTA_X/sqrt(2)/c_M" << std::endl;
+    const double xoverc = 1. / (SPEED_OF_LIGHT * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
+	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << xoverc << "=DELTA_X/sqrt(2)/c_M" << std::endl;
+    if ( xoverc > DELTA_T )
+        tout << " NOT FULFILLED!!!\n";
+    const double xovercm = 1. / (SPEED_OF_LIGHT/1.33 * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
+	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << xovercm << "=DELTA_X/sqrt(2)/c_M";
+    if ( xovercm > DELTA_T )
+        tout << " NOT FULFILLED!!!\n";
     tout << "\n";
 
-    /* create data buffer with cells initially with zeros in all entries      */
+    /**************************************************************************/
+    /* (1) Setup Octree Refinement ********************************************/
+    /**************************************************************************/
+
+    /********* refine all cells to initial homogenous min-Refinement **********/
+    for ( int i=0; i<INITIAL_OCTREE_REFINEMENT; i++) {
+        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
+            if ( it->IsLeaf() ) it->GrowUp();
+    }
+    /*********************** Refine certain boundaries ************************/
+    assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
+    VecD M(0.5*globSize);          // center of circle
+    double R = 0.2*globSize.min(); // radius of circle
+    for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
+        /* Get all circle angles, where it intersects with a cell border */
+        std::list<double> lphi;
+        std::list<double>::iterator it;
+        VecD cellsize = globSize / pow(2,lvl);
+        double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
+        double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
+        for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
+            double phi = acos( (linex-M[0])/R );
+            lphi.push_back ( phi );
+            lphi.push_back ( 2*M_PI - phi );
+        }
+        double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
+        double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
+        for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
+            double phi = asin( (liney-M[1])/R );
+            lphi.push_back ( phi );
+            lphi.push_back ( 2*M_PI - phi );
+        }
+        lphi.sort();
+
+        /* Echo all found angles */
+        #if DEBUG_MAIN_YEE >= 99
+            tout << "Angle list contains:";
+            for (it=lphi.begin(); it!=lphi.end(); ++it)
+                tout << ' ' << *it;
+            tout << '\n';
+        #endif
+
+        /* Grow up all cells, with which the circle intersects. Find them by  *
+         * using an angle between to successive circle intersection angles    */
+        for (it=lphi.begin(); it!=lphi.end(); ++it) {
+            VecD pos(0);
+            std::list<double>::iterator itnext = it;
+            if ( ++itnext == lphi.end() )
+                itnext = lphi.begin();
+            double phi = 0.5 * (*itnext + *it);
+            pos[0] = M[0] + R*cos(phi);
+            pos[1] = M[1] + R*sin(phi);
+            OctreeType::Node * node = tree.FindLeafContainingPos(pos);
+            if (node->size >= cellsize)
+                node->GrowUp();
+        }
+    }
+    std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
+    
+    //MPI_Finalize(); // doesn't work in destructor :S
+    return 0;
+
+
+    /**************************************************************************/
+    /* (5) Create data buffer with cells initially with zeros in all entries **/
+    /**************************************************************************/
+
 	VecI size(0);
 	for ( int i = 0; i < SIMDIM; i++ )
 		size[i] = NUMBER_OF_CELLS[i];
@@ -126,7 +207,7 @@ int main( int argc, char **argv )
 		data[i].sigmaE  = 0;
 		data[i].sigmaM  = 0;
     }
-    
+
     /* Result: 014 - broken total reflexion (two glass plates with small      *
      *               vacuum/air slit inbetween                                */
 	/*for ( int i = 0; i < data.getSize().product(); i++ ) {

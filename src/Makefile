@@ -1,39 +1,45 @@
 CXX     = g++
-INCLUDE = -I ./ -I ./libs/
+INCLUDE = -I . -I ./libs
 CFLAGS  = $(INCLUDE) -Wall -std=c++0x -g -O0
 
 all : libpngwriter testOctree testMatrix MainYee Main
 
-libpngwriter    :
+libpngwriter:
 	cd pngwriter; make all
+
 TVector : libs/math/TVector.tpp libs/math/TVector.h
 
 TBaseMatrix : libs/math/TBaseMatrix.h
 
 Octree : libs/octree/OctreeNode.h libs/octree/OctreeNode.tpp libs/octree/OctreeToSvg.h libs/octree/OctreeToSvg.tpp
 
-
 testOctree  : examples/testOctree.cpp Vector Octree
+	rm -f $@.exe
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
 testOctree2 : examples/testOctree2.cpp Vector Octree
+	rm -f $@.exe
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
 testMatrix  : examples/testMatrix.cpp
+	rm -f $@.exe
 	g++ $@.cpp -o $@.exe $(CFLAGS)
 
 MainYee : yeesolver/MainYee.cpp yeesolver/YeeCell.h libpngwriter
 	mkdir -p output
-	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter/ -L ./pngwriter/ -lz -lpngwriter -lpng
+	rm -f $@.exe
+	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
 MainYeeOctree : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwriter
 	mkdir -p output
-	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter/ -L ./pngwriter/ -lz -lpngwriter -lpng
+	rm -f $@.exe
+	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
 testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h examples/testSimBox/Cell.h TVector TBaseMatrix
+	rm -f $@.exe
 	mpic++ $< -o $@.exe $(CFLAGS)
 
-clean   :
+clean:
 	cd pngwriter; make clean
 	rm -f testOctree.exe
 	rm -f testOctree

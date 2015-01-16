@@ -13,6 +13,11 @@ private:
     bool border;
     bool guard;
 public:
+    /* Definitions and Aliases */
+    const int dim = T_DIM;
+    typedef Vec<double,T_DIM> VecD;
+    typedef Vec<int   ,T_DIM> VecI;
+    
     /* Only public for convenience, shouldn't be tempered with !!! */
     VecI icell;  // stores current cell index. This is where we are
     VecI ncells; // dimension of cellmatrix this iterator works on with Guard

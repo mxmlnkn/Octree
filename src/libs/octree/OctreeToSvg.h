@@ -63,5 +63,6 @@ public:
     VecD convertToImageCoordinates( const VecD pos );
 };
 
-
 } // namespace Octree
+
+#include "OctreeToSvg.tpp"

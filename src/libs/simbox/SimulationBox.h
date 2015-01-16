@@ -43,7 +43,8 @@ namespace SimulationBox {
  * The internal data matrix will begin with the upper left corner like    *
  * any normal matrix                                                      *
  **************************************************************************/
-bool InArea( const VecI & pos, const int & area, const VecI & localcells, int guardsize );
+template<int T_DIM>
+bool InArea( const Vec<int,T_DIM> & pos, const int & area, const Vec<int,T_DIM> & localcells, int guardsize );
 
 
 template<int T_DIM, typename T_CELLDATA>
@@ -53,11 +54,11 @@ private:
     SimulationBox( SimulationBox & a );
 public:
     /* Definitions and Aliases */
+    const int dim = T_DIM;
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
     typedef BaseMatrix<T_CELLDATA,T_DIM> CellMatrix;
     typedef Iterator<T_DIM> IteratorType;
-    static const int dim       = T_DIM;
 
     /* Current Time on which Calculations are to be done or where done are    *
      * held in t[0]. t[1] is the prior time step and so on. TimeData struct   *

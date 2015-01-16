@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-#include "Vector.h"
-#include "Vector.tpp"
+#include "math/TVector.h"
+#include "math/TVector.tpp"
 
 #ifndef YEE_CELL_TIMESTEPS_TO_SAVE
 	#define YEE_CELL_TIMESTEPS_TO_SAVE 3
@@ -24,23 +24,6 @@ public:
 	: epsilon(1), mu(1), sigmaE(0), sigmaM(0)
 	{}
 	~YeeCell(void) {}
-	/*VecD & E( int time ) {
-		assert( time <= 1 );
-		assert( time > 1-YEE_CELL_TIMESTEPS_TO_SAVE );
-		return Edata[ (time + internaltimestep) % YEE_CELL_TIMESTEPS_TO_SAVE ];
-	}
-	VecD & H( int time ) {
-		assert( time <= 1 );
-		assert( time > 1-YEE_CELL_TIMESTEPS_TO_SAVE );
-		return Hdata[ (time + internaltimestep) % YEE_CELL_TIMESTEPS_TO_SAVE ];
-	}*/
-	/* mod not really necessary, but if we have more timesteps than int   *
-	 * can specify, than an overflow could occur and the timesteps could  *
-	 * get scrambled, therefore better use modulo after incrementing      */
-	/*void incTimestep( void ) {
-		internaltimestep = ++internaltimestep % YEE_CELL_TIMESTEPS_TO_SAVE;
-	}*/
-	/* Problem with this is that it would be stored for every cell and therefore wouldn't be too much redundant -.- */
 };
 
 

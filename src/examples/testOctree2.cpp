@@ -21,12 +21,10 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 
 } // compileTime
 
-#include "Vector.h"
-#include "Octree.h"
-#include "OctreeToSvg.h"
-#include "TeeStream.h"
-
-#include "OctreeToSvg.tpp"
+#include "math/TVector.h"
+#include "octree/Octree.h"
+#include "octree/OctreeToSvg.h"
+#include "teestream/TeeStream.h"
 
 #define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;
