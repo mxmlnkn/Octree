@@ -8,9 +8,11 @@ const int OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::CELL_DATA_INDEX = 1;
 
 /********************************* Constructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tree )
-: rank(0), worldsize(1), tree(tree), comDataPtr(NULL), NLeaves(0),
-  cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
+OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
+( T_OCTREE & tree, const VecI periodic )
+: rank(0), worldsize(1), tree(tree), periodic(periodic), 
+  minLevel(0), maxLevel(0), comDataPtr(NULL),
+  NLeaves(0), cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
   neighbors(NULL), recvrequests(NULL), sendrequests(NULL)
 {
     /* Initialize MPI */
@@ -18,7 +20,7 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tr
     MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Get_processor_name(processor_name, &processor_name_length);
-
+    
     this->neighbors    = new NeighborData[worldsize];
 #if 1==0
     this->recvrequests = new MPI_Request[nneighbors+1];
@@ -37,17 +39,16 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tr
 /********************************** Destructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
-    if ( comDataPtr != NULL )
-        delete[] comDataPtr;
-
     for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it ) {
         if ( it->data.size() >= 2 ) {
             int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
-            tout << "Leaf at " << it->center << " has " << it->data.size() << " data stored, its rank (" << curRank << ") may not be ours (" << this->rank << ")! It is a Leaf: " << it->IsLeaf() << "\n";
-            //assert( curRank == this->rank );
+            assert( curRank == this->rank );
             delete ((OctCell*)it->data[CELL_DATA_INDEX]);
         }
     }
+
+    if ( comDataPtr != NULL )
+        delete[] comDataPtr;
 
     delete[] this->neighbors;
 #if 1==0
@@ -62,6 +63,20 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
 ( VecI cellsPerOctreeCell, int guardsize, int timesteps ) {
+    /* number of cells rises exponentially. Noone will use 2^255 Cells! */
+    this->minLevel = 255;
+    this->maxLevel = 0;
+    for ( typename T_OCTREE::iterator it = tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) {
+            int curLevel = it->getLevel();
+            assert( curLevel <= 255 );
+            if ( minLevel > curLevel )
+                minLevel = curLevel;
+            assert( curLevel >= 0 );
+            if ( maxLevel < curLevel )
+                maxLevel = curLevel;
+        }
+    
     this->cellsPerOctreeCell = cellsPerOctreeCell;
     this->guardsize = guardsize;
     this->timestepbuffers = timesteps;
@@ -93,7 +108,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
 
 /******************************* distributeCells ******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPerOctreeCell, int ordering) {
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering) {
     this->distOrdering = ordering;
     /* Assign cells to all the processes and allocate memory */
     double cumulativeCosts = 0;
@@ -105,38 +120,40 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPe
                 cumulativeCosts = 1. / it->getSize().min();
                 curRank++;
             }
-            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = 333;
-            
+            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = curRank;
+
             /* Allocate memory for celldata only if cell belongs to us */
             if ( curRank == this->rank ) {
                 NOwnLeaves++;
                 assert(it->data.size() == CELL_DATA_INDEX);
 
                 it->data.push_back(
-                    new SimulationBox::SimulationBox<SIMDIM,CellMatrix> ( 
-                        it->center - 0.5*it->size, /* abspos, lower left ??? */
+                    new SimulationBox::SimulationBox<SIMDIM,T_CELLTYPE> (
+                        tree.toGlobalCoords(it->center - 0.5*it->size), /* abspos, lower left */
                         cellsPerOctreeCell, /* localcells */
-                        tree.size / pow( 2, it->getLevel() ), /* cellsize */
+                        tree.size / pow( 2, it->getLevel() ) / cellsPerOctreeCell, /* cellsize */
                         this->guardsize, this->timestepbuffers )
                 );
-                tout << "Allocated CellData at address " << it->data.back() << " for node at " << it->center << "assigned to rank " << curRank << "\n";
             }
         }
-#if 1==0
+
     /* Count cells to transmit per neighbor process */
     for ( typename T_OCTREE::iterator it=tree.begin(ordering); it != tree.end(); ++it )
         if ( it->IsLeaf() ) {
+            terr << "Count Cells to transmit at " << it->center << "\n";
             /* only look at neighboorhood of cells assigned to me */
             int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
             if ( curRank != this->rank )
-                break;
+                continue;
 
             /* Cycle through all neighboring octree nodes of same size */
             assert( T_DIM == 2 );
             int dirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
             for (int i=0; i<compileTime::pow(2,T_DIM); ++i) {
                 VecI vDir = getDirectionVector<T_DIM>(dirs[i]);
-                typename T_OCTREE::Node & neighbor = *(it->getNeighbor(vDir));
+                typename T_OCTREE::Node & neighbor = *(it->getNeighbor(vDir,periodic));
+
+                terr << "  Looking at neighbor at " << neighbor.center << "\n";
 
                 /* Neighbors may not be leaves (e.g. if it points to a large  *
                  * node with smaller neighbors) , therefore we need to cycle  *
@@ -149,17 +166,21 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPe
                                        getOppositeDirection<T_DIM>( dirs[i] ) );
                 for ( typename T_OCTREE::iterator it2 = neighbor.begin(ordering);
                       it2 != neighbor.end(); ++it2 )
-                if ( it2->getNeighbor(vOppositeDir) == &(*it) ) {
+                if ( it2->IsLeaf() )
+                if ( it->IsInside( it2->getNeighbor(vOppositeDir,periodic)->center )
+                or   it2->getNeighbor(vOppositeDir,periodic)->IsInside( it->center ) ) {
+                    terr << "    Child of neighbor at " << it2->center << "\n";
+
                     /* If neighbor also belongs to us, then no mpi necessary */
                     int neighborRank = ((CommData*)it2->data[COMM_HEADER_INDEX])->rank;
                     if ( neighborRank == this->rank )
-                        break;
+                        continue;
 
                     /* If two cells have the same neighbor (because they are  *
                      * small, then that neighbor must not tagged in 'ToRecv'  *
                      * twice                                                  */
                     BorderData toRecv = { &(*it2), vOppositeDir };
-                    std::list<BorderData> & lsr = neighbors[curRank].srecvmats;
+                    std::list<BorderData> & lsr = neighbors[neighborRank].srecvmats;
                     if ( std::find( lsr.begin(), lsr.end(), toRecv) == lsr.end() )
                         neighbors[neighborRank].srecvmats.push_back(toRecv);
 
@@ -169,13 +190,19 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPe
                      * it is only necessary to recv one cell one time, it may *
                      * be necessary to send one cell to multiple processes    */
                     BorderData toSend = { &(*it), vDir };
-                    std::list<BorderData> & lss = neighbors[curRank].ssendmats;
+                    std::list<BorderData> & lss = neighbors[neighborRank].ssendmats;
                     if ( std::find( lss.begin(), lss.end(), toSend) == lss.end() )
                         neighbors[neighborRank].ssendmats.push_back(toSend);
                 }
             }
         }
-#endif
+
+    /* sort send and recv list in order to not scramble up the order when     *
+     * communicating in one large bulk                                        */
+    for (int i=0; i<this->worldsize; ++i) {
+        neighbors[i].ssendmats.sort();
+        neighbors[i].srecvmats.sort();
+    }
 }
 
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>

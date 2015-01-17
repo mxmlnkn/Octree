@@ -68,10 +68,8 @@ Vec<int,T_DIM> ConvertLinearToVectorIndex( const int & linindex, const Vec<int,T
 
 template<typename T_DTYPE, int T_DIM>
 class BaseMatrix {
-private:
-    Vec<int,T_DIM> size;
-
 public:
+    Vec<int,T_DIM> size;
     T_DTYPE* data;
     
     static const int dim = T_DIM;

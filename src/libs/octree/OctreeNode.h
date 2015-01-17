@@ -150,8 +150,9 @@ public:
  * childnodes, then that is returned. If this cell is larger than the neigh-  *
  * boring cells in that direction, then the cell of same size will be         *
  * returned. The format of direction is a movement vector, which will just be *
- * added to the position of this node                                         */
-    Node * getNeighbor( const VecI & direction );
+ * added to the position of this node. BEWARE!!! Returns NULL if not periodic *
+ * and on border, meaning there is no neighbor                                */
+    Node * getNeighbor( const VecI direction, const VecI periodic );
 
 
 /* <> would also suffice after operator<< instead of <T_DIM>, but one *

@@ -82,6 +82,11 @@ public:
     /* Returns false if datum not found */
     bool RemoveData( const VecD pos, const int index );
     Node * FindLeafContainingPos( const VecD & pos );
+    
+    /* Returns level at which first leaf can be found */
+    int getMinLevel( void );
+    /* Returns maximum depth of tree */
+    int getMaxLevel( void );
 
     /* Returns true, if it found not structural error. It checks for:         *
      *  - Datapoint (particle) being inside the Octree-cell its bein stored in*

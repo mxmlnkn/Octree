@@ -58,7 +58,7 @@ public:
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
     typedef BaseMatrix<T_CELLDATA,T_DIM> CellMatrix;
-    typedef Iterator<T_DIM> IteratorType;
+    typedef Iterator<T_DIM,T_CELLDATA> IteratorType;
 
     /* Current Time on which Calculations are to be done or where done are    *
      * held in t[0]. t[1] is the prior time step and so on. TimeData struct   *
@@ -75,7 +75,11 @@ public:
      * cyclically swap the time pointers, instead of the whole data itself !  */
     TimeData ** t;
 
-    VecD abspos;  // of lower (or better upper ???) left point (without Guard)
+    /* absolute position of lower left point (without Guard).                 *
+     * To avoid rounding errors, use e.g. the internal units of Octree        *
+     * This is only used in getGlobalPosition to conver internal integer      *
+     * addressing of matrix elements to double positions                      */
+    VecD abspos;  
     VecI localcells; // cells in this SimulationBox/Matrix/Octree cell
     VecD cellsize;
     int guardsize;
@@ -84,7 +88,7 @@ public:
     ~SimulationBox(void);
 
     bool inArea( const VecI & pos, const int & area ) const;
-    IteratorType getIterator( const int area ) const;
+    IteratorType getIterator( const int timestep, const int area ) const;
 
     #if DEBUG_SIMBOX >= 1
         void PrintValues( int timestep = 0 ) const;

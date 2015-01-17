@@ -5,10 +5,11 @@
 namespace SimulationBox {
 
 /******************************** Constructor *********************************/
-template<int T_DIM>
-Iterator<T_DIM>::Iterator( const int area, const VecI ncells, const int guardsize )
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA>::Iterator
+( const int area, const VecI ncells, const int guardsize, CellMatrix & srcmat )
 : area(area), core(area & CORE), border(area & BORDER), guard (area & GUARD),
-  icell(0), ncells(ncells), guardsize(guardsize)
+  srcmat(&srcmat), icell(0), ncells(ncells), guardsize(guardsize)
 {
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
@@ -17,15 +18,15 @@ Iterator<T_DIM>::Iterator( const int area, const VecI ncells, const int guardsiz
 }
 
 /******************************** Destructor **********************************/
-template<int T_DIM>
-Iterator<T_DIM>::~Iterator( void )
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA>::~Iterator( void )
 {}
 
 /****************************** Copy Constructor ******************************/
-template<int T_DIM>
-Iterator<T_DIM>::Iterator( const Iterator & src ) 
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA>::Iterator( const Iterator & src ) 
  : area(src.area), core(src.core), border(src.border), guard(src.guard), 
-   icell(src.icell), ncells(src.ncells), guardsize(src.guardsize)
+   srcmat(src.srcmat), icell(src.icell), ncells(src.ncells), guardsize(src.guardsize)
 {}
 
 /**********************************************************************
@@ -37,8 +38,8 @@ Iterator<T_DIM>::Iterator( const Iterator & src )
  *   (i=2)*[ (nj=3) * (nk=4) ] + (j=3)*[ (nk=4) ] + (k=2)*[ 1 ]       *
  * That argument in [] will be named 'prevrange'                      *
  **********************************************************************/
-template<int T_DIM>
-int Iterator<T_DIM>::getCellIndex( void ) const {
+template<int T_DIM, typename T_CELLDATA>
+int Iterator<T_DIM,T_CELLDATA>::getCellIndex( void ) const {
     int index     = 0;
     int prevrange = 1;
     for (int i=T_DIM-1; i>=0; i--) {
@@ -48,8 +49,8 @@ int Iterator<T_DIM>::getCellIndex( void ) const {
     return index;
 }
 
-template<int T_DIM>
-Iterator<T_DIM> Iterator<T_DIM>::begin( void ) const {
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::begin( void ) const {
     Iterator tmp( *this );
 
     int upperleftcorner;
@@ -67,16 +68,16 @@ Iterator<T_DIM> Iterator<T_DIM>::begin( void ) const {
 
 /* return VecI(-1) which is a end marker. Will have to set it to that *
  * in operator++ for example                                          */
-template<int T_DIM>
-Iterator<T_DIM> Iterator<T_DIM>::end( void ) const {
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::end( void ) const {
     Iterator tmp( *this );
     tmp.icell  = VecI(-1);
     return tmp;
 }
 
 /* Set the iterator to some index */
-template<int T_DIM>
-Iterator<T_DIM>& Iterator<T_DIM>::operator<<( const int index[T_DIM] ) {
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA>& Iterator<T_DIM,T_CELLDATA>::operator<<( const int index[T_DIM] ) {
     VecI ind = VecI(index);
     assert( InArea( ind, area, (ncells-VecI(2*guardsize)), guardsize ) );
     *this = this->begin();
@@ -84,8 +85,8 @@ Iterator<T_DIM>& Iterator<T_DIM>::operator<<( const int index[T_DIM] ) {
     return *this;
 }
 
-template<int T_DIM>
-Iterator<T_DIM> & Iterator<T_DIM>::operator++( void ) { // only prefix, because it's faster!
+template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA> & Iterator<T_DIM,T_CELLDATA>::operator++( void ) { // only prefix, because it's faster!
     do {
         int linindex = ConvertVectorToLinearIndex( icell, ncells ) + 1;
         if ( !( linindex < ncells.product() ) ) {
@@ -97,8 +98,8 @@ Iterator<T_DIM> & Iterator<T_DIM>::operator++( void ) { // only prefix, because 
     return *this;
 }
 
-template<int T_DIM>
-bool Iterator<T_DIM>::operator==( const Iterator & it ) {
+template<int T_DIM, typename T_CELLDATA>
+bool Iterator<T_DIM,T_CELLDATA>::operator==( const Iterator & it ) {
     bool alland = true;
     alland = alland & ( this->core   == it.core  );
     alland = alland & ( this->border == it.border );
@@ -107,23 +108,35 @@ bool Iterator<T_DIM>::operator==( const Iterator & it ) {
 
     alland = alland & ( this->icell  == it.icell  );
     alland = alland & ( this->ncells == it.ncells );
+    alland = alland & ( this->srcmat == it.srcmat );
 
     return alland;
 }
 
-template<int T_DIM>
-bool Iterator<T_DIM>::operator!=( const Iterator & it ) {
+template<int T_DIM, typename T_CELLDATA>
+bool Iterator<T_DIM,T_CELLDATA>::operator!=( const Iterator & it ) {
     return !( (*this) == it );
 }
 
-template<int T_DIM>
-void Iterator<T_DIM>::operator=( const Iterator & src ) {
+template<int T_DIM, typename T_CELLDATA>
+void Iterator<T_DIM,T_CELLDATA>::operator=( const Iterator & src ) {
     this->core   = src.core  ;
     this->border = src.border;
     this->guard  = src.guard ;
     this->area   = src.area ;
     this->icell  = src.icell ;
     this->ncells = src.ncells;
+    this->srcmat = src.srcmat;
+}
+
+template<int T_DIM, typename T_CELLDATA>
+T_CELLDATA& Iterator<T_DIM,T_CELLDATA>::operator*( void ) const {
+    return (*srcmat)[icell];
+}
+
+template<int T_DIM, typename T_CELLDATA>
+T_CELLDATA* Iterator<T_DIM,T_CELLDATA>::operator->( void ) const {
+    return &((*srcmat)[icell]);
 }
 
 }

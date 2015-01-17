@@ -31,7 +31,7 @@ private:
 public:
     typedef Vec<int,T_DIM> VecI;
     typedef BaseMatrix<T_CELLTYPE,T_DIM> CellMatrix;
-    typedef SimulationBox::SimulationBox<SIMDIM,CellMatrix> OctCell;
+    typedef SimulationBox::SimulationBox<T_DIM,T_CELLTYPE> OctCell;
 
     struct CommData {
         int rank;
@@ -43,6 +43,9 @@ public:
     int  processor_name_length;
 
     T_OCTREE & tree;
+    VecI periodic;
+    int minLevel, maxLevel;
+    
     static const int COMM_HEADER_INDEX;
     static const int CELL_DATA_INDEX;
     CommData* comDataPtr;
@@ -61,8 +64,20 @@ public:
         bool operator==( const struct BorderData & rhs ) const {
             return ( this->node == rhs.node and this->direction == rhs.direction );
         }
+        /* Strict weak Ordering to sort send and receive buffers */
+        bool operator<(const struct BorderData & b) const {
+            /* return true, if a comes before b */
+            for (int i=0; i<T_DIM; i++) {
+                if (this->node->center[i] < b.node->center[i]) return true;
+                if (this->node->center[i] > b.node->center[i]) return false;
+            }
+            if (getLinearDirection(this->direction) < getLinearDirection(b.direction)) return true;
+            if (getLinearDirection(this->direction) > getLinearDirection(b.direction)) return false;
+            return false; // if they are equal
+        }
     };
     typedef std::list<struct BorderData> ToCommList;
+    
     struct NeighborData {
         /* this has nrecvmatrices * cellsPerOctreeCell*guardsize elements!    *
          * Meaning it stores all the borders to send in an order both threads *
@@ -74,6 +89,7 @@ public:
         double sendmats[];
         std::list<struct BorderData> ssendmats; // s->source
     };
+    
     /* worldsize elements, meaning rank includes itself. srecvmats entries in *
      * neighbors[rank] are meant to be received from rank by us.              *
      * ssendmats entries in neighbors[rank] are meant to be sent to rank      */
@@ -185,7 +201,7 @@ public:
 #endif
 
     OctreeCommunicator(void);
-    OctreeCommunicator(T_OCTREE& tree);
+    OctreeCommunicator(T_OCTREE& tree, const VecI periodic);
     ~OctreeCommunicator();
 
     /* this allocates memory for commdata, which will be hooked into every    *
@@ -195,7 +211,7 @@ public:
      * todo: take argument for weighting function/operator                    */
     void initCommData( VecI cellsPerOctreeCell, int guardsize, int timesteps );
     /* initCommData needs to be called before this ! */
-    void distributeCells(VecI cellsPerOctreeCell, int ordering = Octree::Ordering::Hilbert);
+    void distributeCells( int ordering = Octree::Ordering::Hilbert );
 };
 
 #include "Communicator.tpp"

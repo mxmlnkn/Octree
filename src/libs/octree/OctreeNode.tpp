@@ -232,7 +232,7 @@ int Node<T_DIM>::countLeaves( void ) {
 }
 
 template<int T_DIM>
-Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI & targetDir ) {
+Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI targetDir, const VecI periodic ) {
     /* We want to find the neighbor of same size if possible, so go down as   *
      * much levels as we did have to go up. Depending on the direction the    *
      * target neighbor node is in and the position the Current Node is in the *
@@ -261,6 +261,17 @@ Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI & targetDir ) {
     /* if we couldn't find a neighbor, because we are e.g. at the border of   *
      * the octree global area (and we are not periodic (yet) ), then return   *
      * NULL                                                                   */
+    for ( int i=0; i<T_DIM; ++i ) {
+        if ( not periodic[i] )
+            continue;
+        double & t = theoreticalPosition[i];
+        if ( t >  0.5*root->size[i] )
+            t -= root->size[i];
+        if ( t < -0.5*root->size[i] )
+            t += root->size[i];
+    }
+    if ( periodic.sum() == T_DIM )
+        assert( root->IsInside( theoreticalPosition) );
     if ( not root->IsInside( theoreticalPosition) )
         return NULL;
     /* a) try to neighbor anticipating it to be of the same size -> use       *

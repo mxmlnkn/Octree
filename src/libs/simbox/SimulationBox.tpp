@@ -66,8 +66,9 @@ bool SimulationBox<T_DIM,T_CELLDATA>::inArea( const VecI & pos, const int & area
 
 /******************************** getIterator *********************************/
 template<int T_DIM, typename T_CELLDATA>
-typename SimulationBox<T_DIM,T_CELLDATA>::IteratorType SimulationBox<T_DIM,T_CELLDATA>::getIterator( const int area ) const {
-    return IteratorType( area, localcells + VecI(2*guardsize), guardsize );
+typename SimulationBox<T_DIM,T_CELLDATA>::IteratorType SimulationBox<T_DIM,T_CELLDATA>::getIterator
+( const int timestep, const int area ) const {
+    return IteratorType( area, localcells + VecI(2*guardsize), guardsize, t[timestep]->cells );
 }
 
 #if DEBUG_SIMBOX >= 1

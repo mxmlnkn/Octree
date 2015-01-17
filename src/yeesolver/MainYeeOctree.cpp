@@ -44,6 +44,10 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 
 #define DEBUG_MAIN_YEE 99
 
+const int X = 0;
+const int Y = 1;
+const int Z = 2;
+
 typedef Vec<double,SIMDIM> VecD;
 typedef Vec<int   ,SIMDIM> VecI;
 
@@ -92,7 +96,8 @@ int main( int argc, char **argv )
     OctreeType tree( globCenter, globSize );
     typedef BaseMatrix<YeeCell,SIMDIM> CellMatrix;
     typedef OctreeCommunicator<SIMDIM,OctreeType,YeeCell> OctreeCommType;
-    OctreeCommType comBox(tree);
+    OctreeCommType comBox(tree,VecI(true));
+    typedef SimulationBox::SimulationBox<SIMDIM,YeeCell> OctCell;
     if ( comBox.rank != 0) {
         std::cerr << "Disable tout verbosity on rank " << comBox.rank << "\n";
         tout.verbosity = 0;
@@ -208,20 +213,19 @@ int main( int argc, char **argv )
 
     /**************************************************************************/
     /* (2) Distribute weighting and octree cells to processes *****************/
-    /**************************************************************************/
-    int minLevel = 1e5;
-    for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
-        if ( it->IsLeaf() and minLevel > it->getLevel() )
-            minLevel = it->getLevel();
-    tout << "Initial Refinement: " << INITIAL_OCTREE_REFINEMENT
-         << " Minimum refinement Level found: " << minLevel << "\n";
-    VecD cellsPerOctreeCell = VecD(NCells) / double(pow(2,minLevel));
+    /**************************************************************************/;
+    VecD cellsPerOctreeCell = VecD(NCells) / pow( 2,tree.getMinLevel() );
     for (int i = 0; i < cellsPerOctreeCell.size; ++i)
         cellsPerOctreeCell[i] = ceil( cellsPerOctreeCell[i] );
+    tout << "Initial Refinement: " << INITIAL_OCTREE_REFINEMENT << "\n"
+         << "Minimum refinement Level found: " << tree.getMinLevel() << "\n"
+         << "Maximum refinement Level found: " << tree.getMaxLevel() << "\n"
+         << "Cells per Octree: " << cellsPerOctreeCell << "\n";
     comBox.initCommData( cellsPerOctreeCell, GUARDSIZE, 3 /*timestepbuffer*/ );
 
-    comBox.distributeCells( VecI(3), Octree::Ordering::Hilbert );
-    
+    const int ORDERING = Octree::Ordering::Hilbert; // -> Parameters -> need to include Octree there :S ?
+    comBox.distributeCells( ORDERING );
+
     /* Graphical output of cell-rank-mapping */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
     if ( it->IsLeaf() ) {
@@ -239,12 +243,44 @@ int main( int argc, char **argv )
             << "/>"                                                  "\n";
     }
 
-    MPI_Finalize(); // doesn't work in destructor :S
-    return 0;
+    /* Graphical output of traversal line */
+    int currentTime  = 0;
+    double delay     = 1./64.; // 8 frames per second at max achievable with SVG
+    double rankDelay = 1./64.;
+    typename OctreeType::iterator it0 = tree.begin();
+    typename OctreeType::iterator it1 = tree.begin();
+    for ( typename OctreeType::iterator it = tree.begin( ORDERING );
+          it!=tree.end(); ++it ) if ( it->IsLeaf() )
+    {
+        it0 = it1;
+        it1 = it;
+        if ( it0->IsLeaf() and it1->IsLeaf() ) {
+            size_t id = reinterpret_cast<size_t>( it0->data[0] );
+            VecD r0 = svgoutput.convertToImageCoordinates( it0->center );
+            VecD r1 = svgoutput.convertToImageCoordinates( it1->center );
+            /* Spawn invisible line element */
+            svgoutput.out
+              << "<line"                                               "\n"
+              << " id=\"path" << id << "\""                            "\n"
+              << " x1=\"" << r0[0] << "px\" y1=\"" << r0[1] << "px\""  "\n"
+              << " x2=\"" << r1[0] << "px\" y2=\"" << r1[1] << "px\""  "\n"
+              << " style=\"stroke:none;stroke-width:3px\""             "\n"
+              << "/>"                                                  "\n";
+            /* Animate line element to become visible after some time */
+            svgoutput.out
+              << "<set"                                            "\n"
+              << " xlink:href=\"#path" << id << "\""               "\n"
+              << " attributeName=\"stroke\""                       "\n"
+              << " begin=\"" << delay*double(currentTime) << "s\"" "\n"
+              << " to   =\"#008000\""                              "\n"
+              << "/>"                                              "\n";
+            currentTime += rankDelay / delay;
+        }
+    }
 
     /* Debug Output of recv- and send-list in comBox */
     for ( int i=0; i < comBox.worldsize; ++i ) {
-        tout << "Process " << i << " sends:\n";
+        tout << "I send to process " << i << ":\n";
         for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].ssendmats.begin();
               it != comBox.neighbors[i].ssendmats.end(); ++it ) {
             tout << "    ";
@@ -257,8 +293,8 @@ int main( int argc, char **argv )
             tout << " side of node at " << it->node->center << "\n";
         }
         tout << "I receive from process " << i << ":\n";
-        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].ssendmats.begin();
-              it != comBox.neighbors[i].ssendmats.end(); ++it ) {
+        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].srecvmats.begin();
+              it != comBox.neighbors[i].srecvmats.end(); ++it ) {
             tout << "    ";
             switch ( getLinearDirection( it->direction ) ) {
                 case LEFT  : tout << "Left";   break;
@@ -269,6 +305,64 @@ int main( int argc, char **argv )
             tout << " side of node at " << it->node->center << "\n";
         }
     }
+
+    /* Set Borders */
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() ) if ( it->data.size() >= 2 ) {
+        OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
+        typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::CORE );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+            matrix[itm.icell].E[0][X] = 1.0;
+        }
+        itm = data.getIterator( 0, SimulationBox::BORDER );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+            matrix[itm.icell].E[0][X] = -0.5;
+        }
+    }
+
+    /* Png Output Core+Border */
+    assert( SIMDIM == 2 );
+    VecI sizepx = comBox.cellsPerOctreeCell * pow(2,comBox.maxLevel);
+    std::stringstream filenamepng;
+    filenamepng << "TestGuardCommunication_rank-" << comBox.rank << "_Ex.png";
+    pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
+    tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
+    
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() ) if ( it->data.size() >= 2 )
+    {
+        OctCell & data   = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
+
+        /* No Resize, if uniform octree cells. If not uniform, then scale up  *
+         * smaller ones, by simpling filling the rest of the space            */
+        int resizeFactor = pow( 2, comBox.maxLevel - it->getLevel() );
+
+        /* shift internal octree coords from [-0.5,0.5] to [0,1.0] then       *
+         *  then shift it->center to it->lower left corner : - it.size/2      *
+         *  then get octree cell index in that level : / it.size              *
+         *  then scale up to internal cells which will be pixels: *localcells *
+         *  then scale up pixels in that level to maxLevel : * resizeFactor   */
+        VecI abspos = ( it->center + tree.root->size/2 - it->size/2 ) / it->size;
+        assert( fmod( (it->center + tree.size/2 - it->size/2)[X], it->size[X] ) == 0 );
+        assert( fmod( (it->center + tree.size/2 - it->size/2)[Y], it->size[Y] ) == 0 );
+        abspos *= comBox.cellsPerOctreeCell * resizeFactor;
+
+        /* abspos member of SimulationBox is initialized bei Communicator.tpp *
+         * with it->center - 0.5*it->size, meaning lower left corner with     *
+         * internal units of OctreeNode ( no rounding errors should happen )  */
+        typename OctCell::IteratorType it = data.getIterator( 0, SimulationBox::CORE + SimulationBox::BORDER );
+        for ( it = it.begin(); it != it.end(); ++it ) {
+            /* pngwriter begins counting pixels with 1 instead of 0 -.- */
+            VecI pos = 1 + abspos + resizeFactor*(it.icell-it.guardsize);
+            VecI posTo = pos + resizeFactor - 1;
+            image.filledsquare( pos[X],pos[Y], posTo[X],posTo[Y],
+                matrix[it.icell].E[0][X], 0.0, -matrix[it.icell].E[0][X]);
+        }
+    }
+    image.close();
+
     //comBox.StartGuardUpdate();
     //comBox.FinishGuardUpdate();
 
@@ -336,10 +430,6 @@ int main( int argc, char **argv )
 
 	for ( int timestep=0; timestep < 800; ++timestep )
 	{
-		const int X = 0;
-		const int Y = 1;
-		const int Z = 2;
-
 		/* For YEE_CELL_TIMESTEPS_TO_SAVE == 2 this switches 0 and 1 as the   *
 		 * saving time step                                                   */
         int tcur  = (timestep  ) % YEE_CELL_TIMESTEPS_TO_SAVE;
