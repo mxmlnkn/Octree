@@ -27,6 +27,7 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 #include "octree/OctreeToSvg.h"
 #include "teestream/TeeStream.h"
 #include "Colors.h"
+#include "Directions.h"
 
 #define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;
@@ -203,7 +204,7 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
     for (int i=0; i<NValues; ++i)
         data[i] = worldsize-1;
 
-    /* Insert testDate (later YeeCell-Data or Absorbercelldata, or Guard) at  *
+    /* Insert testData (later YeeCell-Data or Absorbercelldata, or Guard) at  *
      * the center of every leaf node. By default all cells will be assigned   *
      * to last rank                                                           */
     int dataInserted = 0;
@@ -314,6 +315,7 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
             int nLeavesOnOtherNodes = 0;
             int thisRank = *((int*)it->data[0]);
 
+            int lindirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
             VecI dir[4];
             dir[0][0]=+1; dir[0][1]= 0;
             dir[1][0]=-1; dir[1][1]= 0;
@@ -321,6 +323,7 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
             dir[3][0]= 0; dir[3][1]=-1;
 
             for ( int lindir = 0; lindir < 4; lindir++ ) {
+                assert( getDirectionVector<SIMDIM>(lindirs[lindir]) == dir[lindir]);
                 Octree::Node<SIMDIM> * neighbor = it->getNeighbor( dir[lindir] );
                 if ( neighbor == NULL )
                     continue;

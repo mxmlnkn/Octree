@@ -6,15 +6,12 @@ const int OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::COMM_HEADER_INDEX = 0;
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 const int OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::CELL_DATA_INDEX = 1;
 
-/******************************* Constructor ******************************/
-template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator(void) {
-    std::cerr << "Communicator needs to be given an octree handle when constructed!\n";
-}
-
+/********************************* Constructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tree )
-: rank(0), worldsize(1), tree(tree), comDataPtr(NULL), NLeaves(0)
+: rank(0), worldsize(1), tree(tree), comDataPtr(NULL), NLeaves(0),
+  cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
+  neighbors(NULL), recvrequests(NULL), sendrequests(NULL)
 {
     /* Initialize MPI */
     MPI_Init(NULL, NULL);
@@ -22,18 +19,12 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tr
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Get_processor_name(processor_name, &processor_name_length);
 
+    this->neighbors    = new NeighborData[worldsize];
 #if 1==0
-    /* TODO */
-    nneighbors = 0;
-    terr << "Number of neighboring processes     : " << nneighbors;
-    terr << "Border size to send ( per process ) : ";
-
-    this->nneighbors = nneighbors;
-    this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
-    this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-    this->sendrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-    this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
-    this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
+    this->recvrequests = new MPI_Request[nneighbors+1];
+    this->sendrequests = new MPI_Request[nneighbors+1];
+    this->sendmatrices = new SimBox::CellMatrix[nneighbors+1];
+    this->recvmatrices = new SimBox::CellMatrix[nneighbors+1];
     if ( neighbors == NULL or recvrequests == NULL or sendrequests == NULL )
         terr << "Couldn't allocate Memory!";
     for (int i=0; i<=nneighbors; i++) {
@@ -43,35 +34,42 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tr
 #endif
 }
 
-/******************************** Destructor ******************************/
+/********************************** Destructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
     if ( comDataPtr != NULL )
-        free(comDataPtr);
+        delete[] comDataPtr;
 
     for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it ) {
         if ( it->data.size() >= 2 ) {
-            assert( ((CommData*)it->data[COMM_HEADER_INDEX])->rank == this->rank );
-            free( (T_CELLTYPE*) it->data[CELL_DATA_INDEX] );
+            int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
+            tout << "Leaf at " << it->center << " has " << it->data.size() << " data stored, its rank (" << curRank << ") may not be ours (" << this->rank << ")! It is a Leaf: " << it->IsLeaf() << "\n";
+            //assert( curRank == this->rank );
+            delete ((OctCell*)it->data[CELL_DATA_INDEX]);
         }
     }
 
+    delete[] this->neighbors;
 #if 1==0
-    free( this->neighbors );
-    free( this->sendrequests );
-    free( this->recvrequests );
-    free( this->sendmatrices );
-    free( this->recvmatrices );
+    delete[] this->sendrequests;
+    delete[] this->recvrequests;
+    delete[] this->sendmatrices;
+    delete[] this->recvmatrices;
 #endif
 }
 
+/********************************* initCommData *******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData(void) {
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
+( VecI cellsPerOctreeCell, int guardsize, int timesteps ) {
+    this->cellsPerOctreeCell = cellsPerOctreeCell;
+    this->guardsize = guardsize;
+    this->timestepbuffers = timesteps;
     /* allocate data which stores assigned ranks and other communication      *
      * information to which pointers will given to octree. And default it to  *
      * the last rank                                                          */
     this->NLeaves = tree.root->countLeaves();
-    this->comDataPtr = (CommData*) malloc( sizeof(CommData)*NLeaves );
+    this->comDataPtr = new CommData[NLeaves];
     /* Insert Pointers to array elements of allocated chunk into octree and   *
      * assign weighting and caclulate total weighting and optimalCosts        */
     int dataInserted = 0;
@@ -93,6 +91,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData(void) {
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 }
 
+/******************************* distributeCells ******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPerOctreeCell, int ordering) {
     this->distOrdering = ordering;
@@ -106,13 +105,77 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPe
                 cumulativeCosts = 1. / it->getSize().min();
                 curRank++;
             }
-            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = curRank;
-            /* Allocate memory for celldata */
+            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = 333;
+            
+            /* Allocate memory for celldata only if cell belongs to us */
             if ( curRank == this->rank ) {
                 NOwnLeaves++;
-                it->data.push_back( new BaseMatrix<T_CELLTYPE,T_DIM>(cellsPerOctreeCell) );
+                assert(it->data.size() == CELL_DATA_INDEX);
+
+                it->data.push_back(
+                    new SimulationBox::SimulationBox<SIMDIM,CellMatrix> ( 
+                        it->center - 0.5*it->size, /* abspos, lower left ??? */
+                        cellsPerOctreeCell, /* localcells */
+                        tree.size / pow( 2, it->getLevel() ), /* cellsize */
+                        this->guardsize, this->timestepbuffers )
+                );
+                tout << "Allocated CellData at address " << it->data.back() << " for node at " << it->center << "assigned to rank " << curRank << "\n";
             }
         }
+#if 1==0
+    /* Count cells to transmit per neighbor process */
+    for ( typename T_OCTREE::iterator it=tree.begin(ordering); it != tree.end(); ++it )
+        if ( it->IsLeaf() ) {
+            /* only look at neighboorhood of cells assigned to me */
+            int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
+            if ( curRank != this->rank )
+                break;
+
+            /* Cycle through all neighboring octree nodes of same size */
+            assert( T_DIM == 2 );
+            int dirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
+            for (int i=0; i<compileTime::pow(2,T_DIM); ++i) {
+                VecI vDir = getDirectionVector<T_DIM>(dirs[i]);
+                typename T_OCTREE::Node & neighbor = *(it->getNeighbor(vDir));
+
+                /* Neighbors may not be leaves (e.g. if it points to a large  *
+                 * node with smaller neighbors) , therefore we need to cycle  *
+                 * through them again. If it is of same size or even larger   *
+                 * and a leaf, then the for loop will end after one iteration *
+                 * In Order to check whether the node or its childs are       *
+                 * direct neighbors, wie test if getNeighbor in the opposite  *
+                 * direction returns the current node (it)                    */
+                VecI vOppositeDir = getDirectionVector<T_DIM>(
+                                       getOppositeDirection<T_DIM>( dirs[i] ) );
+                for ( typename T_OCTREE::iterator it2 = neighbor.begin(ordering);
+                      it2 != neighbor.end(); ++it2 )
+                if ( it2->getNeighbor(vOppositeDir) == &(*it) ) {
+                    /* If neighbor also belongs to us, then no mpi necessary */
+                    int neighborRank = ((CommData*)it2->data[COMM_HEADER_INDEX])->rank;
+                    if ( neighborRank == this->rank )
+                        break;
+
+                    /* If two cells have the same neighbor (because they are  *
+                     * small, then that neighbor must not tagged in 'ToRecv'  *
+                     * twice                                                  */
+                    BorderData toRecv = { &(*it2), vOppositeDir };
+                    std::list<BorderData> & lsr = neighbors[curRank].srecvmats;
+                    if ( std::find( lsr.begin(), lsr.end(), toRecv) == lsr.end() )
+                        neighbors[neighborRank].srecvmats.push_back(toRecv);
+
+                    /* only send this, if not already send to neighbor thread *
+                     * e.g. if it is a bigger node than it's neighbor, and    *
+                     * more than one neighbors are on the same process. While *
+                     * it is only necessary to recv one cell one time, it may *
+                     * be necessary to send one cell to multiple processes    */
+                    BorderData toSend = { &(*it), vDir };
+                    std::list<BorderData> & lss = neighbors[curRank].ssendmats;
+                    if ( std::find( lss.begin(), lss.end(), toSend) == lss.end() )
+                        neighbors[neighborRank].ssendmats.push_back(toSend);
+                }
+            }
+        }
+#endif
 }
 
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>

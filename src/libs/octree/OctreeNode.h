@@ -148,7 +148,9 @@ public:
 /* returns neighboring cell in direction. (doesn't work with diagonal         *
  * neighbors yet! If the neighbor cell in that direction is larger and has no *
  * childnodes, then that is returned. If this cell is larger than the neigh-  *
- * boring cells in that direction, then the cell of same size will be returned*/
+ * boring cells in that direction, then the cell of same size will be         *
+ * returned. The format of direction is a movement vector, which will just be *
+ * added to the position of this node                                         */
     Node * getNeighbor( const VecI & direction );
 
 

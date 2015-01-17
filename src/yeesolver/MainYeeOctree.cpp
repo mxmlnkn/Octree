@@ -85,7 +85,9 @@ namespace TIME_SPAWN_FUNCTIONS {
 int main( int argc, char **argv )
 {
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
-    VecD globSize(100), globCenter(0.5*globSize);
+    VecD cellSize(CELL_SIZE);
+    VecD NCells(NUMBER_OF_CELLS);
+    VecD globSize(cellSize*NCells), globCenter(0.5*globSize);
     typedef typename Octree::Octree<SIMDIM> OctreeType;
     OctreeType tree( globCenter, globSize );
     typedef BaseMatrix<YeeCell,SIMDIM> CellMatrix;
@@ -133,7 +135,12 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-
+#define INITSETUP 7
+#if INITSETUP == 7
+    tree.root->GrowUp();
+    tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
+#endif
+#if INITSETUP == 6
     /********* refine all cells to initial homogenous min-Refinement **********/
     for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
@@ -194,15 +201,27 @@ int main( int argc, char **argv )
                 node->GrowUp();
         }
     }
+#endif
+
     tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
     svgoutput.PrintGrid();
 
     /**************************************************************************/
     /* (2) Distribute weighting and octree cells to processes *****************/
     /**************************************************************************/
-    comBox.initCommData();
-    comBox.distributeCells( VecI(3), Octree::Ordering::Hilbert );
+    int minLevel = 1e5;
+    for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
+        if ( it->IsLeaf() and minLevel > it->getLevel() )
+            minLevel = it->getLevel();
+    tout << "Initial Refinement: " << INITIAL_OCTREE_REFINEMENT
+         << " Minimum refinement Level found: " << minLevel << "\n";
+    VecD cellsPerOctreeCell = VecD(NCells) / double(pow(2,minLevel));
+    for (int i = 0; i < cellsPerOctreeCell.size; ++i)
+        cellsPerOctreeCell[i] = ceil( cellsPerOctreeCell[i] );
+    comBox.initCommData( cellsPerOctreeCell, GUARDSIZE, 3 /*timestepbuffer*/ );
 
+    comBox.distributeCells( VecI(3), Octree::Ordering::Hilbert );
+    
     /* Graphical output of cell-rank-mapping */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
     if ( it->IsLeaf() ) {
@@ -219,7 +238,38 @@ int main( int argc, char **argv )
             << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
             << "/>"                                                  "\n";
     }
-    comBox.StartGuardUpdate();
+
+    MPI_Finalize(); // doesn't work in destructor :S
+    return 0;
+
+    /* Debug Output of recv- and send-list in comBox */
+    for ( int i=0; i < comBox.worldsize; ++i ) {
+        tout << "Process " << i << " sends:\n";
+        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].ssendmats.begin();
+              it != comBox.neighbors[i].ssendmats.end(); ++it ) {
+            tout << "    ";
+            switch ( getLinearDirection( it->direction ) ) {
+                case LEFT  : tout << "Left";   break;
+                case RIGHT : tout << "Right";  break;
+                case BOTTOM: tout << "Bottom"; break;
+                case TOP   : tout << "Top";    break;
+            }
+            tout << " side of node at " << it->node->center << "\n";
+        }
+        tout << "I receive from process " << i << ":\n";
+        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].ssendmats.begin();
+              it != comBox.neighbors[i].ssendmats.end(); ++it ) {
+            tout << "    ";
+            switch ( getLinearDirection( it->direction ) ) {
+                case LEFT  : tout << "Left";   break;
+                case RIGHT : tout << "Right";  break;
+                case BOTTOM: tout << "Bottom"; break;
+                case TOP   : tout << "Top";    break;
+            }
+            tout << " side of node at " << it->node->center << "\n";
+        }
+    }
+    //comBox.StartGuardUpdate();
     //comBox.FinishGuardUpdate();
 
     MPI_Finalize(); // doesn't work in destructor :S

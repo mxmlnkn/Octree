@@ -2,6 +2,8 @@
 
 #include <cstdlib>   // malloc
 #include <iostream>
+#include <list>
+#include <algorithm> // find
 #include <mpi.h>
 #include "math/TVector.h"
 #include "octree/Octree.h"
@@ -28,6 +30,8 @@ private:
 
 public:
     typedef Vec<int,T_DIM> VecI;
+    typedef BaseMatrix<T_CELLTYPE,T_DIM> CellMatrix;
+    typedef SimulationBox::SimulationBox<SIMDIM,CellMatrix> OctCell;
 
     struct CommData {
         int rank;
@@ -46,6 +50,37 @@ public:
 
     int NLeaves, NOwnLeaves;
     double totalCosts, optimalCosts;
+
+    VecI cellsPerOctreeCell;
+    int guardsize, timestepbuffers;
+    
+    /* stores pointer to node + which direction / side to send or recv */
+    struct BorderData {
+        typename T_OCTREE::Node * node;
+        VecI direction;
+        bool operator==( const struct BorderData & rhs ) const {
+            return ( this->node == rhs.node and this->direction == rhs.direction );
+        }
+    };
+    typedef std::list<struct BorderData> ToCommList;
+    struct NeighborData {
+        /* this has nrecvmatrices * cellsPerOctreeCell*guardsize elements!    *
+         * Meaning it stores all the borders to send in an order both threads *
+         * agree on. recvmats is basically packed data                        */
+        double recvmats[];
+        std::list<struct BorderData> srecvmats; // s->source
+        
+        /* this has nsendmatrices * cellsPerOctreeCell*guardsize elements! */
+        double sendmats[];
+        std::list<struct BorderData> ssendmats; // s->source
+    };
+    /* worldsize elements, meaning rank includes itself. srecvmats entries in *
+     * neighbors[rank] are meant to be received from rank by us.              *
+     * ssendmats entries in neighbors[rank] are meant to be sent to rank      */
+    NeighborData * neighbors;
+    MPI_Request * recvrequests;
+    MPI_Request * sendrequests;
+
 
 #if 1==0
     VecI getBorderSizeInDirection( const int & direction ) const {
@@ -88,19 +123,6 @@ public:
     }
 #endif
 
-
-#if 1==0
-    /* Because of reasons when accessing and direction conversion, these      *
-     * also have an array element for the rank itself at [0] = (0,0,0) !!!    */
-    int  nneighbors;
-    int* neighbors;
-
-    MPI_Request * sendrequests;
-    MPI_Request * recvrequests;
-
-    SimBox::CellMatrix * sendmatrices;
-    SimBox::CellMatrix * recvmatrices;
-#endif
 
     /* Start asynchronous sends of all Border Data belonging to other threads *
      * If neighbor-cell owned by this thread itself, interpolate and copy     *
@@ -171,7 +193,7 @@ public:
      * be called anymore, because GrowUp assumes empty Octree cells. This     *
      * therefore 'finalizes' the octree. This also sets the weighting         *
      * todo: take argument for weighting function/operator                    */
-    void initCommData(void);
+    void initCommData( VecI cellsPerOctreeCell, int guardsize, int timesteps );
     /* initCommData needs to be called before this ! */
     void distributeCells(VecI cellsPerOctreeCell, int ordering = Octree::Ordering::Hilbert);
 };

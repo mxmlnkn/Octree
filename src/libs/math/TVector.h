@@ -10,6 +10,7 @@ template<typename T_DTYPE, int T_DIM>
 class Vec {
 public:
     const int dim = T_DIM;
+    const int & size = dim;
     T_DTYPE data[T_DIM];
     
     Vec(void);

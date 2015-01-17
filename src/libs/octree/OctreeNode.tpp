@@ -231,11 +231,6 @@ int Node<T_DIM>::countLeaves( void ) {
     return sum;
 }
 
-/* returns neighboring cell in direction. (doesn't work with diagonal         *
- * neighbors yet! If the neighbor cell in that direction is larger and has no *
- * childnodes, then that is returned. If this cell is larger than the neigh-  *
- * boring cells in that direction, then the cell of same size will be returned*/
-
 template<int T_DIM>
 Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI & targetDir ) {
     /* We want to find the neighbor of same size if possible, so go down as   *

@@ -1,3 +1,7 @@
+#pragma once
+
+#include "math/TVector.h"
+#include <assert.h>
 
 /**************************************************************************
  * 3 bits are not enough, they give only 8 possibilities. That wouldn't   *
@@ -54,7 +58,7 @@ const int X_AXIS = 0;
 const int Y_AXIS = 1;
 const int Z_AXIS = 2;
 
-/* This basically is a 3x3 Matrix => gut use getLinearIndex from          *
+/* This basically is a 3x3 Matrix => use getLinearIndex from              *
  * BaseMatrix to calculate these directions on the fly. It should anyway  *
  * not be necessary for N Dimensions to use LEFT,RIGHT,...                */
 const int LEFT   = 2;
@@ -93,7 +97,7 @@ Vec<int,T_DIM> getDirectionVector( int direction ) {
 
 /* reverse of the above getDirectionVector function */
 template<int T_DIM>
-int getDirectionNumber( const Vec<int,T_DIM> & v ) {
+int getLinearDirection( const Vec<int,T_DIM> & v ) {
     int direction = 0;
     int prevrange = 1;
     for (int i=0; i<T_DIM; i++) {
@@ -109,7 +113,7 @@ int getDirectionNumber( const Vec<int,T_DIM> & v ) {
 
 template<int T_DIM>
 int getOppositeDirection( int & direction ) {
-    return getDirectionNumber( getDirectionVector<T_DIM>( direction )*(-1) );
+    return getLinearDirection( getDirectionVector<T_DIM>( direction )*(-1) );
 }
 
 /* returns the axis corresponding to a direction:                         *
