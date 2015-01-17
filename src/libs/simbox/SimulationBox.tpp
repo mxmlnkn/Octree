@@ -43,7 +43,7 @@ SimulationBox<T_DIM,T_CELLDATA>::SimulationBox(
 {
     t = (TimeData**) malloc( ntimesteps * sizeof(TimeData*) );
     for (int i=0; i<this->ntimesteps; i++) {
-        t[i] = (TimeData*) malloc( sizeof(TimeData) );
+        t[i] = new TimeData;
         t[i]->cells = CellMatrix( localcells + VecI(2*this->guardsize) );
     }
 }
@@ -54,7 +54,7 @@ SimulationBox<T_DIM,T_CELLDATA>::~SimulationBox(void) {
     if ( t != NULL ) {
         for (int i=0; i<this->ntimesteps; i++)
             if ( this->t[i] != NULL )
-                free( this->t[i] );
+                delete this->t[i];
         free(t);
     }
 }

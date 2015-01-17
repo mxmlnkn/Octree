@@ -26,6 +26,7 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
 #include "teestream/TeeStream.h"
+#include "Colors.h"
 
 #define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;
@@ -53,7 +54,7 @@ for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
     resultsFile.open( std::string("Octree_Benchmark_point_minRecursion4_") + sOrdering.str() + std::string(".dat") );
     resultsFile << "# worldsize totalTraffic interTraffic messageCount\n" << std::flush;
 
-for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
+for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
     tout << "World Size      : " << worldsize << "\n";
 
     VecD size(100), center(50), globSize(size), globCenter(center);
@@ -192,27 +193,9 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
         }
     }
     #endif
-    std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
+    tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
 
-    for ( OctreeType::iterator it=tree.begin(1); it!=tree.end(); ++it)
-    if ( it->IsLeaf() )
-        tout << it->center << "\n";
-    return 1;
-
-    /* Count Cells */
-    tout << "Count Cells...";
-    int NValues = 0;
-    it = tree.begin();
-    while ( it!=tree.end() ) {
-        if ( it->IsLeaf() )
-            NValues++;
-        ++it;
-    }
-    tout << NValues << std::endl;
-    tout << "Count Cells internally..." << tree.root->countLeaves() << std::endl;
-
-    if ( worldsize > NValues )
-        break;
+    int NValues = tree.root->countLeaves();
 
     /* allocate data (which stores assigned ranks) to which pointers will     *
      * given to octree. And default it to the last rank                       */
@@ -301,12 +284,9 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
             /* Graphical output of and cell-rank-mapping */
             svgoutput.boxesDrawnIt = svgoutput.boxesDrawn.find( it->center );
             int id = svgoutput.boxesDrawnIt->second.id;
-            int r  = int( 128 * double(curRank+1) / double(worldsize) );
-            int g  = r;
-            int b  = r;
-            /*int r  = 255;;
-            int g  = 0;
-            int b  = 255 * double(curRank) / double(worldsize); */
+            int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
+            int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
+            int b  = Colors::getBlue ( Colors::BuPu[8 - curRank % 9] );
             svgoutput.out
                 << "<set"                                                "\n"
                 << " xlink:href=\"#" << id << "\""                       "\n"

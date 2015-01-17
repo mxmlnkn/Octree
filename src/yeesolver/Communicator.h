@@ -8,12 +8,14 @@
 #include "simbox/SimulationBox.h"
 #include "Directions.h"
 #include "teestream/TeeStream.h"
+#include "math/TVector.h"
+#include "math/TBaseMatrix.h"
 
 #ifndef DEBUG_COMMUNICATOR
     #define DEBUG_COMMUNICATOR 1
 #endif
 
-template<typename T_OCTREE>
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 class OctreeCommunicator{
 private:
       /* Make Copy- and Assignment-Constructors unavailable, to prevent       *
@@ -24,7 +26,9 @@ private:
       OctreeCommunicator(const OctreeCommunicator&);                // Don't Implement
       OctreeCommunicator& operator=(const OctreeCommunicator&);     // Don't implement
 
-public:    
+public:
+    typedef Vec<int,T_DIM> VecI;
+
     struct CommData {
         int rank;
         int weighting;
@@ -36,9 +40,11 @@ public:
 
     T_OCTREE & tree;
     static const int COMM_HEADER_INDEX;
+    static const int CELL_DATA_INDEX;
     CommData* comDataPtr;
+    int distOrdering; // ordering used when distributing cells. Can be used to traverse effectively all own cells
 
-    int NLeaves;
+    int NLeaves, NOwnLeaves;
     double totalCosts, optimalCosts;
 
 #if 1==0
@@ -91,58 +97,17 @@ public:
 
     MPI_Request * sendrequests;
     MPI_Request * recvrequests;
-    
+
     SimBox::CellMatrix * sendmatrices;
     SimBox::CellMatrix * recvmatrices;
 #endif
 
-#if 1==0
-    void StartGuardUpdate( int timestep = 1 ) // Asynchron, returns status
-    {
-        /* Only cycle through direct neighbors first, see notes on paper !!!  */
-        for ( int direction = 1; direction <= this->nneighbors; direction++ )
-        {
-            /* Limit send directions to very nearest neighbors, no diagonals  */
-            /* if ( getAxis(direction) == -1 ) {
-                recvrequests[direction] = MPI_REQUEST_NULL;
-                sendrequests[direction] = MPI_REQUEST_NULL;
-                continue;
-            } */
+    /* Start asynchronous sends of all Border Data belonging to other threads *
+     * If neighbor-cell owned by this thread itself, interpolate and copy     *
+     * data to guards.                                                        */
+    void StartGuardUpdate( int timestep = 1 );
 
-            VecI size = this->getBorderSizeInDirection    (direction);
-            VecI pos  = this->getBorderPositionInDirection(direction);
-
-            sendmatrices[direction] = simbox.t[timestep]->cells.getPartialMatrix( pos, size );
-            MPI_Isend( sendmatrices[direction].data, sendmatrices[direction].getSize().product()
-                       * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                       neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
-
-            #if DEBUG_COMMUNICATOR >= 1
-                terr << "[Rank " << this->rank << " in ComBox] Send to Direction ";
-                terr << getDirectionVector<T_DIM>( direction );
-                terr << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
-                terr << " => pos: " << pos << " size: " << size << endl << flush;
-                terr << endl << "Sent Matrix: " << endl;
-                    {const SimBox::CellMatrix & m = sendmatrices[direction];
-                    VecI size = m.getSize();
-                    VecI ind(0);
-                    for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
-                        for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
-                            terr << m[ ind ].value << " ";
-                        terr << endl;
-                    }
-                    terr << endl;}
-                terr << endl << flush;
-            #endif
-
-            int opdir = getOppositeDirection<T_DIM>( direction );
-            recvmatrices[opdir] = sendmatrices[direction]; // copy because we want same size
-            MPI_Irecv( recvmatrices[opdir].data, recvmatrices[opdir].getSize().product() *
-                       sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
-                       neighbors[opdir], 53+direction, communicator, &(recvrequests[opdir]) );
-        }
-    }
-
+#if 1 == 0
     /* Waits for MPI_Recv_Requests to finish and then copies the received     *
      * partial matrix from the buffer to the simulation matrix. Because of    *
      * complicated stride in all directions it can't be communicated directly */
@@ -208,7 +173,7 @@ public:
      * todo: take argument for weighting function/operator                    */
     void initCommData(void);
     /* initCommData needs to be called before this ! */
-    void distributeCells(void);
+    void distributeCells(VecI cellsPerOctreeCell, int ordering = Octree::Ordering::Hilbert);
 };
 
 #include "Communicator.tpp"

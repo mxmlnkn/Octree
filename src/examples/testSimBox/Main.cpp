@@ -121,7 +121,7 @@ int main( int argc, char **argv )
     //MPI_Init( NULL, NULL );
 
     CommTopo<SIMDIM> comBox(simBox);
-#if 1==0
+
     tout.Open( string("out"), comBox.rank );
     terr.Open( string("err"), comBox.rank );
     srand( clock() * comBox.rank );
@@ -243,16 +243,22 @@ int main( int argc, char **argv )
     tout << "========================================" << endl
          << "Add all 4 (2D) neighbors to cell on Core" << endl
          << "========================================" << endl << flush;
+    tout << "copyCurrentToPriorTimestep\n";
     simBox.copyCurrentToPriorTimestep();
+    tout << "StartGuardUpdate\n";
     comBox.StartGuardUpdate( 1 ); //  Sends Border data from last timestep (t[1])
+    tout << "Calc on Core\n";
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::CORE ).begin(); it!=it.end(); ++it ) {
+        tout << " - " << it.icell << "\n";
         (simBox.t[0]->cells)[it.icell].value +=
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( RIGHT  ) ].value +
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( LEFT   ) ].value +
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( TOP    ) ].value +
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( BOTTOM ) ].value;
     }
+    tout << "FinishGuardUpdate\n";
     comBox.FinishGuardUpdate( 1 ); // Saves received data into t[1], because we only need prior time step
+    tout << "Calc on Border\n";
     for ( SimBox::IteratorType it=simBox.getIterator( SimulationBox::BORDER ).begin(); it!=it.end(); ++it ) {
         //VecI neighbor = it.icell + getDirectionVector( RIGHT, SIMDIM );
         (simBox.t[0]->cells)[it.icell].value +=
@@ -261,6 +267,7 @@ int main( int argc, char **argv )
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( TOP    ) ].value +
             (simBox.t[1]->cells)[ it.icell + getDirectionVector<SIMDIM>( BOTTOM ) ].value;
     }
+    tout << "PrintValues\n";
     simBox.PrintValues();
     
     
@@ -275,7 +282,7 @@ int main( int argc, char **argv )
         (simBox.t[0]->cells)[it.icell].value = 0;
 
     simBox.PrintValues();
-#endif
+
     MPI_Finalize(); // doesn't work in destructor :S
     return 0;
 }

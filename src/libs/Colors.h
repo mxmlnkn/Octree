@@ -14,10 +14,10 @@ uint32_t getRed( uint32_t color ) {
     return ( color & 0xff0000 ) >> 16;
 }
 uint32_t getGreen( uint32_t color ) {
-    return ( color & 0x00ff00 ) >> 16;
+    return ( color & 0x00ff00 ) >> 8;
 }
 uint32_t getBlue( uint32_t color ) {
-    return ( color & 0x0000ff ) >> 16;
+    return ( color & 0x0000ff ) >> 0;
 }
 
 }

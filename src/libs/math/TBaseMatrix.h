@@ -101,31 +101,33 @@ public:
 
 
 
-/******************************* Magic Methods ********************************/
+/******************************** Constructor *********************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( void ) {
-    this->size = 0;
-    this->data = NULL;
-}
+BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( void ) : size(0), data(NULL)
+{}
 
+/****************************** Copy Constructor ******************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( const BaseMatrix & m ) {
-    this->size = m.size;
+BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( const BaseMatrix & m ) : size(m.size), data(NULL) {
     this->data = new T_DTYPE[size.product()];
     memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
 }
 
+/********************************* Destructor *********************************/
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::~BaseMatrix( void ) {
     if ( this->data != NULL )
         delete[] this->data;
 }
 
+/***************************** Assignment Operator ****************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatrix & m) {
-    this->~BaseMatrix();
+BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatrix & m)
+{
     this->size = m.size;
-    this->data = new T_DTYPE[size.product()];
+    if ( this->data != NULL )
+        delete[] this->data;
+    this->data = new T_DTYPE[m.size.product()];
 
     memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
     return *this;
@@ -133,8 +135,7 @@ BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatri
 
 /***************************** Other Constructors *****************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI size ) {
-    this->size = size;
+BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI size ) : size(size), data(NULL) {
     this->data = new T_DTYPE[size.product()];
 }
 

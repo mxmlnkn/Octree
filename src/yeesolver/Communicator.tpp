@@ -1,16 +1,19 @@
 #pragma once
 
-template<typename T_OCTREE>
-const int OctreeCommunicator<T_OCTREE>::COMM_HEADER_INDEX = 0;
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+const int OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::COMM_HEADER_INDEX = 0;
+
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+const int OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::CELL_DATA_INDEX = 1;
 
 /******************************* Constructor ******************************/
-template<typename T_OCTREE>
-OctreeCommunicator<T_OCTREE>::OctreeCommunicator(void) {
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator(void) {
     std::cerr << "Communicator needs to be given an octree handle when constructed!\n";
 }
 
-template<typename T_OCTREE>
-OctreeCommunicator<T_OCTREE>::OctreeCommunicator( T_OCTREE & tree )
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator( T_OCTREE & tree )
 : rank(0), worldsize(1), tree(tree), comDataPtr(NULL), NLeaves(0)
 {
     /* Initialize MPI */
@@ -41,10 +44,18 @@ OctreeCommunicator<T_OCTREE>::OctreeCommunicator( T_OCTREE & tree )
 }
 
 /******************************** Destructor ******************************/
-template<typename T_OCTREE>
-OctreeCommunicator<T_OCTREE>::~OctreeCommunicator() {
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
     if ( comDataPtr != NULL )
         free(comDataPtr);
+
+    for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it ) {
+        if ( it->data.size() >= 2 ) {
+            assert( ((CommData*)it->data[COMM_HEADER_INDEX])->rank == this->rank );
+            free( (T_CELLTYPE*) it->data[CELL_DATA_INDEX] );
+        }
+    }
+
 #if 1==0
     free( this->neighbors );
     free( this->sendrequests );
@@ -54,8 +65,8 @@ OctreeCommunicator<T_OCTREE>::~OctreeCommunicator() {
 #endif
 }
 
-template<typename T_OCTREE>
-void OctreeCommunicator<T_OCTREE>::initCommData(void) {
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData(void) {
     /* allocate data which stores assigned ranks and other communication      *
      * information to which pointers will given to octree. And default it to  *
      * the last rank                                                          */
@@ -82,12 +93,13 @@ void OctreeCommunicator<T_OCTREE>::initCommData(void) {
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 }
 
-template<typename T_OCTREE>
-void OctreeCommunicator<T_OCTREE>::distributeCells(void) {
-    /* Assign cells to all the processes */
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(VecI cellsPerOctreeCell, int ordering) {
+    this->distOrdering = ordering;
+    /* Assign cells to all the processes and allocate memory */
     double cumulativeCosts = 0;
     int curRank = 0;
-    for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it )
+    for ( typename T_OCTREE::iterator it=tree.begin(ordering); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) {
             cumulativeCosts += 1. / it->getSize().min();
             if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
@@ -95,5 +107,59 @@ void OctreeCommunicator<T_OCTREE>::distributeCells(void) {
                 curRank++;
             }
             ((CommData*)it->data[COMM_HEADER_INDEX])->rank = curRank;
+            /* Allocate memory for celldata */
+            if ( curRank == this->rank ) {
+                NOwnLeaves++;
+                it->data.push_back( new BaseMatrix<T_CELLTYPE,T_DIM>(cellsPerOctreeCell) );
+            }
         }
+}
+
+template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>:: StartGuardUpdate(int timestep)
+{
+    #if 1==0
+    /* Only cycle through direct neighbors first, see notes on paper !!!  */
+    for ( int direction = 1; direction <= this->nneighbors; direction++ )
+    {
+        /* Limit send directions to very nearest neighbors, no diagonals  */
+        /* if ( getAxis(direction) == -1 ) {
+            recvrequests[direction] = MPI_REQUEST_NULL;
+            sendrequests[direction] = MPI_REQUEST_NULL;
+            continue;
+        } */
+
+        VecI size = this->getBorderSizeInDirection    (direction);
+        VecI pos  = this->getBorderPositionInDirection(direction);
+
+        sendmatrices[direction] = simbox.t[timestep]->cells.getPartialMatrix( pos, size );
+        MPI_Isend( sendmatrices[direction].data, sendmatrices[direction].getSize().product()
+                   * sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
+                   neighbors[direction], 53+direction, communicator, &(sendrequests[direction]) );
+
+        #if DEBUG_COMMUNICATOR >= 1
+            terr << "[Rank " << this->rank << " in ComBox] Send to Direction ";
+            terr << getDirectionVector<T_DIM>( direction );
+            terr << "(=lin:" << direction << "=Rank:" << neighbors[direction] << ")";
+            terr << " => pos: " << pos << " size: " << size << endl << flush;
+            terr << endl << "Sent Matrix: " << endl;
+                {const SimBox::CellMatrix & m = sendmatrices[direction];
+                VecI size = m.getSize();
+                VecI ind(0);
+                for ( ind[Y_AXIS]=0; ind[Y_AXIS]<size[Y_AXIS]; ind[Y_AXIS]++) {
+                    for ( ind[X_AXIS]=0; ind[X_AXIS]<size[X_AXIS]; ind[X_AXIS]++)
+                        terr << m[ ind ].value << " ";
+                    terr << endl;
+                }
+                terr << endl;}
+            terr << endl << flush;
+        #endif
+
+        int opdir = getOppositeDirection<T_DIM>( direction );
+        recvmatrices[opdir] = sendmatrices[direction]; // copy because we want same size
+        MPI_Irecv( recvmatrices[opdir].data, recvmatrices[opdir].getSize().product() *
+                   sizeof(SimBox::CellMatrix::Datatype), MPI_CHAR,
+                   neighbors[opdir], 53+direction, communicator, &(recvrequests[opdir]) );
+    }
+    #endif
 }

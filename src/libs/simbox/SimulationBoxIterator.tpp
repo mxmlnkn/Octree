@@ -7,31 +7,26 @@ namespace SimulationBox {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 Iterator<T_DIM>::Iterator( const int area, const VecI ncells, const int guardsize )
-: area(area), ncells(ncells), guardsize(guardsize) {
+: area(area), core(area & CORE), border(area & BORDER), guard (area & GUARD),
+  icell(0), ncells(ncells), guardsize(guardsize)
+{
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
-    assert( area != CORE+GUARD ); // more difficult to implement,
-                                  // and makes no sense
-    this->core   = area & CORE;
-    this->border = area & BORDER;
-    this->guard  = area & GUARD;
-    icell = 0;
+    /* more difficult to implement, and makes no sense */
+    assert( area != CORE+GUARD ); 
 }
 
-/******************************** Denstructor *********************************/
+/******************************** Destructor **********************************/
 template<int T_DIM>
-Iterator<T_DIM>::~Iterator( void ) {};
+Iterator<T_DIM>::~Iterator( void )
+{}
 
 /****************************** Copy Constructor ******************************/
 template<int T_DIM>
-Iterator<T_DIM>::Iterator( const Iterator & src ) {
-    this->core   = src.core  ;
-    this->border = src.border;
-    this->guard  = src.guard ;
-    this->area   = src.area ;
-    this->icell  = src.icell ;
-    this->ncells = src.ncells;
-}
+Iterator<T_DIM>::Iterator( const Iterator & src ) 
+ : area(src.area), core(src.core), border(src.border), guard(src.guard), 
+   icell(src.icell), ncells(src.ncells), guardsize(src.guardsize)
+{}
 
 /**********************************************************************
  * If we have 2 slates of 3x4 length and we wanted the index          *
@@ -98,7 +93,7 @@ Iterator<T_DIM> & Iterator<T_DIM>::operator++( void ) { // only prefix, because 
             break;
         }
         this->icell = ConvertLinearToVectorIndex( linindex, ncells );
-    } while( !InArea( this->icell, area, (ncells-VecI(2*guardsize)), guardsize ) );
+    } while( !InArea( icell, area, (ncells-VecI(2*guardsize)), guardsize ) );
     return *this;
 }
 

@@ -28,11 +28,11 @@ private:
 public:
     ~CommTopo() {
 #if 1==0
-        free( this->neighbors );
-        free( this->sendrequests );
-        free( this->recvrequests );
-        free( this->sendmatrices );
-        free( this->recvmatrices );
+        delete[] this->neighbors;
+        delete[] this->sendrequests;
+        delete[] this->recvrequests;
+        delete[] this->sendmatrices;
+        delete[] this->recvmatrices;
 #endif
     };
 
@@ -204,7 +204,6 @@ public:
     }
     
     CommTopo( SimBox & simbox ) : simbox(simbox) {
-#if 1==0
         for (int i=0; i<T_DIM; i++) {
             this->periodic[i] = true;
             this->nthreads[i] = 0;
@@ -216,21 +215,20 @@ public:
         terr << "Number of Neighbors: " << nneighbors;
         
         this->nneighbors = nneighbors;
-        this->neighbors    = (int*)         malloc( sizeof(int)        *(nneighbors+1) );
-        this->recvrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-        this->sendrequests = (MPI_Request*) malloc( sizeof(MPI_Request)*(nneighbors+1) );
-        this->sendmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
-        this->recvmatrices = (SimBox::CellMatrix*) malloc( sizeof(SimBox::CellMatrix)*(nneighbors+1) );
+        this->neighbors    = new int[nneighbors+1];
+        this->recvrequests = new MPI_Request[nneighbors+1];
+        this->sendrequests = new MPI_Request[nneighbors+1];
+        this->sendmatrices = new SimBox::CellMatrix[nneighbors+1];
+        this->recvmatrices = new SimBox::CellMatrix[nneighbors+1];
         if ( neighbors == NULL or recvrequests == NULL or sendrequests == NULL )
             terr << "Couldn't allocate Memory!";
         for (int i=0; i<=nneighbors; i++) {
             sendrequests[i] = MPI_REQUEST_NULL;
             recvrequests[i] = MPI_REQUEST_NULL;
         }
-#endif
+
         /* Initialize MPI */
         MPI_Init(NULL, NULL);
-#if 1==0
         MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
         MPI_Get_processor_name(processor_name, &processor_name_length);
 
@@ -247,7 +245,7 @@ public:
             MPI_Cart_rank( this->communicator, ( VecI(this->coords) +
                 getDirectionVector<T_DIM>( direction ) ), &(neighbors[direction]));
         }
-#endif
+
     }
 
 };
