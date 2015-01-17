@@ -200,12 +200,6 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (2) Distribute weighting and octree cells to processes *****************/
     /**************************************************************************/
-
-    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
-    if ( it->IsLeaf() and not it->data.empty() )
-        tout << "CHECK: Somehow data existing! Size: " << it->data.size() << " data: " << it->data[0] << "\n";
-    
-
     comBox.initCommData();
     comBox.distributeCells();
     

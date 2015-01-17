@@ -65,21 +65,9 @@ void OctreeCommunicator<T_OCTREE>::initCommData(void) {
      * assign weighting and caclulate total weighting and optimalCosts        */
     int dataInserted = 0;
     this->totalCosts = 0;
-    for ( typename T_OCTREE::iterator it = tree.begin( 1 ); it!=tree.end(); ++it ) {
-        tout << it->center << "\n";
+    for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it ) {
         if ( it->IsLeaf() ) {
             assert( dataInserted < NLeaves );
-            assert( it->data.empty() );
-            //it->data.push_back( &(comDataPtr[dataInserted]) );
-            ++dataInserted;
-        }
-   }
-   /* for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it ) {
-        tout << it->center << "\n";
-        if ( it->IsLeaf() ) {
-            assert( dataInserted < NLeaves );
-            if ( ! it->data.empty() )
-                tout << "Somehow data existing! Size: " << it->data.size() << " data: " << it->data[0] << "\n";
             assert( it->data.empty() );
             it->data.push_back( &(comDataPtr[dataInserted]) );
             ++dataInserted;
@@ -89,7 +77,7 @@ void OctreeCommunicator<T_OCTREE>::initCommData(void) {
 
             this->totalCosts += ((CommData*)it->data[COMM_HEADER_INDEX])->weighting;
         }
-    }*/
+    }
     this->optimalCosts = totalCosts / double(worldsize);
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 }

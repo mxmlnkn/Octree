@@ -88,7 +88,7 @@ public:
      *  - all children pointing to the parent in which they are being stored  *
      *  - leaf nodes containing illegitimate children                         *
      *  - pointer to childs being NULL / missing                              */
-    bool CheckIntegrity( void );
+    bool CheckIntegrity( void ) const;
 
     /* returns iterator with only root-node in todo stack */
     typename Node::iterator begin(int ordering = Ordering::Morton) const;

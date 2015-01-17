@@ -70,6 +70,7 @@ void Node<T_DIM>::iterator::operator=( const iterator & src ) {
 
 template<int T_DIM>
 typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
+    assert( T_DIM == 2 );
 /* The iterator position is defined by what is currently at the top of the    *
  * todo-stack. Therefore we try to add exactly one element to the stack top.  *
  * If the stack top is a leaf, then that is the last iteration we were at, so *

@@ -127,7 +127,7 @@ typename Octree<T_DIM>::Node* Octree<T_DIM>::FindLeafContainingPos( const VecD &
 
 /******************************* CheckIntegrity *******************************/
 template<int T_DIM>
-bool Octree<T_DIM>::CheckIntegrity( void ) {
+bool Octree<T_DIM>::CheckIntegrity( void ) const {
     bool foundError = false;
     typename Octree<T_DIM>::iterator it = this->begin();
     while( it != this->end() ) {

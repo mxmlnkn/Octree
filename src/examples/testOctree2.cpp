@@ -10,7 +10,6 @@ make testOctree && ./testOctree.exe
 #include <cstdlib>  // malloc, rand
 #include <random>   // normal_distribution
 #include <ctime>    // time
-#include "paramset/Parameters_2015-01-16.cpp"
 
 namespace compileTime {
 
@@ -22,6 +21,7 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 
 } // compileTime
 
+#include "paramset/Parameters_2015-01-16.cpp"
 #include "math/TVector.h"
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
@@ -193,6 +193,11 @@ for ( int worldsize = 1; worldsize < 2; ++worldsize ) {
     }
     #endif
     std::cout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
+
+    for ( OctreeType::iterator it=tree.begin(1); it!=tree.end(); ++it)
+    if ( it->IsLeaf() )
+        tout << it->center << "\n";
+    return 1;
 
     /* Count Cells */
     tout << "Count Cells...";
