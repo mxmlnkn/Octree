@@ -70,6 +70,7 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
   NLeaves(0), cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
   neighbors(NULL), sendrequests(NULL), recvrequests(NULL)
 {
+    std::cout << "Constructing OctreeCommunicator";
     /* Initialize MPI */
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
@@ -86,9 +87,12 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
 /********************************** Destructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
+    std::cout << "Destructing OctreeCommunicator";
     for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it ) {
+        std::cout << "Looking at data of node at " << it->center << ":\n";
         if ( it->data.size() >= 2 ) {
             int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
+            std::cout << "  Deleting data of node at " << it->center << " assigned to process " << curRank << "\n";
             assert( curRank == this->rank );
             delete ((OctCell*)it->data[CELL_DATA_INDEX]);
         }
@@ -247,6 +251,24 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
     for (int i=0; i<this->worldsize; ++i) {
         neighbors[i].sSendData.sort();
         neighbors[i].sRecvData.sort();
+
+        /* Allocate OctreeCells / SimBoxes we will receive Borders from */
+        for ( typename ToCommList::iterator it = neighbors[i].sRecvData.begin();
+              it != neighbors[i].sRecvData.end(); ++it ) {
+            /* I don't receive from myself */
+            assert( ((CommData*)it->node->data[COMM_HEADER_INDEX])->rank != this->rank );
+            /* Because some cells recv more than one border they are multiple *
+             * times in recv list                                             */
+            if ( it->node->data.size() > CELL_DATA_INDEX)
+                continue;
+            it->node->data.push_back(
+                new SimulationBox::SimulationBox<SIMDIM,T_CELLTYPE> (
+                    tree.toGlobalCoords(it->node->center - 0.5*it->node->size),
+                    cellsPerOctreeCell, /* localcells */
+                    tree.size / pow( 2, it->node->getLevel() ) / cellsPerOctreeCell,
+                    this->guardsize, this->timestepbuffers )
+            );
+        }
 
         /* Count how many doubles to allocate. If cellsPerOctreeCell is the   *
          * same in every dimension, it would be easy, but if not, then we     *
@@ -421,8 +443,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
          *  then scale up to internal cells which will be pixels: *localcells *
          *  then scale up pixels in that level to maxLevel : * resizeFactor   */
         VecI abspos = ( it->center + tree.root->size/2 - it->size/2 ) / it->size;
-        assert( fmod( (it->center + tree.size/2 - it->size/2)[X], it->size[X] ) == 0 );
-        assert( fmod( (it->center + tree.size/2 - it->size/2)[Y], it->size[Y] ) == 0 );
+        for ( int i=0; i<T_DIM; ++i )
+            assert( fmod( (it->center + tree.size/2 - it->size/2)[i], it->size[i] ) == 0 );
         abspos *= this->cellsPerOctreeCell * resizeFactor;
 
         /* abspos member of SimulationBox is initialized bei Communicator.tpp *
