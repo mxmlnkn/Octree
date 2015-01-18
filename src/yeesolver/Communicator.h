@@ -2,9 +2,14 @@
 
 #include <cstdlib>   // malloc
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <time.h>
+#include <assert.h>
 #include <list>
 #include <algorithm> // find
 #include <mpi.h>
+#include <pngwriter.h>
 #include "math/TVector.h"
 #include "octree/Octree.h"
 #include "simbox/SimulationBox.h"
@@ -45,7 +50,7 @@ public:
     T_OCTREE & tree;
     VecI periodic;
     int minLevel, maxLevel;
-    
+
     static const int COMM_HEADER_INDEX;
     static const int CELL_DATA_INDEX;
     CommData* comDataPtr;
@@ -56,11 +61,11 @@ public:
 
     VecI cellsPerOctreeCell;
     int guardsize, timestepbuffers;
-    
+
     /* stores pointer to node + which direction / side to send or recv */
     struct BorderData {
         typename T_OCTREE::Node * node;
-        VecI direction;
+        int direction;
         bool operator==( const struct BorderData & rhs ) const {
             return ( this->node == rhs.node and this->direction == rhs.direction );
         }
@@ -71,116 +76,59 @@ public:
                 if (this->node->center[i] < b.node->center[i]) return true;
                 if (this->node->center[i] > b.node->center[i]) return false;
             }
-            if (getLinearDirection(this->direction) < getLinearDirection(b.direction)) return true;
-            if (getLinearDirection(this->direction) > getLinearDirection(b.direction)) return false;
+            if ( this->direction < b.direction ) return true;
+            if ( this->direction > b.direction ) return false;
             return false; // if they are equal
         }
     };
     typedef std::list<struct BorderData> ToCommList;
-    
+
     struct NeighborData {
+        /* this has nsendmatrices * cellsPerOctreeCell*guardsize elements! */
+        T_CELLTYPE * sendData;
+        int cellsToSend;
+        std::list<struct BorderData> sSendData; // s->source
+
         /* this has nrecvmatrices * cellsPerOctreeCell*guardsize elements!    *
          * Meaning it stores all the borders to send in an order both threads *
-         * agree on. recvmats is basically packed data                        */
-        double recvmats[];
-        std::list<struct BorderData> srecvmats; // s->source
-        
-        /* this has nsendmatrices * cellsPerOctreeCell*guardsize elements! */
-        double sendmats[];
-        std::list<struct BorderData> ssendmats; // s->source
+         * agree on. recvData is basically packed data                        */
+        T_CELLTYPE * recvData;
+        int cellsToRecv;
+        std::list<struct BorderData> sRecvData; // s->source
+
+        /* simple constructor / initializer */
+        NeighborData(void) : sendData(NULL), cellsToSend(0), recvData(NULL), cellsToRecv(0) {};
     };
-    
-    /* worldsize elements, meaning rank includes itself. srecvmats entries in *
+
+    /* worldsize elements, meaning rank includes itself. sRecvData entries in *
      * neighbors[rank] are meant to be received from rank by us.              *
-     * ssendmats entries in neighbors[rank] are meant to be sent to rank      */
+     * sSendData entries in neighbors[rank] are meant to be sent to rank      */
     NeighborData * neighbors;
-    MPI_Request * recvrequests;
     MPI_Request * sendrequests;
+    MPI_Request * recvrequests;
 
-
-#if 1==0
-    VecI getBorderSizeInDirection( const int & direction ) const {
-        VecI size  = simbox.localcells;
-        /* squash the cube (CORE+BORDER) we want to send to guardsize in each *
-         * direction we want to sent it to, e.g.                              *
-         *   guard = 1, core+border = 3 => begin with 3x3x3 cube.             *
-         *   send to LEFT or RIGHT => make it a 1x3x3 surface                 *
-         *   send to TOP or BOTTOM => make it a 3x1x3 surface                 *
-         *   send to LEFT+TOP      => make it a 1x1x3 line of cells (edge)    */
-        VecI v( getDirectionVector<T_DIM>( direction ) );
-        for (int axis=0; axis<T_DIM; ++axis)
-            if ( v[axis] != 0 )
-                size[axis] = simbox.guardsize;
-        return size;
-    }
-
-    VecI getBorderPositionInDirection( const int & direction ) const {
-        VecI pos ( simbox.guardsize );
-        VecI v( getDirectionVector<T_DIM>( direction ) );
-        for ( int axis=0; axis<T_DIM; ++axis )
-            if ( v[axis] == 1 )
-                pos[axis] += simbox.localcells[axis] - simbox.guardsize;
-        assert( simbox.inArea( pos, SimulationBox::BORDER ) );
-        return pos;
-    }
-
-    VecI getGuardSizeInDirection( const int & direction ) const {
-        return this->getBorderSizeInDirection( direction );
-    }
-
-    VecI getGuardPositionInDirection( const int & direction ) const {
-        VecI pos = this->getBorderPositionInDirection( direction );
-        VecI v( getDirectionVector<T_DIM>( direction ) );
-        for ( int axis=0; axis<T_DIM; ++axis ) {
-            assert( abs(v[axis]) <= 1 );
-            pos[axis] += v[axis]*simbox.guardsize;
-        }
-        return pos;
-    }
-#endif
-
+    /******************************** Methods *********************************/
+    
+    /* squash the cube (CORE+BORDER) we want to send to guardsize in each     *
+     * direction we want to sent it to, e.g.                                  *
+     *   guard = 1, core+border = 3 => begin with 3x3x3 cube.                 *
+     *   send to LEFT or RIGHT => make it a 1x3x3 surface                     *
+     *   send to TOP or BOTTOM => make it a 3x1x3 surface                     *
+     *   send to LEFT+TOP      => make it a 1x1x3 line of cells (edge)        */
+    VecI getBorderSizeInDirection( const int & direction ) const;
+    VecI getBorderPositionInDirection( const int & direction ) const;
+    VecI getGuardSizeInDirection( const int & direction ) const;
+    VecI getGuardPositionInDirection( const int & direction ) const;
 
     /* Start asynchronous sends of all Border Data belonging to other threads *
      * If neighbor-cell owned by this thread itself, interpolate and copy     *
      * data to guards.                                                        */
     void StartGuardUpdate( int timestep = 1 );
 
-#if 1 == 0
     /* Waits for MPI_Recv_Requests to finish and then copies the received     *
      * partial matrix from the buffer to the simulation matrix. Because of    *
      * complicated stride in all directions it can't be communicated directly */
-    void FinishGuardUpdate( int timestep = 1 ) {
-        while(true) {
-            int index;
-            MPI_Waitany(nneighbors, &(recvrequests[1]), &index, MPI_STATUSES_IGNORE);
-            /* Because we don't let MPI_Waitany watch the 0th request, which  *
-             * would be a recv from the process itself, we get the index      *
-             * shifted by one back !                                          */
-            int direction = index + 1;
-
-            /* this index is returned if all recvrequests are MPI_REQUEST_NULL*/
-            if ( index == MPI_UNDEFINED )
-                break;
-            assert( direction >= 1 and direction <= this->nneighbors );
-            /* delete request (neccessary?) for MPI_UNDEFINED */
-            this->recvrequests[direction] = MPI_REQUEST_NULL;
-
-            VecI size = getGuardSizeInDirection    (direction);
-            VecI pos  = getGuardPositionInDirection(direction);
-
-            #if DEBUG_COMMUNICATOR >= 2
-                terr << "[Rank " << this->rank << " in ComBox] Recv from Direction ";
-                     << getDirectionVector<T_DIM>( direction )
-                     << "(=lin:" << direction << "=Rank:" << neighbors[direction]
-                     << ") => pos: " << pos << " size: " << size << endl
-                     << "Received Matrix: " << endl << recvmatrices[direction]
-                     << endl << flush;
-            #endif
-
-            simbox.t[timestep]->cells.insertMatrix( pos, recvmatrices[direction] );
-        }
-    }
-#endif
+    void FinishGuardUpdate( int timestep = 1 );
 
 #if DEBUG_COMMUNICATOR >= 100
     void Print( void ) {
@@ -212,6 +160,8 @@ public:
     void initCommData( VecI cellsPerOctreeCell, int guardsize, int timesteps );
     /* initCommData needs to be called before this ! */
     void distributeCells( int ordering = Octree::Ordering::Hilbert );
+
+    void PrintPNG(int timestep, const char * name );
 };
 
 #include "Communicator.tpp"

@@ -86,6 +86,7 @@ namespace TIME_SPAWN_FUNCTIONS {
 	}
 }
 
+
 int main( int argc, char **argv )
 {
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
@@ -140,7 +141,7 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-#define INITSETUP 7
+#define INITSETUP 6
 #if INITSETUP == 7
     tree.root->GrowUp();
     tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
@@ -278,34 +279,6 @@ int main( int argc, char **argv )
         }
     }
 
-    /* Debug Output of recv- and send-list in comBox */
-    for ( int i=0; i < comBox.worldsize; ++i ) {
-        tout << "I send to process " << i << ":\n";
-        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].ssendmats.begin();
-              it != comBox.neighbors[i].ssendmats.end(); ++it ) {
-            tout << "    ";
-            switch ( getLinearDirection( it->direction ) ) {
-                case LEFT  : tout << "Left";   break;
-                case RIGHT : tout << "Right";  break;
-                case BOTTOM: tout << "Bottom"; break;
-                case TOP   : tout << "Top";    break;
-            }
-            tout << " side of node at " << it->node->center << "\n";
-        }
-        tout << "I receive from process " << i << ":\n";
-        for ( OctreeCommType::ToCommList::iterator it = comBox.neighbors[i].srecvmats.begin();
-              it != comBox.neighbors[i].srecvmats.end(); ++it ) {
-            tout << "    ";
-            switch ( getLinearDirection( it->direction ) ) {
-                case LEFT  : tout << "Left";   break;
-                case RIGHT : tout << "Right";  break;
-                case BOTTOM: tout << "Bottom"; break;
-                case TOP   : tout << "Top";    break;
-            }
-            tout << " side of node at " << it->node->center << "\n";
-        }
-    }
-
     /* Set Borders */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
     if ( it->IsLeaf() ) if ( it->data.size() >= 2 ) {
@@ -321,50 +294,12 @@ int main( int argc, char **argv )
         }
     }
 
-    /* Png Output Core+Border */
-    assert( SIMDIM == 2 );
-    VecI sizepx = comBox.cellsPerOctreeCell * pow(2,comBox.maxLevel);
-    std::stringstream filenamepng;
-    filenamepng << "TestGuardCommunication_rank-" << comBox.rank << "_Ex.png";
-    pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
-    tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
+    comBox.PrintPNG( 0, "TestGuardCommunication_a" );
+
+    comBox.StartGuardUpdate();
+    comBox.FinishGuardUpdate();
     
-    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
-    if ( it->IsLeaf() ) if ( it->data.size() >= 2 )
-    {
-        OctCell & data   = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
-
-        /* No Resize, if uniform octree cells. If not uniform, then scale up  *
-         * smaller ones, by simpling filling the rest of the space            */
-        int resizeFactor = pow( 2, comBox.maxLevel - it->getLevel() );
-
-        /* shift internal octree coords from [-0.5,0.5] to [0,1.0] then       *
-         *  then shift it->center to it->lower left corner : - it.size/2      *
-         *  then get octree cell index in that level : / it.size              *
-         *  then scale up to internal cells which will be pixels: *localcells *
-         *  then scale up pixels in that level to maxLevel : * resizeFactor   */
-        VecI abspos = ( it->center + tree.root->size/2 - it->size/2 ) / it->size;
-        assert( fmod( (it->center + tree.size/2 - it->size/2)[X], it->size[X] ) == 0 );
-        assert( fmod( (it->center + tree.size/2 - it->size/2)[Y], it->size[Y] ) == 0 );
-        abspos *= comBox.cellsPerOctreeCell * resizeFactor;
-
-        /* abspos member of SimulationBox is initialized bei Communicator.tpp *
-         * with it->center - 0.5*it->size, meaning lower left corner with     *
-         * internal units of OctreeNode ( no rounding errors should happen )  */
-        typename OctCell::IteratorType it = data.getIterator( 0, SimulationBox::CORE + SimulationBox::BORDER );
-        for ( it = it.begin(); it != it.end(); ++it ) {
-            /* pngwriter begins counting pixels with 1 instead of 0 -.- */
-            VecI pos = 1 + abspos + resizeFactor*(it.icell-it.guardsize);
-            VecI posTo = pos + resizeFactor - 1;
-            image.filledsquare( pos[X],pos[Y], posTo[X],posTo[Y],
-                matrix[it.icell].E[0][X], 0.0, -matrix[it.icell].E[0][X]);
-        }
-    }
-    image.close();
-
-    //comBox.StartGuardUpdate();
-    //comBox.FinishGuardUpdate();
+    comBox.PrintPNG( 0, "TestGuardCommunication_b" );
 
     MPI_Finalize(); // doesn't work in destructor :S
     return 0;
