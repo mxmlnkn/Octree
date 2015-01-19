@@ -35,13 +35,12 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include "math/TBaseMatrix.h"
 #include "teestream/TeeStream.h"
 #include "paramset/Parameters_2015-01-16.cpp"
-#define YEE_CELL_TIMESTEPS_TO_SAVE 2
 #include "YeeCell.h"
 #include "YeeCellColors.h"
 #include "YeeSolver.h"
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
-#define DEBUG_COMMUNICATOR 10
+#define DEBUG_COMMUNICATOR 0
 #include "Communicator.h"
 #include "Colors.h"
 #include "Sources.h"
@@ -350,14 +349,15 @@ int main( int argc, char **argv )
             itm->sigmaE  = 0;
             itm->sigmaM  = 0;
 
-            #define YEE_INIT_SETUP 2
+            #define YEE_INIT_SETUP 0
             /* cur Pos is in internal units, meaning curPos in [0,1.0] */
             for ( int i=0; i < SIMDIM; ++i ) {
                 assert( itm.icell[i] > 0 );
                 assert( itm.icell[i] - itm.guardsize < cellsPerOctreeCell[i] );
-                if ( (tree.root->size/2 + it->center - it->size/2)[i] <= 0 )
+                bool toAssert = (tree.root->size/2 + it->center - it->size/2)[i] >= 0;
+                if ( ! toAssert )
                     terr << "Lowerleft of node at " << it->center << " sized " << it->center << " is out of bounds!!\n";
-                assert( (tree.root->size/2 + it->center - it->size/2)[i] >= 0 );
+                assert( toAssert );
             }
             VecD curPos = tree.root->size/2 + it->center - it->size/2 + ( VecD(itm.icell)
                           + VecD( - itm.guardsize + 0.5) ) / VecD(cellsPerOctreeCell) * it->size;
@@ -399,15 +399,21 @@ int main( int argc, char **argv )
     /**************************************************************************/
 	for ( int timestep=0; timestep < 400; ++timestep )
 	{
-        tout << "Timestep " << timestep << "\n";
+        #if DEBUG_MAIN_YEE >= 90
+            tout << "Timestep " << timestep << "\n";
+        #endif
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
             /* Function Generator on Cell in the Center */
             OctreeType::Node * node = tree.FindLeafContainingPos( tree.center + 0.11*tree.size );
-            OctCell & cellMatrix = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
-            VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.11*tree.size );
-            cellMatrix.t[0]->cells[targetIndex].E[Z] = t_spawn_func( timestep * DELTA_T_SI );
-            tout << "Write to source in cell " << targetIndex << " in node at " << node->center << "\n";
+            if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == comBox.rank ) {
+                OctCell & cellMatrix = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
+                VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.11*tree.size );
+                cellMatrix.t[0]->cells[targetIndex].E[Z] = t_spawn_func( timestep * DELTA_T_SI );
+                #if DEBUG_MAIN_YEE >= 100
+                    tout << "Write to source in cell " << targetIndex << " in node at " << node->center << "\n";
+                #endif
+            }
         #endif
         #if TIME_SPAWN_SETUP == 2
             /* Function Generator on left side creates sine wave */
@@ -451,11 +457,7 @@ int main( int argc, char **argv )
                 //std::cout << std::endl;
             }
         #endif
-        
-        if (timestep == 0)
-            comBox.PrintPNG( 0, "output/Ez_init", returnEz, false );
 
-        tout << "Swap timebuffers\n";
         /* Swap timestep buffers for alle SimulationBoxes before Calculating */
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
@@ -465,11 +467,9 @@ int main( int argc, char **argv )
             simBox.copyCurrentToPriorTimestep();
         }
 
-        tout << "Send Borders from previous timestep\n";
         /* 0 is timestep to be calculated, 1 is the previous one */
         comBox.StartGuardUpdate( 1 );
 
-        tout << "Calculate H on Core of current timestep\n";
         /* Traverse all Octree Nodes and apply Yee-Solver there ( Do this     *
          * with a comBox iterator ???                                         */
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
@@ -478,13 +478,10 @@ int main( int argc, char **argv )
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
             YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE );
-            tout << "Calculated H on node at " << it->center << "\n";
         }
 
-        tout << "Receive sent Borders into Guards of current timestep\n";
-        comBox.FinishGuardUpdate( 0 );
+        comBox.FinishGuardUpdate( 1 );
 
-        tout << "Calculate H on Border of current timestep\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
@@ -494,10 +491,8 @@ int main( int argc, char **argv )
         }
 
         /* In the next halfstep, do the same for E-Field, but stay in timestep*/
-        tout << "Send Borders of current timestep (newly calculated Hs)\n";
         comBox.StartGuardUpdate( 0 );
 
-        tout << "Calculate on Core of current timestep E\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
@@ -506,10 +501,8 @@ int main( int argc, char **argv )
              YeeSolver::CalcE( simBox, 0, 1, SimulationBox::CORE );
         }
 
-        tout << "Receive sent Borders into Guards of current timestep\n";
         comBox.FinishGuardUpdate( 0 );
 
-        tout << "Calculate E on Core of current timestep\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
@@ -519,7 +512,6 @@ int main( int argc, char **argv )
         }
 
 		if (timestep % 1 == 0) {
-            tout << "Print PNGs\n";
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
@@ -539,7 +531,6 @@ int main( int argc, char **argv )
             comBox.PrintPNG( 0, filename, returnEandH, false );
             sprintf( filename, "output/n_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnn, false );
-			tout << "Image " << framecounter << "\n";
 		}
 	}
 

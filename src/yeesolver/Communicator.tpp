@@ -538,8 +538,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
     if (timestamp)
         filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
                     << "-" << now->tm_mday << "_" << now->tm_hour << "-"
-                    << now->tm_min << "_" << "rank-" << this->rank << "_";
-    filenamepng << name << "_t" << timestep << "_Ex.png";
+                    << now->tm_min << "_";
+    filenamepng << name<< "_rank-" << this->rank << "_t" << timestep << "_Ex.png";
     pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
 #if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
