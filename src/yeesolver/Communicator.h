@@ -107,6 +107,7 @@ public:
     NeighborData * neighbors;
     MPI_Request * sendrequests;
     MPI_Request * recvrequests;
+    int timestepSent;
 
     /******************************** Methods *********************************/
     

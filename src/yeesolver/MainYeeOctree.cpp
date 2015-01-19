@@ -305,40 +305,42 @@ int main( int argc, char **argv )
     }}
 
     comBox.PrintPNG( 0, "TestGuardCommunication_a" );
-    
+
     tout << "Beginning asynchronous communication operations\n";
     comBox.StartGuardUpdate(0);
-    sleep(2);
+    //sleep(2);
     tout << "Finishing up asynchronous communication operations\n";
-    comBox.FinishGuardUpdate(0);
-    
-    comBox.PrintPNG( 0, "TestGuardCommunication_b" );
-    
-    #if 1==0
+    comBox.FinishGuardUpdate(1);
+
+    comBox.PrintPNG( 1, "TestGuardCommunication_b" );
+
     /* Copy Guard to Border by adding up all neighbors (only B-field) */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
-    if ( it->IsLeaf() ) if ( /*comBox.rank != ((OctreeCommType::CommData*)it->
-         data[OctreeCommType::COMM_HEADER_INDEX])->rank and*/ it->data.size()>1 )
+    if ( it->IsLeaf() ) if ( it->data.size() > 1 ) 
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
         typename OctCell::IteratorType itm = data.getIterator( 1 /* timestep */, SimulationBox::BORDER );
-        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-			VecI xprev=itm.icell; xprev[X]--;
-			VecI xnext=itm.icell; xnext[X]++;
-			VecI yprev=itm.icell; yprev[Y]--;
-			VecI ynext=itm.icell; ynext[Y]++;
-            if ( data.inArea( xprev, SimulationBox::GUARD ) )
-                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[xprev].H[0][X] );
-            if ( data.inArea( xnext, SimulationBox::GUARD ) )
-                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[xnext].H[0][X] );
-            if ( data.inArea( yprev, SimulationBox::GUARD ) )
-                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[yprev].H[0][X] );
-            if ( data.inArea( ynext, SimulationBox::GUARD ) )
-                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[ynext].H[0][X] );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm )
+        {
+            itm->H[0][X] = 0.0;
+            itm->E[0][X] = 0.0;
+            int dirs[ compileTime::pow(2,SIMDIM) ] = {RIGHT,LEFT,TOP,BOTTOM};
+            int nNeighboringGuards = 0;
+            for (int i=0; i < compileTime::pow(2,SIMDIM); ++i)
+            {
+                VecI neighbor = itm.icell + getDirectionVector<SIMDIM>(dirs[i]);
+                if ( data.inArea( neighbor, SimulationBox::GUARD ) )
+                {
+                    nNeighboringGuards++;
+                    itm->H[0][X] += data.t[1]->cells[neighbor].H[0][X];
+                    itm->E[0][X] += data.t[1]->cells[neighbor].E[0][X];
+                }
+            }
+            itm->H[0][X] /= nNeighboringGuards;
+            itm->E[0][X] /= nNeighboringGuards;
         }
     }
-    #endif
-    //comBox.PrintPNG( 1, "TestGuardCommunication_c_t1" );
+    comBox.PrintPNG( 1, "TestGuardCommunication_c_t1" );
 
     MPI_Finalize(); // doesn't work in destructor :S
     return 0;

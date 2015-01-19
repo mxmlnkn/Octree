@@ -68,7 +68,7 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
 : rank(0), worldsize(1), tree(tree), periodic(periodic),
   minLevel(0), maxLevel(0), comDataPtr(NULL),
   NLeaves(0), cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
-  neighbors(NULL), sendrequests(NULL), recvrequests(NULL)
+  neighbors(NULL), sendrequests(NULL), recvrequests(NULL), timestepSent(-1)
 {
     /* Initialize MPI */
     MPI_Init(NULL, NULL);
@@ -193,8 +193,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
 
             /* Cycle through all neighboring octree nodes of same size */
             assert( T_DIM == 2 );
-            int dirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
-            for (int i=0; i<compileTime::pow(2,T_DIM); ++i) {
+            int dirs[ compileTime::pow(2,T_DIM) ] = {RIGHT,LEFT,TOP,BOTTOM};
+            for (int i=0; i < compileTime::pow(2,T_DIM); ++i) {
                 VecI vDir = getDirectionVector<T_DIM>(dirs[i]);
                 typename T_OCTREE::Node & neighbor = *(it->getNeighbor(vDir,periodic));
 
@@ -215,10 +215,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
                 if ( &neighbor == &(*it2) /* neighbor is leaf */ or
                      it2->getNeighbor(vOppositeDir,periodic) == &(*it) )
                 {
-                    /* If neighbor also belongs to us, then no mpi necessary */
+                    /* Doesn't matter whether or not it also belongs to us   */
                     int neighborRank = ((CommData*)it2->data[COMM_HEADER_INDEX])->rank;
-                    if ( neighborRank == this->rank )
-                        continue;
 
                     /* If two cells have the same neighbor (because they are  *
                      * small, then that neighbor must not tagged in 'ToRecv'  *
@@ -246,7 +244,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
     for (int i=0; i<this->worldsize; ++i) {
         neighbors[i].sSendData.sort();
         neighbors[i].sRecvData.sort();
-
+#if 1==0
         /* Allocate OctreeCells / SimBoxes we will receive Borders from */
         for ( typename ToCommList::iterator it = neighbors[i].sRecvData.begin();
               it != neighbors[i].sRecvData.end(); ++it ) {
@@ -264,7 +262,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
                     this->guardsize, this->timestepbuffers )
             );
         }
-
+#endif
         /* Count how many doubles to allocate. If cellsPerOctreeCell is the   *
          * same in every dimension, it would be easy, but if not, then we     *
          * need to count how often every direction is accessed / communicated */
@@ -309,14 +307,21 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timestep)
 {
-    /* copy data needed order as dictated by sxxxxmats into buffers xxxxnats */
-    for ( int neighborRank=0; neighborRank < this->worldsize; ++neighborRank ) {
+    this->timestepSent = timestep;
+    for ( int neighborRank=0; neighborRank < this->worldsize; ++neighborRank )
+    {
         ToCommList & lss = neighbors[neighborRank].sSendData;
         if ( neighborRank == this->rank or lss.empty() ) {
             sendrequests[neighborRank] = MPI_REQUEST_NULL;
             recvrequests[neighborRank] = MPI_REQUEST_NULL;
             continue;
         }
+
+        /* Don't pack and send data to ourselves */
+        if (neighborRank == this->rank)
+            continue;
+
+        /* copy data needed order as dictated by s*mats into buffers *mats */
         int cellsCopied = 0;
         for ( typename ToCommList::iterator it = lss.begin(); it != lss.end(); ++it ) {
             VecI size = this->getBorderSizeInDirection    (it->direction);
@@ -328,10 +333,6 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timeste
             cellsCopied += tmp.size.product();
             assert( cellsCopied <= neighbors[neighborRank].cellsToSend );
         }
-
-        /* DEBUG overwrite send buffer */
-        /*for ( int i=0; i<neighbors[neighborRank].cellsToSend; ++i)
-            */
 
         /* Send data Buffer away */
         MPI_Isend( neighbors[neighborRank].sendData, neighbors[neighborRank].cellsToSend * sizeof(T_CELLTYPE),
@@ -372,25 +373,45 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timeste
 /***************************** FinishGuardUpdate ******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int timestep ) {
+    /* set process itself to MPI_Status_Done in order to also interpolate     *
+     * in those cases                                                         */
+
+    int rankFinished = -1;
     while(true) {
-        int rankFinished;
-        /* MPI_Waitany ignores / and sets finished ones to MPI_REQUEST_NULL */
-        MPI_Waitany( worldsize, recvrequests, &rankFinished, MPI_STATUSES_IGNORE);
-        assert( rankFinished != this->rank );
+        if (rankFinished == -1)
+            rankFinished = this->rank;
+        else {
+            /* MPI_Waitany ignores / and sets finished ones to MPI_REQUEST_NULL */
+            MPI_Waitany( worldsize, recvrequests, &rankFinished, MPI_STATUSES_IGNORE);
+            assert( rankFinished != this->rank );
+        }
+
         /* this index is returned if all recvrequests are MPI_REQUEST_NULL */
         if ( rankFinished == MPI_UNDEFINED )
             break;
 
-        /* copy all buffer data into octree cells */
-        ToCommList & lsr = neighbors[rankFinished].sRecvData;
+        /* only needed for rankFinished == this->rank */
+        ToCommList & lss = neighbors[rankFinished].sSendData;
+        typename ToCommList::iterator itSend = lss.begin();
+
+        /* copy and interpolate all buffer data into octree cells */
         int cellsCopied = 0;
+        ToCommList & lsr = neighbors[rankFinished].sRecvData;
         for ( typename ToCommList::iterator it = lsr.begin(); it != lsr.end(); ++it )
         {
             VecI posB  = this->getBorderPositionInDirection(it->direction);
             VecI sizeB = this->getBorderSizeInDirection    (it->direction);
             CellMatrix tmpB(sizeB);
-            memcpy( tmpB.data, &(neighbors[rankFinished].recvData[cellsCopied]),
-                    sizeof(T_CELLTYPE) * tmpB.size.product() );
+            /* For borders we transmit to ourselves don't read recvData */
+            if ( rankFinished == this->rank ) {
+                VecI size = this->getBorderSizeInDirection    (itSend->direction);
+                VecI pos  = this->getBorderPositionInDirection(itSend->direction);
+                assert(timestepSent >= 0 and timestepSent < timestepbuffers);
+                tmpB = ((OctCell*)itSend->node->data[CELL_DATA_INDEX])->
+                        t[timestepSent]->cells.getPartialMatrix( pos, size );
+            } else
+                memcpy( tmpB.data, &(neighbors[rankFinished].recvData[cellsCopied]),
+                        sizeof(T_CELLTYPE) * tmpB.size.product() );
             cellsCopied += tmpB.size.product();
             assert( cellsCopied <= neighbors[rankFinished].cellsToRecv );
 
@@ -418,9 +439,9 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
             typename T_OCTREE::Node * neighbor = it->node->getNeighbor( vDir, periodic );
             int oppositeDir = getOppositeDirection<T_DIM>(it->direction);
             VecI vOppositeDir = getDirectionVector<T_DIM>(oppositeDir);
-            /* CHANGE BACK TO GUARD!!!! */
-            VecI posG  = this->getBorderPositionInDirection(oppositeDir);
-            VecI sizeG = this->getBorderSizeInDirection    (oppositeDir);
+
+            VecI posG  = this->getGuardPositionInDirection(oppositeDir);
+            VecI sizeG = this->getGuardSizeInDirection    (oppositeDir);
             assert( sizeG == sizeB );
             for ( typename T_OCTREE::iterator itT = neighbor->begin(); itT != neighbor->end(); ++itT )
             if ( itT->IsLeaf() and ((CommData*)itT->data[COMM_HEADER_INDEX])->rank == this->rank )
@@ -482,20 +503,24 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
                 tout << " Guard of node at " << itT->center << " sized "
                      << itT->size << "\n";
 #endif
-                
-                
+
                 /* Because we only received the border, not the whole cell    *
                  * matrix, posB must not be used to access data, just to      *
                  * calculate the offset above. Instead 'posB' is 'offset'     */
                 tmpS = tmpB.getPartialMatrix( posS - posB, sizeS );
                 if ( sizeS != sizeT )
                     tmpS.NearestResizeTo( tmpT );
+                else
+                    tmpT = tmpS;
 
-                ((OctCell*)it->node->data[CELL_DATA_INDEX])->t[timestep]->cells.insertMatrix(posT,tmpT);
+                ((OctCell*)itT->data[CELL_DATA_INDEX])->t[timestep]->cells.insertMatrix(posT,tmpT);
+            }
+            if (rankFinished == this->rank) {
+                assert(itSend != lss.end());
+                ++itSend;
             }
         }
-
-    }
+    } // MPI_Waitany
 }
 
 /********************************* PrintPNG ***********************************/
