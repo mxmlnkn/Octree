@@ -6,17 +6,35 @@ rm testMatrix.exe; g++ testMatrix.cpp -o testMatrix.exe -Wall -std=c++0x; ./test
 
 #include <iostream>
 #include <cmath>    // sin
-#include <cstdlib>  // malloc
+#include <cstdlib>  // malloc, srand, rand
 
-#include "Vector.h"
-#include "BaseMatrix.h"
-
+#include "math/TVector.h"
+#include "math/TBaseMatrix.h"
+#include "yeesolver/YeeCell.h"
 
 using namespace std;
 
 
 int main( int argc, char **argv )
-{
+{   
+    cout << bool(0) << " " << bool(-1) << " " << bool(1) << "\n";
+
+    int size3D[3] = {2,3,4};
+    BaseMatrix<int,3> m3d( (Vec<int,3>)(size3D) );
+    cout << m3d << "\n";
+    
+    cout << "\n To be interpolated:\n";
+    int sizeraw[2] = {2,2};
+    BaseMatrix<double,2> mraw( (Vec<int,2>)(sizeraw) );
+    srand(2310748);
+    for (int i=0; i<mraw.size.product(); i++)
+        mraw[i] = double(rand()) / RAND_MAX;
+    cout << mraw << "\n";
+    int sizeint[2] = {30,30};
+    BaseMatrix<double,2> mint( (Vec<int,2>)(sizeint) );
+    mraw.NearestResizeTo( mint );
+    cout << "\nAbove one interpolated:\n" << mint << "\n\n";
+    
     int size[2] = {2,3};
     BaseMatrix<int,2> m( (Vec<int,2>)size /*Vec<int,2>(size) does not work! */ );
     Vec<int,2> ind(0);
@@ -24,9 +42,9 @@ int main( int argc, char **argv )
         for (ind[0]=0; ind[0]<size[0]; ind[0]++ ) {
             m[ind] = ind[1]*size[0]+ind[0];
         }
-    cout << m;
+    cout << m << "\n";
     BaseMatrix<int,2> n(m);
-    cout << n;
+    cout << n << "\n";
     
     cout << "Test indice range" << endl;
     
@@ -53,31 +71,31 @@ int main( int argc, char **argv )
     m.getVectorIndex( -1 );*/
     
     m.insertMatrix( Vec<int,2>(0), n );
-    cout << m;
+    cout << m << "\n";
     
     size[1] = 1;
     BaseMatrix<int,2> p( (Vec<int,2>)size );
     p = 0;
-    cout << p;
+    cout << p << "\n";
     int pos[2] = {0,1};
     m.insertMatrix( pos, p );
-    cout << m;
+    cout << m << "\n";
     
     BaseMatrix<int,2> q;
     pos[0] = 1; pos[1] = 0;
     size[0]= 1; size[1]= 3;
     q = m.getPartialMatrix( pos, size );
-    cout << q;
+    cout << q << "\n";
     
     size[0]=7;size[1]=7;
     BaseMatrix<int,2> r( (Vec<int,2>)size );
     for (int k=0; k<r.getSize().product(); ++k)
         r[k] = k;
-    cout << r;
+    cout << r << "\n";
     
     Vec<int,2> newvec(size);
-    cout << newvec;
-    cout << (3+newvec);
+    cout << newvec << "\n";
+    cout << (3+newvec) << "\n";
     cout << Vec<int,2>(1) << endl;
-    cout << newvec;
+    cout << newvec << "\n";
 }

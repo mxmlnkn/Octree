@@ -129,11 +129,11 @@ int main( int argc, char **argv )
     tout << "ELECTRON_MASS        : " << ELECTRON_MASS              << "\n";
     tout << "S                    : " << S                          << "\n";
     const double xoverc = 1. / (SPEED_OF_LIGHT * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
-	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << xoverc << "=DELTA_X/sqrt(2)/c_M" << std::endl;
+	tout << "For stability in vacuum Delta_T=" << DELTA_T << " =< " << xoverc <<  "=DELTA_X/sqrt(2)/c_M\n";
     if ( xoverc < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
     const double xovercm = 1. / (SPEED_OF_LIGHT/1.33 * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm() );
-	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << xovercm << "=DELTA_X/sqrt(2)/c_M";
+	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << xovercm << "=DELTA_X/sqrt(2)/c_M\n";
     if ( xovercm < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
     tout << "\n";
@@ -141,7 +141,7 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-#define INITSETUP 6
+#define INITSETUP 7
 #if INITSETUP == 7
     tree.root->GrowUp();
     tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
@@ -209,7 +209,7 @@ int main( int argc, char **argv )
     }
 #endif
 
-    tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
+    tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n\n";
     svgoutput.PrintGrid();
 
     /**************************************************************************/
@@ -221,7 +221,7 @@ int main( int argc, char **argv )
     tout << "Initial Refinement: " << INITIAL_OCTREE_REFINEMENT << "\n"
          << "Minimum refinement Level found: " << tree.getMinLevel() << "\n"
          << "Maximum refinement Level found: " << tree.getMaxLevel() << "\n"
-         << "Cells per Octree: " << cellsPerOctreeCell << "\n";
+         << "Cells per Octree: " << cellsPerOctreeCell << "\n\n";
     comBox.initCommData( cellsPerOctreeCell, GUARDSIZE, 3 /*timestepbuffer*/ );
 
     const int ORDERING = Octree::Ordering::Hilbert; // -> Parameters -> need to include Octree there :S ?
@@ -279,9 +279,11 @@ int main( int argc, char **argv )
         }
     }
 
-    /* Set Borders */
+    /* Set Core, Border and Guard to different test values */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
-    if ( it->IsLeaf() ) if ( it->data.size() >= 2 ) {
+    if ( it->IsLeaf() ) { if ( comBox.rank == ((OctreeCommType::CommData*)it->
+         data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+    {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
         BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
         typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::CORE );
@@ -290,16 +292,53 @@ int main( int argc, char **argv )
         }
         itm = data.getIterator( 0, SimulationBox::BORDER );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[0][X] = -0.5;
+            matrix[itm.icell].E[0][X] = double(2*rand()-1.0)/double(RAND_MAX);
+            matrix[itm.icell].H[0][X] = double(2*rand()-1.0)/double(RAND_MAX);
         }
-    }
+    } else if ( it->data.size() > comBox.CELL_DATA_INDEX ) {
+        OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
+        typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::BORDER );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+            matrix[itm.icell].E[0][X] = +1.0 * ( 1+ comBox.rank ) / (comBox.worldsize+1);
+        }
+    }}
 
     comBox.PrintPNG( 0, "TestGuardCommunication_a" );
-
-    comBox.StartGuardUpdate();
-    comBox.FinishGuardUpdate();
+    
+    tout << "Beginning asynchronous communication operations\n";
+    comBox.StartGuardUpdate(0);
+    sleep(2);
+    tout << "Finishing up asynchronous communication operations\n";
+    comBox.FinishGuardUpdate(0);
     
     comBox.PrintPNG( 0, "TestGuardCommunication_b" );
+    
+    #if 1==0
+    /* Copy Guard to Border by adding up all neighbors (only B-field) */
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() ) if ( /*comBox.rank != ((OctreeCommType::CommData*)it->
+         data[OctreeCommType::COMM_HEADER_INDEX])->rank and*/ it->data.size()>1 )
+    {
+        OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+        typename OctCell::IteratorType itm = data.getIterator( 1 /* timestep */, SimulationBox::BORDER );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+			VecI xprev=itm.icell; xprev[X]--;
+			VecI xnext=itm.icell; xnext[X]++;
+			VecI yprev=itm.icell; yprev[Y]--;
+			VecI ynext=itm.icell; ynext[Y]++;
+            if ( data.inArea( xprev, SimulationBox::GUARD ) )
+                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[xprev].H[0][X] );
+            if ( data.inArea( xnext, SimulationBox::GUARD ) )
+                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[xnext].H[0][X] );
+            if ( data.inArea( yprev, SimulationBox::GUARD ) )
+                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[yprev].H[0][X] );
+            if ( data.inArea( ynext, SimulationBox::GUARD ) )
+                itm->H[0][X] = fmax( itm->H[0][X], data.t[0]->cells[ynext].H[0][X] );
+        }
+    }
+    #endif
+    //comBox.PrintPNG( 1, "TestGuardCommunication_c_t1" );
 
     MPI_Finalize(); // doesn't work in destructor :S
     return 0;

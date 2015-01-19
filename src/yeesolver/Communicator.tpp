@@ -70,7 +70,6 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
   NLeaves(0), cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
   neighbors(NULL), sendrequests(NULL), recvrequests(NULL)
 {
-    std::cout << "Constructing OctreeCommunicator";
     /* Initialize MPI */
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
@@ -87,15 +86,9 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
 /********************************** Destructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
-    std::cout << "Destructing OctreeCommunicator";
     for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it ) {
-        std::cout << "Looking at data of node at " << it->center << ":\n";
-        if ( it->data.size() >= 2 ) {
-            int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
-            std::cout << "  Deleting data of node at " << it->center << " assigned to process " << curRank << "\n";
-            assert( curRank == this->rank );
+        if ( it->data.size() >= 2 )
             delete ((OctCell*)it->data[CELL_DATA_INDEX]);
-        }
     }
 
     if ( comDataPtr != NULL )
@@ -205,20 +198,22 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
                 VecI vDir = getDirectionVector<T_DIM>(dirs[i]);
                 typename T_OCTREE::Node & neighbor = *(it->getNeighbor(vDir,periodic));
 
-                /* Neighbors may not be leaves (e.g. if it points to a large  *
-                 * node with smaller neighbors) , therefore we need to cycle  *
-                 * through them again. If it is of same size or even larger   *
-                 * and a leaf, then the for loop will end after one iteration *
-                 * In Order to check whether the node or its children are     *
-                 * direct neighbors, wie test if getNeighbor in the opposite  *
-                 * direction returns the current node (it)                    */
+                /* Neighbors may be not leaves (e.g. right neighbor of 3 is   *
+                 * is parent of 1). In that case iterate over     +-----+-+-+ *
+                 * it's children. 4 of 1 will with this strategy  |     |4|1| *
+                 * iterate only one time, because  it2.begin()    |  5  +-+-+ *
+                 * is a leaf. To check whether the node or its    |     |3|2| *
+                 * children are direct neighbors, we test if      +-----+-+-+ *
+                 * getNeighbor in the opposite direction returns the current  *
+                 * node (it). Because this only works from small to big, also *
+                 * test the other way around. E.g. left of 4 is 5, but right  *
+                 * of 5 will yield parent of 4                                */
                 int oppositeDir = getOppositeDirection<T_DIM>( dirs[i] );
                 VecI vOppositeDir = getDirectionVector<T_DIM>(oppositeDir);
                 for ( typename T_OCTREE::iterator it2 = neighbor.begin(ordering);
-                      it2 != neighbor.end(); ++it2 )
-                if ( it2->IsLeaf() )
-                if ( it->IsInside( it2->getNeighbor(vOppositeDir,periodic)->center )
-                or   it2->getNeighbor(vOppositeDir,periodic)->IsInside( it->center ) )
+                      it2 != neighbor.end(); ++it2 ) if ( it2->IsLeaf() )
+                if ( &neighbor == &(*it2) /* neighbor is leaf */ or
+                     it2->getNeighbor(vOppositeDir,periodic) == &(*it) )
                 {
                     /* If neighbor also belongs to us, then no mpi necessary */
                     int neighborRank = ((CommData*)it2->data[COMM_HEADER_INDEX])->rank;
@@ -287,7 +282,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
         neighbors[i].cellsToSend = cellsToSend;
 
         int cellsToRecv = 0;
-        ToCommList & lsr = neighbors[i].sSendData;
+        ToCommList & lsr = neighbors[i].sRecvData;
         for ( typename ToCommList::iterator it = lsr.begin(); it != lsr.end(); ++it ) {
             cellsToRecv += guardsize * getBorderSizeInDirection(it->direction).product();
             if ( getDirectionVector<T_DIM>(it->direction).sum() == 1 )
@@ -329,10 +324,16 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timeste
 
             CellMatrix tmp = ((OctCell*)it->node->data[CELL_DATA_INDEX])->t[timestep]->cells.getPartialMatrix( pos, size );
             memcpy( &(neighbors[neighborRank].sendData[cellsCopied]), tmp.data,
-                    sizeof(T_CELLTYPE) * tmp.size.product()         );
+                    sizeof(T_CELLTYPE) * tmp.size.product() );
             cellsCopied += tmp.size.product();
             assert( cellsCopied <= neighbors[neighborRank].cellsToSend );
         }
+
+        /* DEBUG overwrite send buffer */
+        /*for ( int i=0; i<neighbors[neighborRank].cellsToSend; ++i)
+            */
+
+        /* Send data Buffer away */
         MPI_Isend( neighbors[neighborRank].sendData, neighbors[neighborRank].cellsToSend * sizeof(T_CELLTYPE),
                    MPI_CHAR, neighborRank, 0, MPI_COMM_WORLD, &(sendrequests[neighborRank]) );
         MPI_Irecv( neighbors[neighborRank].recvData, neighbors[neighborRank].cellsToRecv * sizeof(T_CELLTYPE),
@@ -385,26 +386,115 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
         int cellsCopied = 0;
         for ( typename ToCommList::iterator it = lsr.begin(); it != lsr.end(); ++it )
         {
-            VecI size = this->getBorderSizeInDirection    (it->direction);
-            VecI pos  = this->getBorderPositionInDirection(it->direction);
-
-            CellMatrix tmp(size);
-            memcpy( tmp.data, &(neighbors[rankFinished].recvData[cellsCopied]),
-                    sizeof(T_CELLTYPE) * tmp.size.product() );
-            ((OctCell*)it->node->data[CELL_DATA_INDEX])->t[timestep]->cells.insertMatrix(pos,tmp);
-
-            cellsCopied += tmp.size.product();
+            VecI posB  = this->getBorderPositionInDirection(it->direction);
+            VecI sizeB = this->getBorderSizeInDirection    (it->direction);
+            CellMatrix tmpB(sizeB);
+            memcpy( tmpB.data, &(neighbors[rankFinished].recvData[cellsCopied]),
+                    sizeof(T_CELLTYPE) * tmpB.size.product() );
+            cellsCopied += tmpB.size.product();
             assert( cellsCopied <= neighbors[rankFinished].cellsToRecv );
+
+            /* Copy the newly received borders into the correct guards. For   *
+             * that we first need to calculate alle the guards we need to put *
+             * the received data into. Do this by traversing over the         *
+             * neighbor:                                       +-----+-----+  *
+             *  - 1-7 is the traversal order and also the id   |     |4b|1a|  *
+             *  - a-c is the assigned process id               |  5b |--+--|  *
+             *  - process a gets borders from 4b,3b and 7b     |     |3b|2a|  *
+             *  - border 2a to 1a and vice-versa is being      |-----+-----+  *
+             *    interpolated (in this case just copied) in   |     |     |  *
+             *    StartGuardUpdate, because those don't need   |  6c |  7c |  *
+             *    to be communicated.                          |     |     |  *
+             * 4b will check neighbors: 5b,3b,1a,7c only       +-----+-----+  *
+             * 1a belongs to us (a) and needs to be updated with data 4b.     *
+             * For 7c top border the neighbors will be: 5b,6c and the         *
+             * parent of  4b,1a,... (actually twice: neighbor above and       *
+             * below if  periodic ) In that case we need to travers all       *
+             * children and check their neighbor in opposite direction is     *
+             * 7c. For 7c top border this will yield 2a and 3b, latter is     *
+             * ignored, because I am process a.                               */
+
+            VecI vDir = getDirectionVector<T_DIM>(it->direction);
+            typename T_OCTREE::Node * neighbor = it->node->getNeighbor( vDir, periodic );
+            int oppositeDir = getOppositeDirection<T_DIM>(it->direction);
+            VecI vOppositeDir = getDirectionVector<T_DIM>(oppositeDir);
+            /* CHANGE BACK TO GUARD!!!! */
+            VecI posG  = this->getBorderPositionInDirection(oppositeDir);
+            VecI sizeG = this->getBorderSizeInDirection    (oppositeDir);
+            assert( sizeG == sizeB );
+            for ( typename T_OCTREE::iterator itT = neighbor->begin(); itT != neighbor->end(); ++itT )
+            if ( itT->IsLeaf() and ((CommData*)itT->data[COMM_HEADER_INDEX])->rank == this->rank )
+                if ( neighbor == &(*itT) /* neighbor is leaf */
+                or   itT->getNeighbor(vOppositeDir,periodic) == it->node )
+            {
+                /* E.g. send 5b left to 1a right, then size of 1a stays, but  *
+                 * we only need the upper half of left border of 5b           */
+                VecI posS, sizeS, posT, sizeT;
+                VecD lowerleftSource = it->node->center - it->node->size / 2;
+                VecD lowerleftTarget = itT->center - itT->size / 2;
+                /* automatic conversion makes (-1,0) to (1,0), because    *
+                 * bool(-1)=1. Apply calculated offset in all directions  *
+                 * except the one, we want to send to / the neighbor is   */
+                VecI mask = VecI(1) - VecI( (Vec<bool,T_DIM>)(vDir) );
+                assert( mask.sum() == T_DIM-1 );
+                if ( /* received data */ it->node->size > itT->size /* owned neighbor */ ) {
+                    sizeS  = (VecI(1) - mask) * sizeB;
+                    sizeS += mask * sizeB / ( it->node->size  / itT->size );
+                    sizeT  = sizeG;
+                    VecI offset = ( lowerleftTarget - lowerleftSource ) /
+                                  it->node->size * cellsPerOctreeCell;
+                    posS  = posB + offset * mask;
+                    posT  = posG;
+                } else { /* this case includes same-size-case */
+                    sizeS  = sizeB;
+                    sizeT  = (VecI(1) - mask) * sizeG;
+                    sizeT += mask * sizeG / ( itT->size / it->node->size );
+                    VecI offset = ( lowerleftSource - lowerleftTarget ) /
+                                  itT->size * cellsPerOctreeCell;
+                    posS  = posB;
+                    posT  = posG + offset * mask;;
+                }
+                CellMatrix tmpS(sizeS);
+                CellMatrix tmpT(sizeT);
+                assert(sizeS != VecI(0));
+                assert(sizeT != VecI(0));
+
+#if DEBUG_COMMUNICATOR >= 1
+                /* Debug Output for interpolating borders to guards */
+                tout << "Interpolate matrix at " << posS << " sized " << sizeS
+                     << " cut out from ";
+                switch ( it->direction ) {
+                    case LEFT  : tout << "Left";   break;
+                    case RIGHT : tout << "Right";  break;
+                    case BOTTOM: tout << "Bottom"; break;
+                    case TOP   : tout << "Top";    break;
+                }
+                tout << " Border of node at " << it->node->center << " sized "
+                     << it->node->size << "\n -> to ";
+                tout << "matrix at " << posT << " sized " << sizeT
+                     << " cut out from ";
+                switch ( oppositeDir ) {
+                    case LEFT  : tout << "Left";   break;
+                    case RIGHT : tout << "Right";  break;
+                    case BOTTOM: tout << "Bottom"; break;
+                    case TOP   : tout << "Top";    break;
+                }
+                tout << " Guard of node at " << itT->center << " sized "
+                     << itT->size << "\n";
+#endif
+                
+                
+                /* Because we only received the border, not the whole cell    *
+                 * matrix, posB must not be used to access data, just to      *
+                 * calculate the offset above. Instead 'posB' is 'offset'     */
+                tmpS = tmpB.getPartialMatrix( posS - posB, sizeS );
+                if ( sizeS != sizeT )
+                    tmpS.NearestResizeTo( tmpT );
+
+                ((OctCell*)it->node->data[CELL_DATA_INDEX])->t[timestep]->cells.insertMatrix(posT,tmpT);
+            }
         }
 
-        /* interpolate or copy Borders of neighboring cells, which are now    *
-         * existent and up-to-date, even if the octree cells are on other     *
-         * nodes                                                              */
-        tout << "ToDo: Interpolation and Tests!\n";
-
-        /*VecI size = getGuardSizeInDirection    (direction);
-        VecI pos  = getGuardPositionInDirection(direction);
-        simbox.t[timestep]->cells.insertMatrix( pos, recvmatrices[direction] );*/
     }
 }
 
@@ -422,8 +512,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
     std::stringstream filenamepng;
     filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
                 << now->tm_mday << "_" << now->tm_hour << "-"
-                << now->tm_min << "_";
-    filenamepng << name << "_rank-" << this->rank << "_Ex.png";
+                << now->tm_min << "_"
+                << "rank-" << this->rank << "_" << name << "_Ex.png";
     pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
 
@@ -431,7 +521,6 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
     if ( it->IsLeaf() ) if ( it->data.size() >= 2 )
     {
         OctCell & data   = *((OctCell*)it->data[this->CELL_DATA_INDEX]);
-        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
 
         /* No Resize, if uniform octree cells. If not uniform, then scale up  *
          * smaller ones, by simpling filling the rest of the space            */
@@ -450,13 +539,13 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
         /* abspos member of SimulationBox is initialized bei Communicator.tpp *
          * with it->center - 0.5*it->size, meaning lower left corner with     *
          * internal units of OctreeNode ( no rounding errors should happen )  */
-        typename OctCell::IteratorType it = data.getIterator( 0, SimulationBox::CORE + SimulationBox::BORDER );
+        typename OctCell::IteratorType it = data.getIterator( timestep, SimulationBox::CORE + SimulationBox::BORDER );
         for ( it = it.begin(); it != it.end(); ++it ) {
             /* pngwriter begins counting pixels with 1 instead of 0 -.- */
             VecI pos = 1 + abspos + resizeFactor*(it.icell-it.guardsize);
             VecI posTo = pos + resizeFactor - 1;
             image.filledsquare( pos[X],pos[Y], posTo[X],posTo[Y],
-                matrix[it.icell].E[0][X], 0.0, -matrix[it.icell].E[0][X]);
+                it->E[0][X], it->H[0][X], -it->E[0][X]);
         }
     }
     image.close();

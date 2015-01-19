@@ -21,7 +21,7 @@ testOctree2 : examples/testOctree2.cpp TVector Octree
 	rm -f $@.exe
 	g++ $< -o $@.exe $(CFLAGS)
 
-testMatrix  : examples/testMatrix.cpp
+testMatrix  : examples/testMatrix.cpp TBaseMatrix TVector
 	rm -f $@.exe
 	g++ $< -o $@.exe $(CFLAGS)
 

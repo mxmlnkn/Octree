@@ -47,6 +47,7 @@
 
 *.stackdump
 *.zip
+*.nb
 
 Knowledge/*
 output/* 

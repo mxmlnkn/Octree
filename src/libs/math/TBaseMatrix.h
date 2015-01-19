@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <vector>
 #include <cstring>   // memcpy
 #include "TVector.h"
 
@@ -44,6 +45,7 @@ public:
 
     static const int dim = T_DIM;
     typedef Vec<int,T_DIM> VecI;
+    typedef Vec<double,T_DIM> VecD;
     typedef T_DTYPE Datatype;
 
 	/* should only be used in conjunction with following copy constructor,    *
@@ -54,6 +56,9 @@ public:
     ~BaseMatrix( void );
     BaseMatrix& operator= (const BaseMatrix & m);
 
+    /* Beware, because the type is templated the matrix data won't be         *
+     * initialized (but it calls the constructor of the type, still won't     *
+     * do anything if type is double or int                                   */
     BaseMatrix( VecI size );
     BaseMatrix& operator= (const T_DTYPE a);
     int getLinearIndex( const VecI & pos ) const;
@@ -65,6 +70,24 @@ public:
     VecI getSize( void ) const;
     BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const;
     void insertMatrix( const VecI & pos, const BaseMatrix & m );
+    /* - Values are assumed to lie in the center of the matrix cells:         *
+     *   (0.5,0.5),(0.5,1.5),...  this is done for symmetry reasons           *
+     * - Lagrange Polynomials are used for interpolation                      *
+     * - order specifies how far the distance to values to include may be,    *
+     *   the units are indices, but it can be a fraction. E.g. for 2x2 matrix *
+     *   an order of sqrt(1.5+1.5) will include all values for arbitrary      *
+     *   large target matrix sizes (for epsilon > 0 the value will then be at *
+     *   (epsilon,epsilon) and the farthest apart from it is (1.5,1.5),       *
+     *   because values are assumed to be on center of matrix cells!          *
+     * - The higher the order, the worse is extrapolation for periodic data-  *
+     *   sets !                                                               *
+     * - Extrapolation is only necessary for upscaling, not downscaling and   *
+     *   there only on the border, where border is defined as the 0.5 thick   *
+     *   strip around the assumed centers of the values                       *
+     * - order 1 is basically nearest neighbor                                */
+    void LagrangianResizeTo( BaseMatrix & target, double order = 1 ) const;
+    void NearestResizeTo( BaseMatrix & target ) const;
+    /* TODO: use Fouriertransformation to resize !!! */
 };
 
 #include "TBaseMatrix.tpp"

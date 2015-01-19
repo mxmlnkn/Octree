@@ -35,6 +35,7 @@ private:
 
 public:
     typedef Vec<int,T_DIM> VecI;
+    typedef Vec<double,T_DIM> VecD;
     typedef BaseMatrix<T_CELLTYPE,T_DIM> CellMatrix;
     typedef SimulationBox::SimulationBox<T_DIM,T_CELLTYPE> OctCell;
 
@@ -123,12 +124,12 @@ public:
     /* Start asynchronous sends of all Border Data belonging to other threads *
      * If neighbor-cell owned by this thread itself, interpolate and copy     *
      * data to guards.                                                        */
-    void StartGuardUpdate( int timestep = 1 );
+    void StartGuardUpdate( int timestep );
 
     /* Waits for MPI_Recv_Requests to finish and then copies the received     *
      * partial matrix from the buffer to the simulation matrix. Because of    *
      * complicated stride in all directions it can't be communicated directly */
-    void FinishGuardUpdate( int timestep = 1 );
+    void FinishGuardUpdate( int timestep );
 
 #if DEBUG_COMMUNICATOR >= 100
     void Print( void ) {

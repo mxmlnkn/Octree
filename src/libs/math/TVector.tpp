@@ -24,6 +24,7 @@ Vec<T_DTYPE,T_DIM>::~Vec( void ) {
     return;
 }
 
+/********************************* Assignment *********************************/
 template<typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const Vec & v ) {
     for (int i=0; i<T_DIM; i++)
@@ -31,7 +32,7 @@ Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const Vec & v ) {
     return *this;
 }
 
-/****************************** Constructors ******************************/
+/******************************** Constructors ********************************/
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
@@ -46,6 +47,7 @@ Vec<T_DTYPE,T_DIM>::Vec(const T_DTYPE a) {
         this->data[i] = a;
 }
 
+/****************************** Copy Constructor ******************************/
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const Vec<T_ETYPE,T_DIM> & v ) {
@@ -53,7 +55,7 @@ Vec<T_DTYPE,T_DIM>::Vec( const Vec<T_ETYPE,T_DIM> & v ) {
         this->data[i] = v.data[i]; // implicit conversion from T_ETYPE to T_DTYPE
 }
 
-/**************************** Access Operators ****************************/
+/****************************** Access Operators ******************************/
 template<typename T_DTYPE, int T_DIM>
 T_DTYPE Vec<T_DTYPE,T_DIM>::operator[] (const int i) const {
     assert( i>= 0 and i < T_DIM );
