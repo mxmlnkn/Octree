@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include "mpi.h"
 #include "math/TVector.h"
 #include "math/TBaseMatrix.h"
 #include "SimulationBoxDefines.h"
@@ -42,6 +43,7 @@ namespace SimulationBox {
  * relative cell-directions need to be included                           *
  * The internal data matrix will begin with the upper left corner like    *
  * any normal matrix                                                      *
+ * localcells are B and C, but not G                                      *
  **************************************************************************/
 template<int T_DIM>
 bool InArea( const Vec<int,T_DIM> & pos, const int & area, const Vec<int,T_DIM> & localcells, int guardsize );
@@ -64,12 +66,11 @@ public:
      * held in t[0]. t[1] is the prior time step and so on. TimeData struct   *
 	 * introduced so that it looks better: t[0]->cells[0] instead of          *
 	 * problematic t[0][0]                                                    */
-private:
     int ntimesteps;
     typedef struct TimeDataStruct {
         CellMatrix cells;
     } TimeData;
-public:
+
     /* holds array to different versions of matrix, e.g. different times      *
      * array of pointers is being used instead of simple array in order to    *
      * cyclically swap the time pointers, instead of the whole data itself !  */
@@ -79,7 +80,7 @@ public:
      * To avoid rounding errors, use e.g. the internal units of Octree        *
      * This is only used in getGlobalPosition to conver internal integer      *
      * addressing of matrix elements to double positions                      */
-    VecD abspos;  
+    VecD abspos;
     VecI localcells; // cells in this SimulationBox/Matrix/Octree cell
     VecD cellsize;
     int guardsize;
@@ -96,7 +97,8 @@ public:
 
     /* returns global position of cell by using global offset of the matrix,
      * */
-    VecD getGlobalPosition ( const IteratorType it ) const;
+    VecD getGlobalPosition( const IteratorType it ) const;
+    VecI findCellContaining( VecD abspos ) const;
     void copyCurrentToPriorTimestep( void );
 };
 

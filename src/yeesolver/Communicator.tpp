@@ -298,15 +298,14 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
         neighbors[i].recvData = (T_CELLTYPE*) malloc( sizeof(T_CELLTYPE) * cellsToRecv );
         neighbors[i].sendData = (T_CELLTYPE*) malloc( sizeof(T_CELLTYPE) * cellsToSend );
 
-        tout << "Send " << cellsToSend << " doubles to process " << i
-             << "and receive " << cellsToRecv << " from it\n";
+        tout << "Send " << cellsToSend << " YeeCells to process " << i
+             << " and receive " << cellsToRecv << " from it\n";
     }
 }
 
 /****************************** StartGuardUpdate ******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timestep)
-{
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timestep) {
     this->timestepSent = timestep;
     for ( int neighborRank=0; neighborRank < this->worldsize; ++neighborRank )
     {
@@ -340,7 +339,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timeste
         MPI_Irecv( neighbors[neighborRank].recvData, neighbors[neighborRank].cellsToRecv * sizeof(T_CELLTYPE),
                    MPI_CHAR, neighborRank, 0, MPI_COMM_WORLD, &(recvrequests[neighborRank]) );
 
-#if DEBUG_COMMUNICATOR >= 1
+#if DEBUG_COMMUNICATOR >= 10
         /* Debug Output of recv- and send-list in comBox */
         tout << "I send to process " << neighborRank << ":\n";
         for ( typename ToCommList::iterator it = neighbors[neighborRank].sSendData.begin();
@@ -480,7 +479,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
                 assert(sizeS != VecI(0));
                 assert(sizeT != VecI(0));
 
-#if DEBUG_COMMUNICATOR >= 1
+#if DEBUG_COMMUNICATOR >= 10
                 /* Debug Output for interpolating borders to guards */
                 tout << "Interpolate matrix at " << posS << " sized " << sizeS
                      << " cut out from ";
@@ -525,8 +524,9 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
 
 /********************************* PrintPNG ***********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const char * name )
-{
+template<typename T_FUNC>
+void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
+(int timestep, const char * name, T_FUNC function ) {
     const int X = 0;
     const int Y = 1;
 
@@ -537,11 +537,12 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
     std::stringstream filenamepng;
     filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
                 << now->tm_mday << "_" << now->tm_hour << "-"
-                << now->tm_min << "_"
-                << "rank-" << this->rank << "_" << name << "_Ex.png";
+                << now->tm_min << "_" << "rank-" << this->rank << "_"
+                << name << "_t" << timestep << "_Ex.png";
     pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
+#if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
-
+#endif
     for ( typename T_OCTREE::iterator it=tree.begin(); it!=tree.end(); ++it )
     if ( it->IsLeaf() ) if ( it->data.size() >= 2 )
     {
@@ -569,8 +570,9 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG(int timestep, const
             /* pngwriter begins counting pixels with 1 instead of 0 -.- */
             VecI pos = 1 + abspos + resizeFactor*(it.icell-it.guardsize);
             VecI posTo = pos + resizeFactor - 1;
+            Vec<double,3> color = function(*it);
             image.filledsquare( pos[X],pos[Y], posTo[X],posTo[Y],
-                it->E[0][X], it->H[0][X], -it->E[0][X]);
+                                color[0], color[1], color[2] );
         }
     }
     image.close();

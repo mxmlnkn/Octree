@@ -37,6 +37,8 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include "paramset/Parameters_2015-01-16.cpp"
 #define YEE_CELL_TIMESTEPS_TO_SAVE 2
 #include "YeeCell.h"
+#include "YeeCellColors.h"
+#include "YeeSolver.h"
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
 #include "Communicator.h"
@@ -95,7 +97,7 @@ int main( int argc, char **argv )
     VecD globSize(cellSize*NCells), globCenter(0.5*globSize);
     typedef typename Octree::Octree<SIMDIM> OctreeType;
     OctreeType tree( globCenter, globSize );
-    typedef BaseMatrix<YeeCell,SIMDIM> CellMatrix;
+    //typedef BaseMatrix<YeeCell,SIMDIM> CellMatrix;
     typedef OctreeCommunicator<SIMDIM,OctreeType,YeeCell> OctreeCommType;
     OctreeCommType comBox(tree,VecI(true));
     typedef SimulationBox::SimulationBox<SIMDIM,YeeCell> OctCell;
@@ -141,17 +143,15 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-#define INITSETUP 7
-#if INITSETUP == 7
-    tree.root->GrowUp();
-    tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
-#endif
-#if INITSETUP == 6
+#define INITSETUP 5
+#if INITSETUP == 5 or INITSETUP == 6
     /********* refine all cells to initial homogenous min-Refinement **********/
     for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
             if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
     }
+#endif
+#if INITSETUP == 6
     /*********************** Refine certain boundaries ************************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     VecD M(0.5*globSize);          // center of circle
@@ -208,12 +208,16 @@ int main( int argc, char **argv )
         }
     }
 #endif
+#if INITSETUP == 7
+    tree.root->GrowUp();
+    tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
+#endif
 
     tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n\n";
     svgoutput.PrintGrid();
 
     /**************************************************************************/
-    /* (2) Distribute weighting and octree cells to processes *****************/
+    /* (2) Distribute weighting and Octree cells to processes *****************/
     /**************************************************************************/;
     VecD cellsPerOctreeCell = VecD(NCells) / pow( 2,tree.getMinLevel() );
     for (int i = 0; i < cellsPerOctreeCell.size; ++i)
@@ -288,42 +292,42 @@ int main( int argc, char **argv )
         BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
         typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::CORE );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[0][X] = 1.0;
+            matrix[itm.icell].E[X] = 1.0;
         }
         itm = data.getIterator( 0, SimulationBox::BORDER );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[0][X] = double(2*rand()-1.0)/double(RAND_MAX);
-            matrix[itm.icell].H[0][X] = double(2*rand()-1.0)/double(RAND_MAX);
+            matrix[itm.icell].E[X] = double(2*rand()-1.0)/double(RAND_MAX);
+            matrix[itm.icell].H[X] = double(2*rand()-1.0)/double(RAND_MAX);
         }
     } else if ( it->data.size() > comBox.CELL_DATA_INDEX ) {
+        assert(false);
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
         BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
         typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::BORDER );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[0][X] = +1.0 * ( 1+ comBox.rank ) / (comBox.worldsize+1);
+            matrix[itm.icell].E[X] = +1.0 * ( 1+ comBox.rank ) / (comBox.worldsize+1);
         }
     }}
 
-    comBox.PrintPNG( 0, "TestGuardCommunication_a" );
+    comBox.PrintPNG( 0, "TestGuardCommunication_a", returnEandH );
 
     tout << "Beginning asynchronous communication operations\n";
     comBox.StartGuardUpdate(0);
-    //sleep(2);
     tout << "Finishing up asynchronous communication operations\n";
     comBox.FinishGuardUpdate(1);
 
-    comBox.PrintPNG( 1, "TestGuardCommunication_b" );
+    comBox.PrintPNG( 1, "TestGuardCommunication_b", returnEandH );
 
     /* Copy Guard to Border by adding up all neighbors (only B-field) */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
-    if ( it->IsLeaf() ) if ( it->data.size() > 1 ) 
+    if ( it->IsLeaf() ) if ( it->data.size() > 1 )
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
         typename OctCell::IteratorType itm = data.getIterator( 1 /* timestep */, SimulationBox::BORDER );
         for ( itm = itm.begin(); itm != itm.end(); ++itm )
         {
-            itm->H[0][X] = 0.0;
-            itm->E[0][X] = 0.0;
+            itm->H[X] = 0.0;
+            itm->E[X] = 0.0;
             int dirs[ compileTime::pow(2,SIMDIM) ] = {RIGHT,LEFT,TOP,BOTTOM};
             int nNeighboringGuards = 0;
             for (int i=0; i < compileTime::pow(2,SIMDIM); ++i)
@@ -332,396 +336,219 @@ int main( int argc, char **argv )
                 if ( data.inArea( neighbor, SimulationBox::GUARD ) )
                 {
                     nNeighboringGuards++;
-                    itm->H[0][X] += data.t[1]->cells[neighbor].H[0][X];
-                    itm->E[0][X] += data.t[1]->cells[neighbor].E[0][X];
+                    itm->H[X] += data.t[1]->cells[neighbor].H[X];
+                    itm->E[X] += data.t[1]->cells[neighbor].E[X];
                 }
             }
-            itm->H[0][X] /= nNeighboringGuards;
-            itm->E[0][X] /= nNeighboringGuards;
+            itm->H[X] /= nNeighboringGuards;
+            itm->E[X] /= nNeighboringGuards;
         }
     }
-    comBox.PrintPNG( 1, "TestGuardCommunication_c_t1" );
+    comBox.PrintPNG( 1, "TestGuardCommunication_c", returnEandH );
 
-    MPI_Finalize(); // doesn't work in destructor :S
-    return 0;
+    /**************************************************************************/
+    /* (5) Setup Simulation Start Data like Material **************************/
+    /**************************************************************************/
+    for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+    if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+         data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+    {
+        OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+        typename OctCell::IteratorType itm = data.getIterator( 0,
+                                  SimulationBox::CORE + SimulationBox::BORDER );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+            /* it traverses octree nodes, while itm traverses matrix cells! */
+            itm->epsilon = EPS0;
+            itm->mu      = MUE0;
+            itm->sigmaE  = 0;
+            itm->sigmaM  = 0;
+
+            #define YEE_INIT_SETUP 1
+            /* cur Pos is in internal units, meaning curPos in [0,1.0] */
+            for ( int i=0; i < SIMDIM; ++i ) {
+                assert( itm.icell[i] > 0 );
+                assert( itm.icell[i] - itm.guardsize < cellsPerOctreeCell[i] );
+                if ( (tree.root->size/2 + it->center - it->size/2)[i] <= 0 )
+                    terr << "Lowerleft of node at " << it->center << " sized " << it->center << " is out of bounds!!\n";
+                assert( (tree.root->size/2 + it->center - it->size/2)[i] >= 0 );
+            }
+            VecD curPos = tree.root->size/2 + it->center - it->size/2 + ( VecD(itm.icell)
+                          + VecD( - itm.guardsize + 0.5) ) / VecD(cellsPerOctreeCell) * it->size;
+            assert( itm.ncells - 2*itm.guardsize == cellsPerOctreeCell );
+            assert( curPos >= VecD(0) );
+            assert( curPos <= VecD(1) );
+            #if YEE_INIT_SETUP == 1
+                /* Result 009: absorbing Material on right side */
+                if ( curPos[0] > 0.2 ) {
+                    /* For INF instead of 2e8 it divereges! -> characteristic *
+                     * wave length for exponential decay -> 0 for INF ?       */
+                    itm->sigmaE  = 2e8;
+                    itm->sigmaM  = 2e8 * MUE0/EPS0;
+                }
+            #endif
+            #if YEE_INIT_SETUP == 2
+                /* Result: 014 - broken total reflexion (two glass plates with small      *
+                 *               vacuum/air slit inbetween                                */
+                if ( curPos[X] < 0.633 or curPos[X] > 0.650  ) {
+                    const double n  = 1.33; // = sqrt( eps_r * mue_r )
+                    itm->epsilon = EPS0 * n*n;
+                }
+            #endif
+            #if YEE_INIT_SETUP == 3
+                /* Spawn Barrier with one slit and perfectly reflecting material else */
+                const double wy = LAMBDA;
+                if ( curPos[X] > LAMBDA and curPos[X] < 2*LAMBDA )
+                if ( curPos[Y] > 0.5 - wy/2 and curPos[Y] < 0.5 + wy/2 ) {
+                        itm->epsilon  = INF;//2*EPS0;
+                        //data[pos].mu       = INF;
+                }
+            #endif
+        }
+    }
 
 
     /**************************************************************************/
-    /* (5) Create data buffer with cells initially with zeros in all entries **/
+    /* (6) Actual Timestepping ************************************************/
     /**************************************************************************/
-    /* Insert testDate (later YeeCell-Data or Absorbercelldata, or Guard) at  *
-     * the center of every leaf node. By default all cells will be assigned   *
-     * to last rank                                                           */
-    /*int dataInserted = 0;
-    it = tree.begin();
-    while ( it!=tree.end() ) {
-        if ( it->IsLeaf() ) {
-            assert( dataInserted < NValues );
-            it->InsertData( it->center, &(data[dataInserted]) );
-            ++dataInserted;
-        }
-        ++it;
-    }*/
-
-	VecI size(0);
-	for ( int i = 0; i < SIMDIM; i++ )
-		size[i] = NUMBER_OF_CELLS[i];
-	CellMatrix data(size);
-	/* Spawn Material on right side with non-zero electrical resistance */
-    /* default initiaization */
-	for ( int i = 0; i < data.getSize().product(); i++ ) {
-		data[i].epsilon = EPS0;
-		data[i].mu      = MUE0;
-		data[i].sigmaE  = 0;
-		data[i].sigmaM  = 0;
-    }
-
-    /* Result: 014 - broken total reflexion (two glass plates with small      *
-     *               vacuum/air slit inbetween                                */
-	/*for ( int i = 0; i < data.getSize().product(); i++ ) {
-		if ( data.getVectorIndex( i )[0] < NUMBER_OF_CELLS_X-40-128 or
- 		     data.getVectorIndex( i )[0] > NUMBER_OF_CELLS_X-40-128+2  ) {
-			const double n  = 1.33; // = sqrt( eps_r * mue_r )
-			data[i].epsilon = EPS0 * n*n;
-		}
-	}*/
-    /* Result 009: absorbing Material on right side */
-	for ( int i = 0; i < data.getSize().product(); i++ ) {
-		if ( data.getVectorIndex( i )[0] > 200 ) {
-			data[i].sigmaE  = 2e8;
-			data[i].sigmaM  = 2e8 * MUE0/EPS0;
-		}
-	}
-	/* Spawn Barrier with one slit and perfectly reflecting material else */
-	/*for ( int x = LAMBDA_SI / CELL_SIZE_X_SI; x < LAMBDA_SI / CELL_SIZE_X_SI + 10; x++ )
-	for ( int y = 0; y < N_CELLS_Y; y++ ) {
-		const int wy = 40;
-		if ( y <=  N_CELLS_Y/2 - wy/2 or y >= N_CELLS_Y/2 + wy/2 ) {
-			VecI pos(GUARDSIZE); pos[0]=x; pos[1]=y;
-			data[pos].epsilon  = INF;//2*EPS0;
-			//data[pos].mu       = INF;
-		}
-	}*/
-
-
-	for ( int timestep=0; timestep < 800; ++timestep )
+	for ( int timestep=0; timestep < 10; ++timestep )
 	{
-		/* For YEE_CELL_TIMESTEPS_TO_SAVE == 2 this switches 0 and 1 as the   *
-		 * saving time step                                                   */
-        int tcur  = (timestep  ) % YEE_CELL_TIMESTEPS_TO_SAVE;
-        int tnext = (timestep+1) % YEE_CELL_TIMESTEPS_TO_SAVE;
-		/*tcur  = 0;
-		tnext = 0; */
+        tout << "Timestep " << timestep << "\n";
+		#define TIME_SPAWN_SETUP 1
+        #if TIME_SPAWN_SETUP == 1
+            /* Function Generator on Cell in the Center */
+            OctreeType::Node * node = tree.FindLeafContainingPos( tree.center + 0.01*tree.size );
+            OctCell & cellMatrix = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
+            VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.01*tree.size );
+            cellMatrix.t[0]->cells[targetIndex].E[Z] = t_spawn_func( timestep * DELTA_T_SI );
+        #endif
+        #if TIME_SPAWN_SETUP == 2
+            /* Function Generator on left side creates sine wave */
+            /*VecI pos(GUARDSIZE);
+            for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
+                pos[Y] = GUARDSIZE + y;
+                //if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
+                    data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+                //if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
+                //	data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+            }*/
+        #endif
+        #if TIME_SPAWN_SETUP == 3
+            /**********************************************************************
+             * Sine plane Wave going to Direction alpha and beginning line going  *
+             * through pos0  y                                                    *
+             *               ^                                                    *
+             *               | \     e.g. p0 ( line includes p0! )                *
+             *               |  --  /                                             *
+             *               |    \     alpha                                     *
+             *               |     --  /                                          *
+             *               |_______\__________ x                                *
+             **********************************************************************/
+            double const n = 1.33;
+            double alpha   = 45. / 360. * 2*M_PI; //0.9*asin(1./n); // radian
+            double lambda  = 10e-9 / UNIT_LENGTH;
+            VecI pos0(0); pos0[X] = 6*lambda;
+            double T0x     = lambda / (SPEED_OF_LIGHT/n);
+            double T0y     = lambda / (SPEED_OF_LIGHT/n);
+            double kx      = 2*M_PI/lambda * cos(alpha);
+            double ky      = 2*M_PI/lambda * sin(alpha);
+            //std::cout << "Spawning slanted sine wave: \n";
+            for (int j=0; j<2; j++) {
+                VecI pos( pos0+GUARDSIZE ); pos[Y]+=j;
+                for (int i=0; i<10*lambda; i++) {
+                    pos[X]++;
+                    data[pos].t[0].E[Z] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, timestep * DELTA_T, kx, i*CELL_SIZE_X, ky, j*CELL_SIZE_Y ) * TIME_SPAWN_FUNCTIONS::PSQ_STEP( T0y, timestep * DELTA_T );
+                        //* TIME_SPAWN_FUNCTIONS::sinewave( T0y, timestep * DELTA_T );
+                    //std::cout << data[pos].t[0].E[Z] << " ";
+                }
+                //std::cout << std::endl;
+            }
+        #endif
 
-		/* Function Generator on left side creates sine wave */
-		/*VecI pos(GUARDSIZE);
-		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
-			pos[Y] = GUARDSIZE + y;
-			//if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
-				data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
-			//if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
-			//	data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
-		}*/
-		/* Function Generator on Cell in the Center */
-		/*VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[0]-=50;
-		data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI ); */
+        tout << "Swap timebuffers\n";
+        /* Swap timestep buffers for alle SimulationBoxes before Calculating */
+        for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+             data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+        {
+            OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+            simBox.copyCurrentToPriorTimestep();
+        }
+        
+        tout << "Send Borders from previous timestep\n";
+        /* 0 is timestep to be calculated, 1 is the previous one */
+        comBox.StartGuardUpdate( 1 );
+        
+        tout << "Calculate H on Core of current timestep\n";
+        /* Traverse all Octree Nodes and apply Yee-Solver there ( Do this     *
+         * with a comBox iterator ???                                         */
+        for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+             data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+        {
+            OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+            YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE );
+        }
+        
+        tout << "Receive sent Borders into Guards of current timestep\n";
+        comBox.FinishGuardUpdate( 0 );
+        
+        tout << "Calculate H on Border of current timestep\n";
+        for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+             data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+        {
+            OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+             YeeSolver::CalcH( simBox, 0, 1, SimulationBox::BORDER );
+        }
+        
+        /* In the next halfstep, do the same for E-Field, but stay in timestep*/
+        tout << "Send Borders of current timestep (newly calculated Hs)\n";
+        comBox.StartGuardUpdate( 0 );
+        
+        tout << "Calculate on Core of current timestep E\n";
+        for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+             data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+        {
+            OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::CORE );
+        }
 
-		/**********************************************************************
-		 * Sine plane Wave going to Direction alpha and beginning line going  *
-		 * through pos0  y                                                    *
-		 *               ^                                                    *
-		 *               | \     e.g. p0 ( line includes p0! )                *
-		 *               |  --  /                                             *
-		 *               |    \     alpha                                     *
-		 *               |     --  /                                          *
-		 *               |_______\__________ x                                *
-         **********************************************************************/
-		double const n = 1.33;
-		double alpha   = 45. / 360. * 2*M_PI; //0.9*asin(1./n); // radian
-		double lambda  = 10e-9 / UNIT_LENGTH;
-		VecI pos0(0); pos0[X] = 6*lambda;
-		double T0x     = lambda / (SPEED_OF_LIGHT/n);
-		double T0y     = lambda / (SPEED_OF_LIGHT/n);
-		double kx      = 2*M_PI/lambda * cos(alpha);
-		double ky      = 2*M_PI/lambda * sin(alpha);
-		//std::cout << "Spawning slanted sine wave: \n";
-		for (int j=0; j<2; j++) {
-			VecI pos( pos0+GUARDSIZE ); pos[Y]+=j;
-			for (int i=0; i<10*lambda; i++) {
-				pos[X]++;
-				data[pos].E[tcur][Z] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, timestep * DELTA_T, kx, i*CELL_SIZE_X, ky, j*CELL_SIZE_Y ) * TIME_SPAWN_FUNCTIONS::PSQ_STEP( T0y, timestep * DELTA_T );
-					//* TIME_SPAWN_FUNCTIONS::sinewave( T0y, timestep * DELTA_T );
-				//std::cout << data[pos].E[tcur][Z] << " ";
-			}
-			//std::cout << std::endl;
-		}
-		/**********************************************************************
-		 * Periodic Boundary Conditions for y-direction                       *
-		 * Initialize y-Guard with copied values to make boundaries periodic  *
-		 *             -------------                                          *
-		 *            |G G G G G G G|    Ny = 7, NGuard = 2                   *
-		 *            |G G G G G G G|    periodic y:                          *
-		 *  y     -------------  G G|     - x = 0...Nx, z = 0...Nz            *
-		 *     0 |G G G G G G G| G G|     - [x,3] -> [x,0]                    *
-		 *  ^  1 |G G G G G G G| G G|     - [x,4] -> [x,1]                    *
-		 *  |  2 |G G C C C G G| G G|     - [x,2] -> [x,5]                    *
-		 *  |  3 |G G C C C G G| G G|     - [x,3] -> [x,6]                    *
-		 *  |  4 |G G C C C G G|----                                          *
-		 *  |  5 |G G G G G G G|      [x,Ny-1-2*NGuard+0] -> [x,0]            *
-		 *  |  6 |G G G G G G G|      [x,Ny-1-2*NGuard+1] -> [x,1]            *
-		 *  |     -------------       [x,NGuard+0]        -> [x,Ny-NGuard+0]  *
-		 *  |     0 1 2 3 4 5 6       [x,NGuard+1]        -> [x,Ny-NGuard+1]  *
-		 *  -----------------> x                                              *
-		 **********************************************************************/
-		for ( int x = 0; x < N_CELLS_X; x++ )
-		for ( int z = 0; z < N_CELLS_Z; z++ )
-		for ( int y = 0; y < GUARDSIZE; y++ ) {
-			if (isPeriodic[Y] == 1) {
-				VecI posTo(0); posTo[X]=x; posTo[Z]=z;
-				VecI posFrom(posTo);
-
-				/* [x,Ny-1-2*NGuard+0] -> [x,0] */
-				posFrom[Y] = N_CELLS_Y-1-2*GUARDSIZE+y;
-				posTo[Y]   = y;
-				data[posTo].E[tcur] = data[posFrom].E[tcur];
-
-				#if DEBUG_MAIN_YEE >= 100
-				if (timestep == 3)
-					std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
-					<< "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << std::endl;
-				#endif
-
-				/* [x,NGuard+0] -> [x,Ny-NGuard+0] */
-				posFrom[Y] = GUARDSIZE+y;
-				posTo  [Y] = N_CELLS_Y-GUARDSIZE+y;
-				data[posTo].E[tcur] = data[posFrom].E[tcur];
-
-				#if DEBUG_MAIN_YEE >= 100
-				if (timestep == 3)
-					std::cout << "(" << "Ez.[" << posFrom << "]=" << data[posFrom].E[tcur][Z] << " -> "
-					<< "(" << "Ez.[" << posTo << "]=" << data[posTo].E[tcur][Z] << "\n\n";
-				#endif
-			}
-		}
-
-
-		#if DEBUG_MAIN_YEE >= 100
-		std::cout << "E_z[x=GUARDSIZE,y=1...6...122...127,z=GUARDSIZE] before Timestep and after updating periodic boundary guards: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-			for ( int iy=0; iy < 3; ++iy ) {
-				VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
-				std::cout << data[pos].E[tcur][Z] << " ";
-			}
-			std::cout << "... ";
-			for ( int iy=125; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
-				std::cout << data[pos].E[tcur][Z] << " ";
-			}
-			std::cout << std::endl;
-		}
-		#endif
-
-		for ( int x = 0; x < N_CELLS_X - 2*GUARDSIZE; x++ )
-		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ )
-		for ( int z = 0; z < N_CELLS_Z - 2*GUARDSIZE; z++ ) {
-			VecI pos;
-			pos[X]=x + GUARDSIZE;
-			pos[Y]=y + GUARDSIZE;
-			pos[Z]=z + GUARDSIZE;
-
-			VecI xprev=pos; xprev[X]--;
-			VecI xnext=pos; xnext[X]++;
-
-			VecI yprev=pos; yprev[Y]--;
-			VecI ynext=pos; ynext[Y]++;
-
-			VecI zprev=pos; zprev[Z]--;
-			VecI znext=pos; znext[Z]++;
-
-			assert(yprev[Y] >= 0);
-			assert(ynext[Y] < N_CELLS_Y);
-
-
-			/* Update all H components */
-			double nom = (1.0 + 0.5*data[pos].sigmaM*DELTA_T / data[pos].mu);
-			double Da  = (1.0-0.5*data[pos].sigmaM*DELTA_T/data[pos].mu)/nom;
-			double Dbx = DELTA_T / ( data[pos].mu * CELL_SIZE_X ) / nom;
-			double Dby = DELTA_T / ( data[pos].mu * CELL_SIZE_Y ) / nom;
-			double Dbz = DELTA_T / ( data[pos].mu * CELL_SIZE_Z ) / nom;
-
-			#if DEBUG_MAIN_YEE >= 100
-				if ( data[ynext].E[tcur] != data[pos].E[tcur] )
-					std::cout << "!!!! E[" << ynext << "]=" << data[ynext].E[tcur] << " != E[" << pos << "]=" << data[pos].E[tcur] << "\n";
-			#endif
-
-			data[pos].H[tnext][X] = Da * data[pos].H[tcur][X] +
-				 Dbz*( data[znext].E[tcur][Y]-data[pos].E[tcur][Y] )
-				-Dby*( data[ynext].E[tcur][Z]-data[pos].E[tcur][Z] );
-			data[pos].H[tnext][Y] = Da * data[pos].H[tcur][Y] +
-				 Dbx*( data[xnext].E[tcur][Z]-data[pos].E[tcur][Z] )
-				-Dbz*( data[znext].E[tcur][X]-data[pos].E[tcur][X] );
-			data[pos].H[tnext][Z] = Da * data[pos].H[tcur][Z] +
-				 Dby*( data[ynext].E[tcur][X]-data[pos].E[tcur][X] )
-				-Dbx*( data[xnext].E[tcur][Y]-data[pos].E[tcur][Y] );
-		}
-
-		/* Reinitialize y-guard, after updating H everywhere! */
-		for ( int x = 0; x < N_CELLS_X; x++ )
-		for ( int z = 0; z < N_CELLS_Z; z++ )
-		for ( int y = 0; y < GUARDSIZE; y++ ) {
-			VecI pos(0); pos[X]=x; pos[Z]=z;
-			pos[Y] = y;
-			VecI mirrorpos(pos); mirrorpos[Y] = pos[Y] + (N_CELLS_Y-1-GUARDSIZE);
-			data[pos].H[tnext] = data[mirrorpos].H[tnext];
-			pos[Y] = N_CELLS_Y-1 - y;
-			mirrorpos[Y] = pos[Y] - (N_CELLS_Y-GUARDSIZE);
-			data[pos].H[tnext] = data[mirrorpos].H[tnext];
-		}
-
-		/* Now update all E components */
-		for ( int x = 0; x < N_CELLS_X - 2*GUARDSIZE; x++ )
-		for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ )
-		for ( int z = 0; z < N_CELLS_Z - 2*GUARDSIZE; z++ ) {
-			VecI pos;
-			pos[X]=x + GUARDSIZE;
-			pos[Y]=y + GUARDSIZE;
-			pos[Z]=z + GUARDSIZE;
-
-			VecI xprev=pos; xprev[X]--;
-			VecI xnext=pos; xnext[X]++;
-
-			VecI yprev=pos; yprev[Y]--;
-			VecI ynext=pos; ynext[Y]++;
-
-			VecI zprev=pos; zprev[Z]--;
-			VecI znext=pos; znext[Z]++;
-
-			double nom = (1.0 + 0.5*data[pos].sigmaE*DELTA_T / data[pos].epsilon);
-			double Ca = (1.0 - 0.5*data[pos].sigmaE*DELTA_T / data[pos].epsilon)
-					  / nom;
-			double Cbx = DELTA_T / ( data[pos].epsilon * CELL_SIZE_X ) / nom;
-			double Cby = DELTA_T / ( data[pos].epsilon * CELL_SIZE_Y ) / nom;
-			double Cbz = DELTA_T / ( data[pos].epsilon * CELL_SIZE_Z ) / nom;
-
-			data[pos].E[tnext][X] = Ca * data[pos].E[tcur][X] +
-				 Cby*( data[pos].H[tnext][Z]-data[yprev].H[tnext][Z] )
-				-Cbz*( data[pos].H[tnext][Y]-data[zprev].H[tnext][Y] );
-			data[pos].E[tnext][Y] = Ca * data[pos].E[tcur][Y] +
-				 Cbz*( data[pos].H[tnext][X]-data[zprev].H[tnext][X] )
-				-Cbx*( data[pos].H[tnext][Z]-data[xprev].H[tnext][Z] );
-			data[pos].E[tnext][Z] = Ca * data[pos].E[tcur][Z] +
-				 Cbx*( data[pos].H[tnext][Y]-data[xprev].H[tnext][Y] )
-				-Cby*( data[pos].H[tnext][X]-data[yprev].H[tnext][X] );
-		}
-
-		/* Reinitialize y-guard, after updating H everywhere! */
-		for ( int x = 0; x < N_CELLS_X; x++ )
-		for ( int z = 0; z < N_CELLS_Z; z++ )
-		for ( int y = 0; y < GUARDSIZE; y++ ) {
-			VecI pos(0); pos[X]=x; pos[Z]=z;
-			pos[Y] = y;
-			VecI mirrorpos(pos); mirrorpos[Y] = pos[Y] + (N_CELLS_Y-1-GUARDSIZE);
-			data[pos].E[tnext] = data[mirrorpos].E[tnext];
-			pos[Y] = N_CELLS_Y-1 - y;
-			mirrorpos[Y] = pos[Y] - (N_CELLS_Y-GUARDSIZE);
-			data[pos].E[tnext] = data[mirrorpos].E[tnext];
-		}
-
-		#if DEBUG_MAIN_YEE>=90
-		std::cout << "E_z after Timestep: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-		    VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[X]-=4; pos[X]+=ix;
-		    std::cout << data[pos].E[tnext][Z] << " ";
-		}
-		std::cout << std::endl;
-		std::cout << "H_y after Timestep: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-		    VecI pos(GUARDSIZE); pos[X]=ix;
-		    std::cout << data[pos].H[tnext][Y] << " ";
-		}
-		std::cout << std::endl;
-		#endif
-
+        tout << "Receive sent Borders into Guards of current timestep\n";
+        comBox.FinishGuardUpdate( 0 );
+        
+        tout << "Calculate E on Core of current timestep\n";
+        for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
+        if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
+             data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
+        {
+            OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
+        }
+        
 		if (timestep % 1 == 0) {
-			/* Beware! PNGWriter begins counting with 1 in image coordinates */
+            tout << "Print PNGs\n";
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
-			{
 			sprintf( filename, "output/Ex_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].E[tnext][X], -data[pos].E[tnext][X], 0.0);
-			}
-			image.close();
-			}{
-			sprintf( filename, "output/Ey_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].E[tnext][Y], -data[pos].E[tnext][Y], 0.0);
-			}
-			image.close();
-			}{
-			sprintf( filename, "output/Ez_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				image.plot( ix+1,iy+1, data[pos].E[tnext][Z], -data[pos].E[tnext][Z], 0.0);
-				/* Output Blende */
-				if (data[pos].epsilon > EPS0) {
-					double gray = data[pos].epsilon / EPS0 / 10.0;
-					image.plot_blend( ix+1,iy+1, 0.5, gray, gray, gray);
-				}
-			}
-			image.close();
-			}
-
-			{
+            comBox.PrintPNG( 0, filename, returnEx );
+            sprintf( filename, "output/Ey_%05i.png", framecounter );
+            comBox.PrintPNG( 0, filename, returnEy );
+            sprintf( filename, "output/Ez_%05i.png", framecounter );
+            comBox.PrintPNG( 0, filename, returnEz );
+            sprintf( filename, "output/n_%05i.png", framecounter );
+            comBox.PrintPNG( 0, filename, returnn );
 			sprintf( filename, "output/Hx_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				double val = data[pos].H[tnext][X] * MUE0 * SPEED_OF_LIGHT;
-				image.plot( ix+1,iy+1, val, -val, 0.0);
-			}
-			image.close();
-			}{
+            comBox.PrintPNG( 0, filename, returnHx );
 			sprintf( filename, "output/Hy_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				double val = data[pos].H[tnext][Y] * MUE0 * SPEED_OF_LIGHT;
-				image.plot( ix+1,iy+1, val, -val, 0.0);
-			}
-			image.close();
-			}{
+            comBox.PrintPNG( 0, filename, returnHy );
 			sprintf( filename, "output/Hz_%05i.png", framecounter );
-			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
-			for ( int ix=0; ix < N_CELLS_X; ++ix )
-			for ( int iy=0; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[0]=ix; pos[1]=iy;
-				double val = data[pos].H[tnext][Z] * MUE0 * SPEED_OF_LIGHT;
-				image.plot( ix+1,iy+1, val, -val, 0.0);
-			}
-			image.close();
-			}
-
-			std::cout << "Image " << framecounter << std::endl;
+            comBox.PrintPNG( 0, filename, returnHz );
+			tout << "Image " << framecounter << "\n";
 		}
 	}
 
-	/* Create png with as much pixels as cells with initially black background*/
-	/*pngwriter image( N_CELLS_X,N_CELLS_Y,0,"E.png" );
-    for ( int i=0; i < data.getSize().product(); ++i ) {
-        VecI pos = data.getVectorIndex( i );
-		image.plot( pos[0], pos[1], data[i].E(0)[0], data[i].E(0)[1], data[i].E(0)[2]);
-	}
-	image.close();*/
+    MPI_Finalize(); // doesn't work in destructor :S
+    return 0;
 }

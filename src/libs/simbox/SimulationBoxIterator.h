@@ -21,9 +21,10 @@ private:
     bool core;
     bool border;
     bool guard;
-    CellMatrix * srcmat;
 
 public:
+    CellMatrix * srcmat;
+    
     /* Only public for convenience, shouldn't be tempered with !!! */
     VecI icell;  // stores current cell index. This is where we are
     VecI ncells; // dimension of cellmatrix this iterator works on with Guard
@@ -37,6 +38,7 @@ public:
     Iterator end( void ) const;
     Iterator& operator<<( const int index[T_DIM] );
     Iterator& operator++( void );
+    Iterator operator+( VecI offset );
     bool operator==( const Iterator & it );
     bool operator!=( const Iterator & it );
     void operator=( const Iterator & src );

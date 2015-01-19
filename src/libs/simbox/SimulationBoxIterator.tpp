@@ -99,6 +99,31 @@ Iterator<T_DIM,T_CELLDATA> & Iterator<T_DIM,T_CELLDATA>::operator++( void ) { //
 }
 
 template<int T_DIM, typename T_CELLDATA>
+Iterator<T_DIM,T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::operator+( VecI offset ) {
+    Iterator shifted = *this;
+    shifted.icell += offset;
+    VecI localcells = ncells - VecI(2*guardsize);
+    if ( InArea( shifted.icell, CORE, localcells, guardsize ) ) {
+        shifted.area   = CORE;
+        shifted.core   = true;
+        shifted.border = false;
+        shifted.guard  = false;
+    } else if ( InArea( shifted.icell, BORDER, localcells, guardsize ) ) {
+        shifted.area   = BORDER;
+        shifted.core   = false;
+        shifted.border = true;
+        shifted.guard  = false;
+    } else if ( InArea( shifted.icell, GUARD, localcells, guardsize ) ) {
+        shifted.area   = GUARD;
+        shifted.core   = false;
+        shifted.border = false;
+        shifted.guard  = true;
+    }
+    assert( InArea( shifted.icell, shifted.area, localcells, guardsize ) );
+    return shifted;
+}
+
+template<int T_DIM, typename T_CELLDATA>
 bool Iterator<T_DIM,T_CELLDATA>::operator==( const Iterator & it ) {
     bool alland = true;
     alland = alland & ( this->core   == it.core  );
