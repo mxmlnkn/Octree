@@ -61,6 +61,8 @@ typedef Vec<int   ,SIMDIM> VecI;
 
 int main( int argc, char **argv )
 {
+    double tProgramStart = MPI_Wtime();
+    
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
     VecD cellSize(CELL_SIZE);
     VecD NCells(NUMBER_OF_CELLS);
@@ -397,11 +399,10 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (6) Actual Timestepping ************************************************/
     /**************************************************************************/
-	for ( int timestep=0; timestep < 400; ++timestep )
+    double tStart = MPI_Wtime();
+    double tLast  = tStart;
+	for ( int timestep=0; timestep < NUMBER_OF_TIMESTEPS; ++timestep )
 	{
-        #if DEBUG_MAIN_YEE >= 90
-            tout << "Timestep " << timestep << "\n";
-        #endif
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
             /* Function Generator on Cell in the Center */
@@ -532,8 +533,18 @@ int main( int argc, char **argv )
             sprintf( filename, "output/n_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnn, false );
 		}
+
+        #if DEBUG_MAIN_YEE >= 90
+            tout << "Timestep " << timestep << " took " << MPI_Wtime() - tLast << " seconds\n";
+        #endif
+        tLast = MPI_Wtime();
 	}
 
+    tout << "All " << NUMBER_OF_TIMESTEPS << " together took " << tLast - tStart << " seconds\n";
+    tout << "The whole program took " << tLast - tProgramStart << " seconds\n";
+
+    tout << "Now finalizing. Does this hang because of outstanding Messages?\n";
     MPI_Finalize(); // doesn't work in destructor :S
+    tout << "MPI_Finalize took " << MPI_Wtime() - tLast << " seconds\n";
     return 0;
 }

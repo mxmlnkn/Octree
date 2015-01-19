@@ -19,6 +19,7 @@ const uint32_t NUMBER_OF_STEPS         = 1e6;
 const bool     FULL_N_SQUARED_FORCE    = false;    // if false, then force is calculated only with the particles in the same cell
 const uint32_t RANDOM_SEED             = 43907340; // if 0, then time() is used
 const bool     STOPPING                = false;    // if some momentum ist lost every time step. Can be used to determine state of lowest energy
+const int      NUMBER_OF_TIMESTEPS     = 20;
 
 //GasConfig.param
 const double GAS_DENSITY_SI            = 1.e30;    // 1/m^3
@@ -32,7 +33,7 @@ const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF
 
 //GridConfig.param
 const int INITIAL_OCTREE_REFINEMENT    = 1; // yiels pow(INIT_..., [4,8]) octree cells minimum
-const int MAX_OCTREE_REFINEMENT        = 7; // yiels pow(INIT_..., [4,8]) octree cells minimum
+const int MAX_OCTREE_REFINEMENT        = 4; // yiels pow(INIT_..., [4,8]) octree cells minimum
 const int NUMBER_OF_CELLS_X            = 256; // these is for the INITIAL_OCTREE_REFINEMENT ...
 const int NUMBER_OF_CELLS_Y            = 128;  // ... real number of cells will be higher
 const int NUMBER_OF_CELLS_Z            = 3;    // ... at critical places
