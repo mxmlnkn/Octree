@@ -166,7 +166,7 @@ public:
     /* The function must take YeeCell as an argument and should return a      *
      * 3-dimensional double Vector VecD (R,G,B)                               */
     template<typename T_FUNC>
-    void PrintPNG( int timestep, const char * name, T_FUNC function );
+    void PrintPNG( int timestep, const char * name, T_FUNC function, bool timestamp = true );
 };
 
 #include "Communicator.tpp"

@@ -31,7 +31,7 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-const int INITIAL_OCTREE_REFINEMENT    = 2; // yiels pow(INIT_..., [4,8]) octree cells minimum
+const int INITIAL_OCTREE_REFINEMENT    = 1; // yiels pow(INIT_..., [4,8]) octree cells minimum
 const int MAX_OCTREE_REFINEMENT        = 7; // yiels pow(INIT_..., [4,8]) octree cells minimum
 const int NUMBER_OF_CELLS_X            = 256; // these is for the INITIAL_OCTREE_REFINEMENT ...
 const int NUMBER_OF_CELLS_Y            = 128;  // ... real number of cells will be higher

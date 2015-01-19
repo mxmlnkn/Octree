@@ -41,8 +41,10 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include "YeeSolver.h"
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
+#define DEBUG_COMMUNICATOR 10
 #include "Communicator.h"
 #include "Colors.h"
+#include "Sources.h"
 
 #define DEBUG_MAIN_YEE 99
 
@@ -56,37 +58,6 @@ typedef Vec<int   ,SIMDIM> VecI;
 #define N_CELLS_X NUMBER_OF_CELLS_X // should be power of two, because of octree !
 #define N_CELLS_Y NUMBER_OF_CELLS_Y // should be same as above, because octree isn't able to have a different amount of equal sized cells in two directions !!!
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
-
-double t_spawn_func( double t_SI ) {
-	double T_SI  = 40e-9 /* m */ / SPEED_OF_LIGHT_SI;
-	double sigmaE = T_SI/2.;
-	double t0    = 40;
-	return sin( 2.*M_PI*t_SI / T_SI );
-	return ( t_SI < T_SI ? 1.0 : 0.0 );
-	return exp(-pow(t_SI-t0,2)/(2.*sigmaE*sigmaE));
-}
-
-namespace TIME_SPAWN_FUNCTIONS {
-	double sinewave( double T, double t, double lambda = 1, double x = 0) {
-		return std::sin( 2.*M_PI*( x/lambda + t/T ) );
-	}
-	double sinewave2d( double T, double t, double kx = 0, double x = 0, double ky = 0, double y = 0) {
-		return std::sin(  kx*x + ky*y - 2.*M_PI*t/T );
-	}
-	double PSQ_STEP( double T, double t ) {
-		if ( t < 0 )
-			return 0;
-		else if (t < T/2)
-			return 0.5* pow( 1 + (t-T/2.)/(T/2.), 2 );
-		else if (t < T)
-			return 1 - 0.5* pow( 1 - (t-T/2.)/(T/2.), 2 );
-		else
-			return 1;
-	}
-	double gauss( double x, double mu=0, double sigmaE=1 ) {
-		return 1./(sigmaE*sqrt(2.*M_PI))*exp(-pow(x-mu,2)/(2.*sigmaE*sigmaE));
-	}
-}
 
 
 int main( int argc, char **argv )
@@ -354,16 +325,32 @@ int main( int argc, char **argv )
          data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
+
         typename OctCell::IteratorType itm = data.getIterator( 0,
-                                  SimulationBox::CORE + SimulationBox::BORDER );
+                                  SimulationBox::GUARD );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
             /* it traverses octree nodes, while itm traverses matrix cells! */
+            itm->E       = 0;
+            itm->H       = 0;
+            itm->epsilon = EPS0;
+            itm->mu      = MUE0;
+            itm->sigmaE  = 0;
+            itm->sigmaM  = 0;
+        }
+
+        for ( typename OctCell::IteratorType itm = data.getIterator( 0,
+              SimulationBox::CORE + SimulationBox::BORDER ).begin();
+              itm != itm.end(); ++itm )
+        {
+            /* it traverses octree nodes, while itm traverses matrix cells! */
+            itm->E       = 0;
+            itm->H       = 0;
             itm->epsilon = EPS0;
             itm->mu      = MUE0;
             itm->sigmaE  = 0;
             itm->sigmaM  = 0;
 
-            #define YEE_INIT_SETUP 1
+            #define YEE_INIT_SETUP 2
             /* cur Pos is in internal units, meaning curPos in [0,1.0] */
             for ( int i=0; i < SIMDIM; ++i ) {
                 assert( itm.icell[i] > 0 );
@@ -380,16 +367,16 @@ int main( int argc, char **argv )
             #if YEE_INIT_SETUP == 1
                 /* Result 009: absorbing Material on right side */
                 if ( curPos[0] > 0.2 ) {
-                    /* For INF instead of 2e8 it divereges! -> characteristic *
+                    /* For INF instead of 2e8 it diverges! -> characteristic *
                      * wave length for exponential decay -> 0 for INF ?       */
                     itm->sigmaE  = 2e8;
                     itm->sigmaM  = 2e8 * MUE0/EPS0;
                 }
             #endif
             #if YEE_INIT_SETUP == 2
-                /* Result: 014 - broken total reflexion (two glass plates with small      *
-                 *               vacuum/air slit inbetween                                */
-                if ( curPos[X] < 0.633 or curPos[X] > 0.650  ) {
+                /* Result: 014 - broken total reflexion (two glass plates     *
+                 *               with small vacuum/air slit inbetween         */
+                if ( curPos[X] < 0.333 or curPos[X] > 0.350  ) {
                     const double n  = 1.33; // = sqrt( eps_r * mue_r )
                     itm->epsilon = EPS0 * n*n;
                 }
@@ -400,26 +387,27 @@ int main( int argc, char **argv )
                 if ( curPos[X] > LAMBDA and curPos[X] < 2*LAMBDA )
                 if ( curPos[Y] > 0.5 - wy/2 and curPos[Y] < 0.5 + wy/2 ) {
                         itm->epsilon  = INF;//2*EPS0;
-                        //data[pos].mu       = INF;
+                        //itm->mu       = INF;
                 }
             #endif
         }
     }
-
+    comBox.PrintPNG( 0, "output/n_init", returnn, false );
 
     /**************************************************************************/
     /* (6) Actual Timestepping ************************************************/
     /**************************************************************************/
-	for ( int timestep=0; timestep < 10; ++timestep )
+	for ( int timestep=0; timestep < 400; ++timestep )
 	{
         tout << "Timestep " << timestep << "\n";
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
             /* Function Generator on Cell in the Center */
-            OctreeType::Node * node = tree.FindLeafContainingPos( tree.center + 0.01*tree.size );
+            OctreeType::Node * node = tree.FindLeafContainingPos( tree.center + 0.11*tree.size );
             OctCell & cellMatrix = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
-            VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.01*tree.size );
+            VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.11*tree.size );
             cellMatrix.t[0]->cells[targetIndex].E[Z] = t_spawn_func( timestep * DELTA_T_SI );
+            tout << "Write to source in cell " << targetIndex << " in node at " << node->center << "\n";
         #endif
         #if TIME_SPAWN_SETUP == 2
             /* Function Generator on left side creates sine wave */
@@ -463,6 +451,9 @@ int main( int argc, char **argv )
                 //std::cout << std::endl;
             }
         #endif
+        
+        if (timestep == 0)
+            comBox.PrintPNG( 0, "output/Ez_init", returnEz, false );
 
         tout << "Swap timebuffers\n";
         /* Swap timestep buffers for alle SimulationBoxes before Calculating */
@@ -473,11 +464,11 @@ int main( int argc, char **argv )
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
             simBox.copyCurrentToPriorTimestep();
         }
-        
+
         tout << "Send Borders from previous timestep\n";
         /* 0 is timestep to be calculated, 1 is the previous one */
         comBox.StartGuardUpdate( 1 );
-        
+
         tout << "Calculate H on Core of current timestep\n";
         /* Traverse all Octree Nodes and apply Yee-Solver there ( Do this     *
          * with a comBox iterator ???                                         */
@@ -487,11 +478,12 @@ int main( int argc, char **argv )
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
             YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE );
+            tout << "Calculated H on node at " << it->center << "\n";
         }
-        
+
         tout << "Receive sent Borders into Guards of current timestep\n";
         comBox.FinishGuardUpdate( 0 );
-        
+
         tout << "Calculate H on Border of current timestep\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
@@ -500,11 +492,11 @@ int main( int argc, char **argv )
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
              YeeSolver::CalcH( simBox, 0, 1, SimulationBox::BORDER );
         }
-        
+
         /* In the next halfstep, do the same for E-Field, but stay in timestep*/
         tout << "Send Borders of current timestep (newly calculated Hs)\n";
         comBox.StartGuardUpdate( 0 );
-        
+
         tout << "Calculate on Core of current timestep E\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
@@ -516,35 +508,37 @@ int main( int argc, char **argv )
 
         tout << "Receive sent Borders into Guards of current timestep\n";
         comBox.FinishGuardUpdate( 0 );
-        
+
         tout << "Calculate E on Core of current timestep\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
+            YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
         }
-        
+
 		if (timestep % 1 == 0) {
             tout << "Print PNGs\n";
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
-			sprintf( filename, "output/Ex_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnEx );
-            sprintf( filename, "output/Ey_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnEy );
-            sprintf( filename, "output/Ez_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnEz );
-            sprintf( filename, "output/n_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnn );
-			sprintf( filename, "output/Hx_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnHx );
-			sprintf( filename, "output/Hy_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnHy );
-			sprintf( filename, "output/Hz_%05i.png", framecounter );
-            comBox.PrintPNG( 0, filename, returnHz );
+			sprintf( filename, "output/Ex_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnEx, false );
+            sprintf( filename, "output/Ey_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnEy, false );
+            sprintf( filename, "output/Ez_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnEz, false );
+			sprintf( filename, "output/Hx_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnHx, false );
+			sprintf( filename, "output/Hy_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnHy, false );
+			sprintf( filename, "output/Hz_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnHz, false );
+			sprintf( filename, "output/All_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnEandH, false );
+            sprintf( filename, "output/n_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnn, false );
 			tout << "Image " << framecounter << "\n";
 		}
 	}

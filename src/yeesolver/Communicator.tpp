@@ -526,7 +526,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 template<typename T_FUNC>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
-(int timestep, const char * name, T_FUNC function ) {
+(int timestep, const char * name, T_FUNC function, bool timestamp ) {
     const int X = 0;
     const int Y = 1;
 
@@ -535,10 +535,11 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
     time_t t = time(0);
     struct tm * now = localtime( &t );
     std::stringstream filenamepng;
-    filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
-                << now->tm_mday << "_" << now->tm_hour << "-"
-                << now->tm_min << "_" << "rank-" << this->rank << "_"
-                << name << "_t" << timestep << "_Ex.png";
+    if (timestamp)
+        filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
+                    << "-" << now->tm_mday << "_" << now->tm_hour << "-"
+                    << now->tm_min << "_" << "rank-" << this->rank << "_";
+    filenamepng << name << "_t" << timestep << "_Ex.png";
     pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
 #if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";

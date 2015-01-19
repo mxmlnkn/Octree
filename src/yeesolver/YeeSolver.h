@@ -9,8 +9,8 @@ namespace YeeSolver {
 typedef SimulationBox::SimulationBox<SIMDIM,YeeCell> OctCell;
 typedef Vec<int,2> VecI;
 const int X = 0;
-const int Y = 0;
-const int Z = 0;
+const int Y = 1;
+const int Z = 2;
 
 void CalcH( OctCell & simBox, int tnext, int tcur, int area ) {
     typename OctCell::CellMatrix CellMatrix;
@@ -23,9 +23,9 @@ void CalcH( OctCell & simBox, int tnext, int tcur, int area ) {
          * have different srcmats like given by getIterator( timestep, ... )  */
         itcur.icell = itnext.icell;
         
-        VecI xnext(0); xnext[X]++;
-        VecI ynext(0); ynext[Y]++;
-        VecI znext(0); znext[Z]++;
+        VecI xnext(0); if (SIMDIM>=1) xnext[X]++;
+        VecI ynext(0); if (SIMDIM>=2) ynext[Y]++;
+        VecI znext(0); if (SIMDIM>=3) znext[Z]++;
 
         /* Update all H components */
         double nom = (1.0 + 0.5*itnext->sigmaM*DELTA_T / itnext->mu);
@@ -59,9 +59,9 @@ void CalcE( OctCell & simBox, int tnext, int tcur, int area ) {
     for ( itnext=itnext.begin(); itnext != itnext.end(); ++itnext ) {
         itcur.icell = itnext.icell;
         
-        VecI xprev(0); xprev[X]--;
-        VecI yprev(0); yprev[Y]--;
-        VecI zprev(0); zprev[Z]--;
+        VecI xprev(0); if (SIMDIM>=1) xprev[X]--;
+        VecI yprev(0); if (SIMDIM>=2) yprev[Y]--;
+        VecI zprev(0); if (SIMDIM>=3) zprev[Z]--;
 
 		/* Now update all E components */
         double nom = (1.0 + 0.5*itnext->sigmaE*DELTA_T / itnext->epsilon);
