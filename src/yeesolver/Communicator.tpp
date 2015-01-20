@@ -64,10 +64,11 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::getGuardPositionInDirection
 /********************************* Constructor ********************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
-( T_OCTREE & tree, const VecI periodic )
-: rank(0), worldsize(1), tree(tree), periodic(periodic),
-  minLevel(0), maxLevel(0), comDataPtr(NULL),
-  NLeaves(0), cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
+( T_OCTREE & p_tree, const VecI p_periodic )
+: rank(0), worldsize(1), processor_name_length(0), tree(p_tree),
+  periodic(p_periodic), minLevel(0), maxLevel(0), comDataPtr(NULL),
+  distOrdering(Octree::Ordering::Morton), NLeaves(0), NOwnLeaves(0),
+  cellsPerOctreeCell(0), guardsize(0), timestepbuffers(0),
   neighbors(NULL), sendrequests(NULL), recvrequests(NULL), timestepSent(-1)
 {
     /* Initialize MPI */
@@ -108,7 +109,7 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::~OctreeCommunicator() {
 /********************************* initCommData *******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
-( VecI cellsPerOctreeCell, int guardsize, int timesteps ) {
+( VecI p_cellsPerOctreeCell, int p_guardsize, int timesteps ) {
     /* number of cells rises exponentially. Noone will use 2^255 Cells! */
     this->minLevel = 255;
     this->maxLevel = 0;
@@ -123,8 +124,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
                 maxLevel = curLevel;
         }
 
-    this->cellsPerOctreeCell = cellsPerOctreeCell;
-    this->guardsize = guardsize;
+    this->cellsPerOctreeCell = p_cellsPerOctreeCell;
+    this->guardsize = p_guardsize;
     this->timestepbuffers = timesteps;
     /* allocate data which stores assigned ranks and other communication      *
      * information to which pointers will given to octree. And default it to  *
@@ -134,7 +135,6 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
     /* Insert Pointers to array elements of allocated chunk into octree and   *
      * assign weighting and caclulate total weighting and optimalCosts        */
     int dataInserted = 0;
-    this->totalCosts = 0;
     for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it ) {
         if ( it->IsLeaf() ) {
             assert( dataInserted < NLeaves );
@@ -143,41 +143,53 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
             ++dataInserted;
 
             assert( COMM_HEADER_INDEX == 0 );
-            ((CommData*)it->data[COMM_HEADER_INDEX])->weighting = 1. / it->size.min();
-
-            this->totalCosts += ((CommData*)it->data[COMM_HEADER_INDEX])->weighting;
+            /* ToDo: Use weighting operator() !!! */
+            ((CommData*)it->data[COMM_HEADER_INDEX])->weighting = 1;
+            //((CommData*)it->data[COMM_HEADER_INDEX])->weighting = 1. / it->size.min();
+            //((CommData*)it->data[COMM_HEADER_INDEX])->weighting = it->size.min() * pow( 2, tree.getMaxLevel() );
         }
     }
-    this->optimalCosts = totalCosts / double(worldsize);
-    tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 }
 
 /******************************* distributeCells ******************************/
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering) {
     this->distOrdering = ordering;
+    
+    /* Calculate Costs optimal Costs */
+    double totalCosts = 0;
+    for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it )
+        if ( it->IsLeaf() )
+            totalCosts += ((CommData*)it->data[COMM_HEADER_INDEX])->weighting;
+    double optimalCosts = totalCosts / double(worldsize);
+    tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
+    
     /* Assign cells to all the processes and allocate memory */
     double cumulativeCosts = 0;
     int curRank = 0;
     for ( typename T_OCTREE::iterator it=tree.begin(ordering); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) {
-            cumulativeCosts += 1. / it->getSize().min();
+            CommData * curCommData = (CommData*)it->data[COMM_HEADER_INDEX];
+            const double curWeighting = curCommData->weighting;
+            cumulativeCosts += curWeighting;
             if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
-                cumulativeCosts = 1. / it->getSize().min();
+                cumulativeCosts = curWeighting;
                 curRank++;
             }
-            ((CommData*)it->data[COMM_HEADER_INDEX])->rank = curRank;
+            curCommData->rank = curRank;
 
             /* Allocate memory for celldata only if cell belongs to us */
             if ( curRank == this->rank ) {
                 NOwnLeaves++;
                 assert(it->data.size() == CELL_DATA_INDEX);
+                VecD cellsize = tree.size / pow( 2, it->getLevel() ) / cellsPerOctreeCell;
+                assert( cellsize == VecD(CELL_SIZE) / pow( 2, it->getLevel() - tree.getMinLevel() ) );
 
                 it->data.push_back(
                     new SimulationBox::SimulationBox<SIMDIM,T_CELLTYPE> (
                         tree.toGlobalCoords(it->center - 0.5*it->size), /* abspos, lower left */
                         cellsPerOctreeCell, /* localcells */
-                        tree.size / pow( 2, it->getLevel() ) / cellsPerOctreeCell, /* cellsize */
+                        cellsize,
                         this->guardsize, this->timestepbuffers )
                 );
             }
@@ -187,8 +199,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
     for ( typename T_OCTREE::iterator it=tree.begin(ordering); it != tree.end(); ++it )
         if ( it->IsLeaf() ) {
             /* only look at neighboorhood of cells assigned to me */
-            int curRank = ((CommData*)it->data[COMM_HEADER_INDEX])->rank;
-            if ( curRank != this->rank )
+            if ( ((CommData*)it->data[COMM_HEADER_INDEX])->rank != this->rank )
                 continue;
 
             /* Cycle through all neighboring octree nodes of same size */
@@ -334,10 +345,12 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::StartGuardUpdate(int timeste
         }
 
         /* Send data Buffer away */
-        MPI_Isend( neighbors[neighborRank].sendData, neighbors[neighborRank].cellsToSend * sizeof(T_CELLTYPE),
-                   MPI_CHAR, neighborRank, 0, MPI_COMM_WORLD, &(sendrequests[neighborRank]) );
-        MPI_Irecv( neighbors[neighborRank].recvData, neighbors[neighborRank].cellsToRecv * sizeof(T_CELLTYPE),
-                   MPI_CHAR, neighborRank, 0, MPI_COMM_WORLD, &(recvrequests[neighborRank]) );
+        MPI_Isend( neighbors[neighborRank].sendData, neighbors[neighborRank].
+                   cellsToSend * int(sizeof(T_CELLTYPE)), MPI_CHAR, neighborRank, 0,
+                   MPI_COMM_WORLD, &(sendrequests[neighborRank]) );
+        MPI_Irecv( neighbors[neighborRank].recvData, neighbors[neighborRank].
+                   cellsToRecv * int(sizeof(T_CELLTYPE)), MPI_CHAR, neighborRank, 0,
+                   MPI_COMM_WORLD, &(recvrequests[neighborRank]) );
 
 #if DEBUG_COMMUNICATOR >= 10
         /* Debug Output of recv- and send-list in comBox */
@@ -526,10 +539,8 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 template<typename T_FUNC>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
-(int timestep, const char * name, T_FUNC function, bool timestamp ) {
-    const int X = 0;
-    const int Y = 1;
-
+(int timestep, const char * name, T_FUNC colorFunctor, bool timestamp )
+{
     assert( T_DIM == 2 );
     VecI sizepx = this->cellsPerOctreeCell * pow(2,this->maxLevel);
     time_t t = time(0);
@@ -540,7 +551,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
                     << "-" << now->tm_mday << "_" << now->tm_hour << "-"
                     << now->tm_min << "_";
     filenamepng << name<< "_rank-" << this->rank << "_t" << timestep << "_Ex.png";
-    pngwriter image( sizepx[X],sizepx[Y], 1.0, filenamepng.str().c_str() );
+    pngwriter image( sizepx[0],sizepx[1], 1.0, filenamepng.str().c_str() );
 #if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
 #endif
@@ -551,7 +562,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
 
         /* No Resize, if uniform octree cells. If not uniform, then scale up  *
          * smaller ones, by simpling filling the rest of the space            */
-        int resizeFactor = pow( 2, this->maxLevel - it->getLevel() );
+        int resizeFactor = (int) pow( 2, this->maxLevel - it->getLevel() );
 
         /* shift internal octree coords from [-0.5,0.5] to [0,1.0] then       *
          *  then shift it->center to it->lower left corner : - it.size/2      *
@@ -566,13 +577,15 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
         /* abspos member of SimulationBox is initialized bei Communicator.tpp *
          * with it->center - 0.5*it->size, meaning lower left corner with     *
          * internal units of OctreeNode ( no rounding errors should happen )  */
-        typename OctCell::IteratorType it = data.getIterator( timestep, SimulationBox::CORE + SimulationBox::BORDER );
-        for ( it = it.begin(); it != it.end(); ++it ) {
+        for ( typename OctCell::IteratorType itm = data.getIterator( timestep, 
+              SimulationBox::CORE + SimulationBox::BORDER ).begin();
+              itm != itm.end(); ++itm )
+        {
             /* pngwriter begins counting pixels with 1 instead of 0 -.- */
-            VecI pos = 1 + abspos + resizeFactor*(it.icell-it.guardsize);
+            VecI pos = 1 + abspos + resizeFactor*( itm.icell - itm.guardsize );
             VecI posTo = pos + resizeFactor - 1;
-            Vec<double,3> color = function(*it);
-            image.filledsquare( pos[X],pos[Y], posTo[X],posTo[Y],
+            Vec<double,3> color = colorFunctor(*itm);
+            image.filledsquare( pos[0],pos[1], posTo[0],posTo[1],
                                 color[0], color[1], color[2] );
         }
     }

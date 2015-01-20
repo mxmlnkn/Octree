@@ -43,11 +43,12 @@ typename Node<T_DIM>::iterator::orderingTableStruct
 
 /* used by begin() */
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( void ) {}
+Node<T_DIM>::iterator::iterator( void )
+ : todo(), ordering(Ordering::Morton) {}
 
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( Node * root, int ordering )
-: ordering(ordering)
+Node<T_DIM>::iterator::iterator( Node * root, int p_ordering )
+ : todo(), ordering(p_ordering)
 {
     tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
     todo.push( toBeStored );
@@ -56,16 +57,18 @@ Node<T_DIM>::iterator::iterator( Node * root, int ordering )
 template<int T_DIM>
 Node<T_DIM>::iterator::~iterator( void ) {}
 
+/****************************** Copy Constructor ******************************/
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( const iterator & src ) {
-    this->todo     = src.todo;
-    this->ordering = src.ordering;
-}
+Node<T_DIM>::iterator::iterator( const iterator & src ) 
+: todo(src.todo), ordering(src.ordering)
+{}
 
 template<int T_DIM>
-void Node<T_DIM>::iterator::operator=( const iterator & src ) {
+typename Node<T_DIM>::iterator & Node<T_DIM>::iterator::operator=
+( const iterator & src ) {
     this->todo     = src.todo;
     this->ordering = src.ordering;
+    return *this;
 }
 
 template<int T_DIM>
@@ -126,7 +129,7 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
 }
 
 template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int unused ) {
+typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int ) {
     iterator tmp( *this );
 	++(*this);
 	return tmp;
@@ -134,7 +137,10 @@ typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int unused ) {
 
 template<int T_DIM>
 bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
-    assert(false);
+    bool allequal = true;
+    allequal = allequal and ( this->todo == src.todo );
+    allequal = allequal and ( this->ordering == src.ordering );
+    return allequal;
 }
 
 template<int T_DIM>

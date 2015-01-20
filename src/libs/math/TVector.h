@@ -18,7 +18,9 @@ public:
     ~Vec(void);
     Vec& operator=(const Vec & v);
 
-    template<typename T_ETYPE> Vec(const T_ETYPE v[T_DIM] );
+    template<typename T_ETYPE> Vec(const T_ETYPE v[T_DIM]);
+    template<typename T_ETYPE> Vec(const T_ETYPE a0, const T_ETYPE a1);
+    template<typename T_ETYPE> Vec(const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2);
     template<typename T_ETYPE> Vec(const Vec<T_ETYPE,T_DIM> & v);
     Vec(const T_DTYPE a);
 

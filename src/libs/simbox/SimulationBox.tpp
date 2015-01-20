@@ -36,15 +36,15 @@ bool InArea( const Vec<int,T_DIM> & pos, const int & area, const Vec<int,T_DIM> 
 
 /********************************* Constructor ********************************/
 template<int T_DIM, typename T_CELLDATA>
-SimulationBox<T_DIM,T_CELLDATA>::SimulationBox(
-    VecD abspos, VecI localcells, VecD cellsize, int guardsize, int bufferpages
-) : ntimesteps(bufferpages), abspos(abspos), localcells(localcells), cellsize(cellsize),
-    guardsize(guardsize)
+SimulationBox<T_DIM,T_CELLDATA>::SimulationBox
+( VecD pabspos, VecI plocalcells, VecD pcellsize, int pguardsize,
+  int bufferpages )
+ : ntimesteps(bufferpages), t( new TimeData*[ntimesteps] ), abspos(pabspos), 
+   localcells(plocalcells), cellsize(pcellsize), guardsize(pguardsize)
 {
-    t = (TimeData**) malloc( ntimesteps * sizeof(TimeData*) );
-    for (int i=0; i<this->ntimesteps; i++) {
+    for (int i=0; i < this->ntimesteps; i++) {
         t[i] = new TimeData;
-        t[i]->cells = CellMatrix( localcells + VecI(2*this->guardsize) );
+        t[i]->cells = CellMatrix( this->localcells + VecI(2*this->guardsize) );
     }
 }
 
@@ -55,7 +55,7 @@ SimulationBox<T_DIM,T_CELLDATA>::~SimulationBox(void) {
         for (int i=0; i<this->ntimesteps; i++)
             if ( this->t[i] != NULL )
                 delete this->t[i];
-        free(t);
+        delete t;
     }
 }
 
@@ -92,14 +92,14 @@ void SimulationBox<T_DIM,T_CELLDATA>::PrintValues( int timestep ) const {
 
 /***************************** findCellContaining *****************************/
 template<int T_DIM, typename T_CELLDATA>
-typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::findCellContaining ( const VecD abspos ) const {
-    assert( abspos >= this->abspos );
-    assert( abspos < this->abspos + this->localcells * this->cellsize );
+typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::findCellContaining ( const VecD pabspos ) const {
+    assert( pabspos >= this->abspos );
+    assert( pabspos <  this->abspos + this->localcells * this->cellsize );
     /* again cells are supposed to be on the center */
     VecI index(this->guardsize);
-    VecD rindex = ( abspos - this->abspos ) / this->cellsize;
+    VecD rindex = ( pabspos - this->abspos ) / this->cellsize;
     for ( int i=0; i<T_DIM; ++i )
-        index[i] += floor( rindex[i] );
+        index[i] += (int) floor( rindex[i] );
     assert( index < this->localcells + this->guardsize );
     return index;
 }
@@ -107,7 +107,7 @@ typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::
 /****************************** getGlobalPosition *****************************/
 template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::VecD SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition ( const IteratorType it ) const {
-    return abspos + VecD(it.icell)*cellsize;
+    return this->abspos + VecD(it.icell) * this->cellsize;
 }
 
 /************************* copyCurrentToPriorTimestep ************************/

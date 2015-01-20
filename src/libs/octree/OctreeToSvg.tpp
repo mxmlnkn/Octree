@@ -8,32 +8,29 @@ namespace Octree {
 
 /******************************** Constructor *********************************/
 template<int T_DIM>
-OctreeToSvg<T_DIM>::OctreeToSvg (
-  const Octreetype & tree,
-  const std::string filename )
-: tree( tree ), treesrc( &tree ), borderx( 20 ), bordery( 20 ), height( 800 ),
-  width( height / tree.size[1] * tree.size[0] )
+OctreeToSvg<T_DIM>::OctreeToSvg
+( const Octreetype & p_tree, const std::string filename )
+: out(), tree( p_tree ), treesrc( &p_tree ),
+  imagesize( int( 600. / p_tree.size[1] * p_tree.size[0] ) ,600 ),
+  imageborder( 20,20 ), boxesDrawn()
 {
     /* Create Timestamp and rank strings for filenames */
     time_t t = time(0);   // get time now
     struct tm * now = localtime( &t );
-    std::stringstream timestamp;
-    timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
-              << now->tm_mday << "_" << now->tm_hour << "-"
-              << now->tm_min  << "_";
-    std::string timesr = timestamp.str();
-    this->out.open( timesr + filename + std::string(".svg"),
-                     std::ofstream::out );
-    this->imagesize  [0] = width  ; this->imagesize  [1] = height ;
-    this->imageborder[0] = borderx; this->imageborder[1] = bordery;
+    std::stringstream fname;
+    fname << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
+          << now->tm_mday << "_" << now->tm_hour << "-" << now->tm_min  << "_"
+          << filename << ".svg";
+    this->out.open( fname.str(), std::ofstream::out );
+
     out << "<?xml version=\"1.0\" standalone=\"no\"?>"              "\n"
         << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\""       "\n"
         << "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">""\n"
         << "<svg"                                                   "\n"
         << " xmlns:xlink = \"http://www.w3.org/1999/xlink\""        "\n"
         << " xmlns   = \"http://www.w3.org/2000/svg\">"             "\n"
-        << " width   = \"" << 2*borderx+width  << "px\""            "\n"
-        << " height  = \"" << 2*bordery+height << "px\""            "\n"
+        << " width   = \"" << 2*imageborder[0]+imagesize[0] << "px\" \n"
+        << " height  = \"" << 2*imageborder[1]+imagesize[1] << "px\" \n"
         << " version = \"1.1\""                                     "\n"
         << ">"                                                      "\n"
         << "<defs>"                                                 "\n"
@@ -50,13 +47,14 @@ OctreeToSvg<T_DIM>::OctreeToSvg (
         << "  </style>"                                             "\n"
         << "</defs>"                                                "\n";
     /* Make Canvas Black */
-    out << "<rect"                               "\n"
-        << " x     =\"" << 0                << "\"\n"
-        << " y     =\"" << 0                << "\"\n"
-        << " width =\"" << 2*borderx+width  << "\"\n"
-        << " height=\"" << 2*bordery+height << "\"\n"
-        << " style =\"fill:black;stroke:none\"    \n"
-        << "/>"                                  "\n";
+    out << "<rect"                                            "\n"
+        << " x     =\"" << 0                             << "\"\n"
+        << " y     =\"" << 0                             << "\"\n"
+        << " width =\"" << 2*imageborder[0]+imagesize[0] << "\"\n"
+        << " height=\"" << 2*imageborder[1]+imagesize[1] << "\"\n"
+        << " style =\"fill:black;stroke:none\""               "\n"
+        << "/>"                                               "\n";
+    out << std::flush;
 }
 
 
@@ -65,7 +63,7 @@ void OctreeToSvg<T_DIM>::PrintGrid(void) {
     /* Update internal copy of the tree, before printing */
     this->tree = *(this->treesrc);
 
-    typedef struct{ int ichild; const Node* node; } tododata;
+    struct tododata{ int ichild; const Node* node; };
     std::stack<tododata> todo;
     tododata tmp = { /* ichild */ 0, /* node */ this->tree.root };
     todo.push( tmp );
@@ -103,6 +101,7 @@ void OctreeToSvg<T_DIM>::PrintGrid(void) {
             }
         }
     }
+    out << std::flush;
 }
 
 
@@ -146,6 +145,7 @@ void OctreeToSvg<T_DIM>::PrintPositions(void) {
             }
         }
     }
+    out << std::flush;
 }
 
 template<int T_DIM>
@@ -170,7 +170,7 @@ void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
         if ( todo.top().ichild == 0 )
         {
             VecD boxcenter = currentnode->center;
-            boxesDrawnIt   = boxesDrawn.find( boxcenter );
+            typename VecDMap::iterator boxesDrawnIt = boxesDrawn.find( boxcenter );
             #if DEBUG_OCTREE_SVG >= 10
             std::cerr << boxcenter << " already drawn? "
                       << !(boxesDrawnIt == boxesDrawn.end() )
@@ -302,30 +302,30 @@ void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
  * check if they are visible, if so, then check if they still exist in        *
  * newtree. If not they will be set to not visible in the map and with <set/> */
 
-    boxesDrawnIt = boxesDrawn.begin();
-    while ( boxesDrawnIt != boxesDrawn.end() ) {
+    for ( typename VecDMap::iterator boxesDrawnIt = boxesDrawn.begin();
+          boxesDrawnIt != boxesDrawn.end(); ++boxesDrawnIt )
+    {
         VecD boxcenter = boxesDrawnIt->first;
-        int  id        = boxesDrawnIt->second.id;
         if ( boxesDrawnIt->second.visible and
              newtree.GetNodePtr( boxcenter ) == NULL )
         {
             #if DEBUG_OCTREE_SVG >= 10
             std::cerr << "Box around " << boxcenter << " vanished!!! "
-                      << "ID: " << id << "\n";
+                      << "ID: " << boxesDrawnIt->second.id << "\n";
             #endif
-            out << "<set"                                     "\n"
-                << " xlink:href=\"#" << id  <<              "\"\n"
-                << " attributeName=\"stroke\""                "\n"
-                << " begin=\"" << DUR*(currentTime+0.5) << "s\"\n"
-                << " to   =\"none\""                          "\n"
-                << "/>"                                       "\n";
+            out << "<set"                                            "\n"
+                << " xlink:href=\"#" << boxesDrawnIt->second.id << "\"\n"
+                << " attributeName=\"stroke\""                       "\n"
+                << " begin=\"" << DUR*(currentTime+0.5) << "s\""     "\n"
+                << " to   =\"none\""                                 "\n"
+                << "/>"                                              "\n";
             boxesDrawnIt->second.visible = false;
         }
-        ++boxesDrawnIt;
     }
 
     currentTime += 1;
     this->tree = newtree;
+    out << std::flush;
 }
 
 template<int T_DIM>

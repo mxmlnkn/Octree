@@ -11,9 +11,7 @@ class TeeStream{
     public:
         int verbosity;
         std::ofstream filestream;
-        TeeStream( void );
         TeeStream( int verbosity = 1 );
-        TeeStream( const char * filename );
         void Open( std::string filename, int rank = 0 );
         ~TeeStream(void);
         /* for things like tout << "hi" << 3; */

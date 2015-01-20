@@ -1,12 +1,6 @@
-TeeStream::TeeStream( void ) { }
-
-TeeStream::TeeStream( int verbosity ) { 
-    this->verbosity = verbosity;
-}
-
-TeeStream::TeeStream( const char * filename ) {
-    filestream.open( filename, std::ofstream::out | std::ofstream::app );
-}
+TeeStream::TeeStream( int verbosityIn )
+: verbosity(verbosityIn), filestream()
+{}
 
 void TeeStream::Open( std::string filename, int rank ) {
     /* Create Timestamp and rank strings for filenames */

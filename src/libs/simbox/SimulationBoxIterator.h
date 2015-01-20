@@ -41,7 +41,7 @@ public:
     Iterator operator+( VecI offset );
     bool operator==( const Iterator & it );
     bool operator!=( const Iterator & it );
-    void operator=( const Iterator & src );
+    Iterator& operator=( const Iterator & src );
     T_CELLDATA& operator*(void) const;
     T_CELLDATA* operator->(void) const;
 

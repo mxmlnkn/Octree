@@ -46,8 +46,8 @@ namespace SimulationBox {
  * localcells are B and C, but not G                                      *
  **************************************************************************/
 template<int T_DIM>
-bool InArea( const Vec<int,T_DIM> & pos, const int & area, const Vec<int,T_DIM> & localcells, int guardsize );
-
+bool InArea( const Vec<int,T_DIM> & pos, const int & area, 
+             const Vec<int,T_DIM> & localcells, int guardsize );
 
 template<int T_DIM, typename T_CELLDATA>
 class SimulationBox {
@@ -63,13 +63,14 @@ public:
     typedef Iterator<T_DIM,T_CELLDATA> IteratorType;
 
     /* Current Time on which Calculations are to be done or where done are    *
-     * held in t[0]. t[1] is the prior time step and so on. TimeData struct   *
+     * held in t[0]. t[1] is the prior time step and so on. TimeData is struct*
 	 * introduced so that it looks better: t[0]->cells[0] instead of          *
 	 * problematic t[0][0]                                                    */
     int ntimesteps;
-    typedef struct TimeDataStruct {
+    struct TimeData {
         CellMatrix cells;
-    } TimeData;
+        TimeData(void) : cells() {};
+    };
 
     /* holds array to different versions of matrix, e.g. different times      *
      * array of pointers is being used instead of simple array in order to    *
@@ -90,6 +91,7 @@ public:
 
     bool inArea( const VecI & pos, const int & area ) const;
     IteratorType getIterator( const int timestep, const int area ) const;
+    SimulationBox & operator=( SimulationBox & src );
 
     #if DEBUG_SIMBOX >= 1
         void PrintValues( int timestep = 0 ) const;

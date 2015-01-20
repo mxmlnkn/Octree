@@ -42,6 +42,23 @@ Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE v[T_DIM] ) {
 }
 
 template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1 ) {
+    assert( T_DIM == 2 );
+    this->data[0] = a0;
+    this->data[1] = a1;
+}
+
+template<typename T_DTYPE, int T_DIM>
+template<typename T_ETYPE>
+Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2 ) {
+    assert( T_DIM == 3 );
+    this->data[0] = a0;
+    this->data[1] = a1;
+    this->data[2] = a2;
+}
+
+template<typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM>::Vec(const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] = a;
@@ -52,7 +69,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const Vec<T_ETYPE,T_DIM> & v ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] = v.data[i]; // implicit conversion from T_ETYPE to T_DTYPE
+        this->data[i] = (T_DTYPE) v.data[i];
 }
 
 /****************************** Access Operators ******************************/
@@ -103,7 +120,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*=( const Vec<T_ETYPE,T_DIM> & v ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] *= v[i];
+        this->data[i] *= (T_DTYPE) v[i];
     return *this;
 }
 
@@ -112,7 +129,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/=( const Vec<T_ETYPE, T_DIM> & v ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] /= v[i];
+        this->data[i] /= (T_DTYPE) v[i];
     return *this;
 }
 
@@ -195,10 +212,10 @@ Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::SmallerThan( const Vec & v ) const {
 
 template<typename T_DTYPE, int T_DIM>
 double Vec<T_DTYPE,T_DIM>::norm2( void ) const {
-    double sum = 0;
+    double tmp = 0;
     for (int i=0; i<T_DIM; i++)
-        sum += (this->data[i]) * (this->data[i]);
-    return sum;
+        tmp += (this->data[i]) * (this->data[i]);
+    return tmp;
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -311,7 +328,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*= (const T_ETYPE a) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] *= a;
+        this->data[i] *= (T_DTYPE) a;
     return *this;
 }
 
@@ -319,7 +336,7 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/= (const T_ETYPE a) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] /= a;
+        this->data[i] /= (T_DTYPE) a;
     return *this;
 }
 

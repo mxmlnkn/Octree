@@ -24,16 +24,15 @@
 
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 class OctreeCommunicator{
-private:
-      /* Make Copy- and Assignment-Constructors unavailable, to prevent       *
-       * copies. If there is an error at                                      *
-       *   Singleton var = Singleton::getInstance                             *
-       * use a reference!                                                     *
-       *   Singleton & var = Singleton::getInstance                           */
-      OctreeCommunicator(const OctreeCommunicator&);                // Don't Implement
-      OctreeCommunicator& operator=(const OctreeCommunicator&);     // Don't implement
-
 public:
+    /* Make Copy- and Assignment-Constructors unavailable, to prevent       *
+     * copies. If there is an error at                                      *
+     *   Singleton var = Singleton::getInstance                             *
+     * use a reference!                                                     *
+     *   Singleton & var = Singleton::getInstance                           */
+    OctreeCommunicator(const OctreeCommunicator&) { assert(false); };
+    OctreeCommunicator & operator=(const OctreeCommunicator & ) { assert(false); };
+
     typedef Vec<int,T_DIM> VecI;
     typedef Vec<double,T_DIM> VecD;
     typedef BaseMatrix<T_CELLTYPE,T_DIM> CellMatrix;
@@ -41,7 +40,7 @@ public:
 
     struct CommData {
         int rank;
-        int weighting;
+        double weighting;
     };
 
     int  rank, worldsize;
@@ -58,7 +57,6 @@ public:
     int distOrdering; // ordering used when distributing cells. Can be used to traverse effectively all own cells
 
     int NLeaves, NOwnLeaves;
-    double totalCosts, optimalCosts;
 
     VecI cellsPerOctreeCell;
     int guardsize, timestepbuffers;
@@ -98,7 +96,10 @@ public:
         std::list<struct BorderData> sRecvData; // s->source
 
         /* simple constructor / initializer */
-        NeighborData(void) : sendData(NULL), cellsToSend(0), recvData(NULL), cellsToRecv(0) {};
+        NeighborData(void) : sendData(NULL), cellsToSend(0), sSendData(), 
+                             recvData(NULL), cellsToRecv(0), sRecvData() {};
+        NeighborData & operator=( const NeighborData & src ) { assert(false); }
+        NeighborData( const NeighborData & src ) { assert(false); }
     };
 
     /* worldsize elements, meaning rank includes itself. sRecvData entries in *

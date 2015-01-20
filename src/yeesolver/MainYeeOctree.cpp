@@ -47,22 +47,22 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 
 #define DEBUG_MAIN_YEE 99
 
-const int X = 0;
-const int Y = 1;
-const int Z = 2;
-
-typedef Vec<double,SIMDIM> VecD;
-typedef Vec<int   ,SIMDIM> VecI;
-
 #define N_CELLS_X NUMBER_OF_CELLS_X // should be power of two, because of octree !
 #define N_CELLS_Y NUMBER_OF_CELLS_Y // should be same as above, because octree isn't able to have a different amount of equal sized cells in two directions !!!
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
 
 
-int main( int argc, char **argv )
+int main( void /*int argc, char **argv*/ )
 {
-    double tProgramStart = MPI_Wtime();
+    const int X = 0;
+    const int Y = 1;
+    const int Z = 2;
+
+    typedef Vec<double,SIMDIM> VecD;
+    typedef Vec<int   ,SIMDIM> VecI;
     
+    double tProgramStart = MPI_Wtime();
+
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
     VecD cellSize(CELL_SIZE);
     VecD NCells(NUMBER_OF_CELLS);
@@ -80,9 +80,9 @@ int main( int argc, char **argv )
     tout.Open("out",comBox.rank);
     terr.Open("err",comBox.rank);
     /* Initialize SVG output file */
-    std::stringstream filename;
-    filename << "Octree_worldsize-" << comBox.worldsize << "_rank-" << comBox.rank;
-    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, filename.str() );
+    std::stringstream svgfn;
+    svgfn << "Octree_worldsize-" << comBox.worldsize << "_rank-" << comBox.rank;
+    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, svgfn.str() );
 
     /**************************** Print Parameters ****************************/
     srand(RANDOM_SEED);
@@ -115,7 +115,7 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-#define INITSETUP 5
+#define INITSETUP 6
 #if INITSETUP == 5 or INITSETUP == 6
     /********* refine all cells to initial homogenous min-Refinement **********/
     for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
@@ -126,8 +126,8 @@ int main( int argc, char **argv )
 #if INITSETUP == 6
     /*********************** Refine certain boundaries ************************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
-    VecD M(0.5*globSize);          // center of circle
-    double R = 0.2*globSize.min(); // radius of circle
+    VecD M(0.5*tree.size);          // center of circle
+    double R = 0.4*tree.size.min(); // radius of circle
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
         /* Get all circle angles, where it intersects with a cell border */
         std::list<double> lphi;
@@ -191,9 +191,16 @@ int main( int argc, char **argv )
     /**************************************************************************/
     /* (2) Distribute weighting and Octree cells to processes *****************/
     /**************************************************************************/;
-    VecD cellsPerOctreeCell = VecD(NCells) / pow( 2,tree.getMinLevel() );
-    for (int i = 0; i < cellsPerOctreeCell.size; ++i)
-        cellsPerOctreeCell[i] = ceil( cellsPerOctreeCell[i] );
+    VecI cellsPerOctreeCell = VecD(NCells) / pow( 2, tree.getMinLevel() );
+    /* the number of cells may have to be adjusted, but don't touch cellsize  *
+     * and time step, as those are stability critical parameters !!           */
+    for (int i=0; i < cellsPerOctreeCell.dim; ++i) {
+        bool toAssert =  fmod( (VecD(NCells) / pow( 2, tree.getMinLevel()))[i], 1.0 ) == 0.0;
+        if ( not toAssert )
+            terr << "Please choose NUMBER_OF_CELLS in multiples of "
+                 << pow( 2, tree.getMinLevel()) <<"!\n";
+        assert( toAssert );
+    }
     tout << "Initial Refinement: " << INITIAL_OCTREE_REFINEMENT << "\n"
          << "Minimum refinement Level found: " << tree.getMinLevel() << "\n"
          << "Maximum refinement Level found: " << tree.getMaxLevel() << "\n"
@@ -206,8 +213,7 @@ int main( int argc, char **argv )
     /* Graphical output of cell-rank-mapping */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
     if ( it->IsLeaf() ) {
-        svgoutput.boxesDrawnIt = svgoutput.boxesDrawn.find( it->center );
-        int id = svgoutput.boxesDrawnIt->second.id;
+        int id = svgoutput.boxesDrawn.find( it->center )->second.id;
         int curRank = ((typename OctreeCommType::CommData *)it->data[OctreeCommType::COMM_HEADER_INDEX])->rank;
         int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
         int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
@@ -221,7 +227,7 @@ int main( int argc, char **argv )
     }
 
     /* Graphical output of traversal line */
-    int currentTime  = 0;
+    double currentTime = 0;
     double delay     = 1./64.; // 8 frames per second at max achievable with SVG
     double rankDelay = 1./64.;
     typename OctreeType::iterator it0 = tree.begin();
@@ -245,15 +251,16 @@ int main( int argc, char **argv )
               << "/>"                                                  "\n";
             /* Animate line element to become visible after some time */
             svgoutput.out
-              << "<set"                                            "\n"
-              << " xlink:href=\"#path" << id << "\""               "\n"
-              << " attributeName=\"stroke\""                       "\n"
-              << " begin=\"" << delay*double(currentTime) << "s\"" "\n"
-              << " to   =\"#008000\""                              "\n"
-              << "/>"                                              "\n";
+              << "<set"                                    "\n"
+              << " xlink:href=\"#path" << id << "\""       "\n"
+              << " attributeName=\"stroke\""               "\n"
+              << " begin=\"" << delay*currentTime << "s\"" "\n"
+              << " to   =\"#008000\""                      "\n"
+              << "/>"                                      "\n";
             currentTime += rankDelay / delay;
         }
     }
+    svgoutput.close();
 
     /* Set Core, Border and Guard to different test values */
     for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
@@ -327,9 +334,10 @@ int main( int argc, char **argv )
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
 
-        typename OctCell::IteratorType itm = data.getIterator( 0,
-                                  SimulationBox::GUARD );
-        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+        
+        for ( typename OctCell::IteratorType itm = data.getIterator( 0,
+              SimulationBox::GUARD ).begin(); itm != itm.end(); ++itm )
+        {
             /* it traverses octree nodes, while itm traverses matrix cells! */
             itm->E       = 0;
             itm->H       = 0;
@@ -351,8 +359,9 @@ int main( int argc, char **argv )
             itm->sigmaE  = 0;
             itm->sigmaM  = 0;
 
-            #define YEE_INIT_SETUP 0
-            /* cur Pos is in internal units, meaning curPos in [0,1.0] */
+            /* cur Pos is in internal units, meaning curPos in [0,1.0], but   *
+             * it still points to the center of the current cell, not the     *
+             * lower left corner. Also it's in unitless physical units        */
             for ( int i=0; i < SIMDIM; ++i ) {
                 assert( itm.icell[i] > 0 );
                 assert( itm.icell[i] - itm.guardsize < cellsPerOctreeCell[i] );
@@ -361,11 +370,12 @@ int main( int argc, char **argv )
                     terr << "Lowerleft of node at " << it->center << " sized " << it->center << " is out of bounds!!\n";
                 assert( toAssert );
             }
-            VecD curPos = tree.root->size/2 + it->center - it->size/2 + ( VecD(itm.icell)
-                          + VecD( - itm.guardsize + 0.5) ) / VecD(cellsPerOctreeCell) * it->size;
+            VecD curPos = it->center + (VecD(itm.icell) - itm.guardsize + 0.5) /
+                          VecD(cellsPerOctreeCell) * it->size;
+            curPos = tree.toGlobalCoords( curPos );
             assert( itm.ncells - 2*itm.guardsize == cellsPerOctreeCell );
-            assert( curPos >= VecD(0) );
-            assert( curPos <= VecD(1) );
+
+            #define YEE_INIT_SETUP 4
             #if YEE_INIT_SETUP == 1
                 /* Result 009: absorbing Material on right side */
                 if ( curPos[0] > 0.2 ) {
@@ -378,10 +388,10 @@ int main( int argc, char **argv )
             #if YEE_INIT_SETUP == 2
                 /* Result: 014 - broken total reflexion (two glass plates     *
                  *               with small vacuum/air slit inbetween         */
-                if ( curPos[X] < 0.333 or curPos[X] > 0.350  ) {
-                    const double n  = 1.33; // = sqrt( eps_r * mue_r )
+                const double n  = 1.33; // = sqrt( eps_r * mue_r )
+                if ( curPos[X] < 0.333*tree.size[X]
+                or   curPos[X] > 0.350*tree.size[X]  )
                     itm->epsilon = EPS0 * n*n;
-                }
             #endif
             #if YEE_INIT_SETUP == 3
                 /* Spawn Barrier with one slit and perfectly reflecting material else */
@@ -391,6 +401,11 @@ int main( int argc, char **argv )
                         itm->epsilon  = INF;//2*EPS0;
                         //itm->mu       = INF;
                 }
+            #endif
+            #if YEE_INIT_SETUP == 4 and INIT_SETUP == 3
+                const double n  = 1.33; // = sqrt( eps_r * mue_r )
+                if ( (curPos - M).norm() < R )
+                    itm->epsilon = EPS0 * n*n;
             #endif
         }
     }
@@ -512,6 +527,7 @@ int main( int argc, char **argv )
             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
         }
 
+        #ifndef NPNGOUTPUT
 		if (timestep % 1 == 0) {
 			static int framecounter = 0;
 			framecounter++;
@@ -533,6 +549,7 @@ int main( int argc, char **argv )
             sprintf( filename, "output/n_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnn, false );
 		}
+        #endif
 
         MPI_Barrier(MPI_COMM_WORLD);
         #if DEBUG_MAIN_YEE >= 90
@@ -544,8 +561,7 @@ int main( int argc, char **argv )
     tout << "All " << NUMBER_OF_TIMESTEPS << " together took " << tLast - tStart << " seconds\n";
     tout << "The whole program took " << tLast - tProgramStart << " seconds\n";
 
-    tout << "Now finalizing. Does this hang because of outstanding Messages?\n";
-    MPI_Finalize(); // doesn't work in destructor :S
-    tout << "MPI_Finalize took " << MPI_Wtime() - tLast << " seconds\n";
+    /* doesn't work in destructor, because it would be called too late */
+    MPI_Finalize();
     return 0;
 }

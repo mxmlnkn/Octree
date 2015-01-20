@@ -61,8 +61,8 @@ BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatri
 
 /***************************** Other Constructors *****************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI size ) : size(size), data(NULL) {
-    this->data = new T_DTYPE[size.product()];
+BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI sizeIn ) : size(sizeIn), data(NULL) {
+    this->data = new T_DTYPE[this->size.product()];
 }
 
 /**************************** Assignment Operators ****************************/
@@ -116,15 +116,17 @@ Vec<int,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getSize( void ) const {
 }
 
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getPartialMatrix( const VecI & pos, const VecI & size ) const {
-    assert( pos+size <= this->size );
-    BaseMatrix<T_DTYPE,T_DIM> tmp( size );
+BaseMatrix<T_DTYPE,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getPartialMatrix
+( const VecI & pos, const VecI & sizePartialMatrix ) const
+{
+    assert( pos + sizePartialMatrix <= this->size );
+    BaseMatrix<T_DTYPE,T_DIM> tmpPartialMatrix( sizePartialMatrix );
     VecI ind(0);
 
-    for ( int i=0; i<size.product(); i++ )
-        tmp[i] = (*this)[ pos + tmp.getVectorIndex(i) ];
+    for ( int i=0; i < sizePartialMatrix.product(); i++ )
+        tmpPartialMatrix[i] = (*this)[ pos + tmpPartialMatrix.getVectorIndex(i) ];
 
-    return tmp;
+    return tmpPartialMatrix;
 }
 
 template<typename T_DTYPE, int T_DIM>

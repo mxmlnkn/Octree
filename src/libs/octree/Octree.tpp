@@ -7,10 +7,9 @@ namespace Octree {
 
 /****************************** Copy Constructor ******************************/
 template<int T_DIM>
-Octree<T_DIM>::Octree( const Octree & src ) {
-    this->center  = src.center;
-    this->size    = src.size;
-    this->root    = new Node( NULL, VecD(0), VecD(1) );
+Octree<T_DIM>::Octree( const Octree & src )
+: center(src.center), size(src.size), root( new Node( NULL, VecD(0), VecD(1) ) )
+{
     *(this->root) = *(src.root);
 }
 
@@ -36,8 +35,8 @@ typename Octree<T_DIM>::Octree& Octree<T_DIM>::operator=(const Octree & src)
 
 /********************************* Constructor ********************************/
 template<int T_DIM>
-Octree<T_DIM>::Octree( const VecD center, const VecD size )
-: center( center ), size( size ), root( NULL ) {
+Octree<T_DIM>::Octree( const VecD p_center, const VecD p_size )
+: center( p_center ), size( p_size ), root( NULL ) {
 /* root Node has no parent, therefore it's parent is set to NULL !            */
     this->root = new Node( NULL, VecD(0), VecD(1) );
 }
@@ -52,16 +51,16 @@ Octree<T_DIM>::Octree( void )
 /********************************* GetNodePtr *********************************/
 template<int T_DIM>
 const typename Octree<T_DIM>::Node * Octree<T_DIM>::GetNodePtr
-( const VecD center ) const
+( const VecD p_center ) const
 {
     const Node * tmp = this->root;
     while( ! tmp->IsLeaf() ) {
-        if ( tmp->center == center )
+        if ( tmp->center == p_center )
             return tmp;
         VecI direction = 2*VecI( center.GreaterThan( tmp->center )) - 1;
         tmp = tmp->children[ tmp->ConvertDirectionToNumber( direction ) ];
     }
-    if ( tmp->center == center )
+    if ( tmp->center == p_center )
         return tmp;
     else
         return NULL;
@@ -197,12 +196,14 @@ typename Octree<T_DIM>::Node::iterator Octree<T_DIM>::end( void ) const {
 }
 
 template<int T_DIM>
-typename Octree<T_DIM>::VecD Octree<T_DIM>::toInternalCoords( const VecD pos ) const {
+typename Octree<T_DIM>::VecD Octree<T_DIM>::toInternalCoords
+( const VecD pos ) const {
     return (pos - center) / size;
 }
 
 template<int T_DIM>
-typename Octree<T_DIM>::VecD Octree<T_DIM>::toGlobalCoords( const VecD pos ) const {
+typename Octree<T_DIM>::VecD Octree<T_DIM>::toGlobalCoords
+( const VecD pos ) const {
     return center + pos*size;
 }
 

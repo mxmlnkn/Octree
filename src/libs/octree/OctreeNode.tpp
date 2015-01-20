@@ -44,15 +44,19 @@ Node<T_DIM>::~Node( void ) {
 
 /******************************** Constructor *********************************/
 template<int T_DIM>
-Node<T_DIM>::Node( void ) : parent( NULL ), center( VecD(0) ), size( VecD(0) )
-, nchildren( compileTime::pow(2,T_DIM) ) {
+Node<T_DIM>::Node( void )
+ : parent( NULL ), center( VecD(0) ), size( VecD(0) ), data(), 
+   nchildren( compileTime::pow(2,T_DIM) )
+{
     for (int i=0; i<nchildren; i++)
         this->children[i] = NULL;
 }
 
 template<int T_DIM>
-Node<T_DIM>::Node(Node * const parent, VecD const cent, VecD const size)
-: parent( parent ), center( cent ), size( size ), nchildren( compileTime::pow(2,T_DIM) ) {
+Node<T_DIM>::Node(Node * const p_parent, VecD const p_center, VecD const p_size)
+: parent( p_parent ), center( p_center ), size( p_size ), data(), 
+  nchildren( compileTime::pow(2,T_DIM) )
+{
     for (int i=0; i<nchildren; i++)
         this->children[i] = NULL;
 }

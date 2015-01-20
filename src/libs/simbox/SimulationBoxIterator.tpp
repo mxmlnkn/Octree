@@ -7,9 +7,10 @@ namespace SimulationBox {
 /******************************** Constructor *********************************/
 template<int T_DIM, typename T_CELLDATA>
 Iterator<T_DIM,T_CELLDATA>::Iterator
-( const int area, const VecI ncells, const int guardsize, CellMatrix & srcmat )
-: area(area), core(area & CORE), border(area & BORDER), guard (area & GUARD),
-  srcmat(&srcmat), icell(0), ncells(ncells), guardsize(guardsize)
+( const int p_area, const VecI p_ncells, const int p_guardsize, 
+  CellMatrix & p_srcmat )
+: area(p_area), core(p_area & CORE), border(p_area & BORDER), guard (p_area & 
+  GUARD), srcmat(&p_srcmat), icell(0), ncells(p_ncells), guardsize(p_guardsize)
 {
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
@@ -53,7 +54,7 @@ template<int T_DIM, typename T_CELLDATA>
 Iterator<T_DIM,T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::begin( void ) const {
     Iterator tmp( *this );
 
-    int upperleftcorner;
+    int upperleftcorner(0);
     if (guard)
         upperleftcorner = 0;
     else if (border)
@@ -144,7 +145,8 @@ bool Iterator<T_DIM,T_CELLDATA>::operator!=( const Iterator & it ) {
 }
 
 template<int T_DIM, typename T_CELLDATA>
-void Iterator<T_DIM,T_CELLDATA>::operator=( const Iterator & src ) {
+Iterator<T_DIM,T_CELLDATA> & Iterator<T_DIM,T_CELLDATA>::operator=
+( const Iterator & src ) {
     this->core   = src.core  ;
     this->border = src.border;
     this->guard  = src.guard ;
@@ -152,6 +154,7 @@ void Iterator<T_DIM,T_CELLDATA>::operator=( const Iterator & src ) {
     this->icell  = src.icell ;
     this->ncells = src.ncells;
     this->srcmat = src.srcmat;
+    return *this;
 }
 
 template<int T_DIM, typename T_CELLDATA>

@@ -19,24 +19,20 @@ public:
     const int dim = T_DIM;
     typedef class Octree<T_DIM> Octreetype;
     typedef class Node<T_DIM> Node;
-    
+
 //private:
     std::ofstream out;
-    
+
     Octreetype tree;
     const Octreetype * treesrc;
-    
-    const double borderx;
-    const double bordery;
-    const double height;
-    const double width;
-    VecD imagesize;
-    VecD imageborder;
-    
+
+    VecI imagesize;   // in px
+    VecI imageborder; // in px
+
     int currentTime = 1;
     const int DUR = 2; //2s per update
     const int STROKE_WIDTH = 1;
-    
+
     /* Thanks to https://stackoverflow.com/questions/16362231/ */
     struct StrictWeakOrderingVecD {
         bool operator()( const VecD & a, const VecD & b ) const {
@@ -54,19 +50,21 @@ public:
     typedef std::map<VecD,Keyvalues,StrictWeakOrderingVecD> VecDMap;
     int NboxesDrawn = 0;
     VecDMap boxesDrawn;
-    typename VecDMap::iterator boxesDrawnIt;
 
 public:
     OctreeToSvg(void) { assert(false); }
     OctreeToSvg(const Octreetype & tree, const std::string filename);
-    ~OctreeToSvg(void) {
-        out << "</svg>\n";
-        out.close();
-    }
+    OctreeToSvg & operator=( const OctreeToSvg & src ) { assert(false); };
+    OctreeToSvg( const OctreeToSvg & src ) { assert(false); };
+    ~OctreeToSvg(void) {}
     void PrintGrid(void);
     void PrintPositions(void);
     void AnimateUpdated( const Octreetype & newtree );
     VecD convertToImageCoordinates( const VecD pos );
+    void close(void) {
+        out << "</svg>\n";
+        out.close();
+    }
 };
 
 } // namespace Octree
