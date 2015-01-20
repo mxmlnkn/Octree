@@ -534,6 +534,7 @@ int main( int argc, char **argv )
             comBox.PrintPNG( 0, filename, returnn, false );
 		}
 
+        MPI_Barrier(MPI_COMM_WORLD);
         #if DEBUG_MAIN_YEE >= 90
             tout << "Timestep " << timestep << " took " << MPI_Wtime() - tLast << " seconds\n";
         #endif
