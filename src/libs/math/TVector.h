@@ -30,11 +30,10 @@ public:
     operator const T_DTYPE*() const;
 
     Vec& operator= (const T_DTYPE a);
-    template<typename T_ETYPE> Vec& operator= (const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec& operator+=(const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec& operator*=(const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec& operator/=(const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec  operator/ (const Vec<T_ETYPE, T_DIM> & v) const;
+    Vec& operator+=(const Vec & v);
+    Vec& operator*=(const Vec & v);
+    Vec& operator/=(const Vec & v);
+    Vec  operator/ (const Vec & v) const;
 
     bool operator==(const Vec & v) const;
     bool operator< (const Vec & v) const;
@@ -51,19 +50,19 @@ public:
     T_DTYPE max( void ) const;
     T_DTYPE mean( void ) const;
 
-    template<typename T_ETYPE> Vec  operator+ (const Vec<T_ETYPE, T_DIM> & v) const;
-    template<typename T_ETYPE> Vec& operator-=(const Vec<T_ETYPE, T_DIM> & v);
-    template<typename T_ETYPE> Vec  operator- (const Vec<T_ETYPE, T_DIM> & v) const;
-    template<typename T_ETYPE> Vec  operator* (const Vec<T_ETYPE, T_DIM> & v) const;
+    Vec  operator+ (const Vec & v) const;
+    Vec& operator-=(const Vec & v);
+    Vec  operator- (const Vec & v) const;
+    Vec  operator* (const Vec & v) const;
     
-    template<typename T_ETYPE> Vec& operator+=(const T_ETYPE a);
-    template<typename T_ETYPE> Vec& operator-=(const T_ETYPE a);
-    template<typename T_ETYPE> Vec& operator*=(const T_ETYPE a);
-    template<typename T_ETYPE> Vec& operator/=(const T_ETYPE a);
-    template<typename T_ETYPE> Vec  operator+ (const T_ETYPE a) const;
-    template<typename T_ETYPE> Vec  operator- (const T_ETYPE a) const;
-    template<typename T_ETYPE> Vec  operator* (const T_ETYPE a) const;
-    template<typename T_ETYPE> Vec  operator/ (const T_ETYPE a) const;
+    Vec& operator+=(const T_DTYPE a);
+    Vec& operator-=(const T_DTYPE a);
+    Vec& operator*=(const T_DTYPE a);
+    Vec& operator/=(const T_DTYPE a);
+    Vec  operator+ (const T_DTYPE a) const;
+    Vec  operator- (const T_DTYPE a) const;
+    Vec  operator* (const T_DTYPE a) const;
+    Vec  operator/ (const T_DTYPE a) const;
 
     bool operator!= (const Vec & v) const;
     double norm() const;

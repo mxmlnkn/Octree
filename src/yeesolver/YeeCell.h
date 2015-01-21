@@ -16,7 +16,7 @@ public:
 	double sigmaE;    // electric resistivity in this cell
 	double sigmaM; // magnetic resistivity in this cell
 
-	YeeCell(void) : E(0), H(0), epsilon(1), mu(1), sigmaE(0), sigmaM(0)	{}
+	YeeCell(void) : E(0.0), H(0.0), epsilon(1), mu(1), sigmaE(0), sigmaM(0)	{}
 	~YeeCell(void) {}
 
     /* Methods needed for interpolation (copy and assignment constructor are  *

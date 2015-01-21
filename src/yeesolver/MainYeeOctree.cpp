@@ -100,10 +100,10 @@ int main( int argc, char **argv )
                 optind += 2; // two extra arguments taken
                 break;
             case 'o':
-                SIMULATION_SETUP = atoi(optarg);
+                OCTREE_SETUP = atoi(optarg);
                 break;
             case 's':
-                OCTREE_SETUP = atoi(optarg);
+                SIMULATION_SETUP = atoi(optarg);
                 break;
             case 'p':
                 PNG_INTERVAL = atoi(optarg);
@@ -124,7 +124,7 @@ int main( int argc, char **argv )
 
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
     VecD cellSize(CELL_SIZE);
-    VecD NCells(NUMBER_OF_CELLS);
+    VecD NCells( NUMBER_OF_CELLS );
     VecD globSize(cellSize*NCells), globCenter(0.5*globSize);
     typedef typename Octree::Octree<SIMDIM> OctreeType;
     OctreeType tree( globCenter, globSize );
@@ -170,8 +170,9 @@ int main( int argc, char **argv )
     if ( xovercm < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
     tout << "NUMBER_OF_STEPS          : " << NUMBER_OF_STEPS            << "\n";
-    tout << "INITIAL_OCTREE_REFINEMENT: " << INITIAL_OCTREE_REFINEMENT << "\n";
+    tout << "INITIAL_OCTREE_REFINEMENT: " << INITIAL_OCTREE_REFINEMENT  << "\n";
     tout << "MAX_OCTREE_REFINEMENT    : " << MAX_OCTREE_REFINEMENT      << "\n";
+    tout << "OCTREE_SETUP             : " << OCTREE_SETUP               << "\n";
     tout << "SIMULATION_SETUP         : " << SIMULATION_SETUP           << "\n";
     tout << "\n";
 
@@ -181,7 +182,7 @@ int main( int argc, char **argv )
     /**************************************************************************/
 
     /********* refine all cells to initial homogenous min-Refinement **********/
-    if ( OCTREE_SETUP == 5 or OCTREE_SETUP == 6 ) {
+    if ( OCTREE_SETUP == 7 or OCTREE_SETUP == 6 ) {
         for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
             for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
                 if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
@@ -476,24 +477,36 @@ int main( int argc, char **argv )
             /******************************************************************/
         }
     }
-    comBox.PrintPNG( 0, "output/n_init", returnn, false );
+//    comBox.PrintPNG( 0, "output/n_init", returnn, false );
 
     /**************************************************************************/
     /* (6) Actual Timestepping ************************************************/
     /**************************************************************************/
+    MPI_Barrier(MPI_COMM_WORLD);
     double tStart = MPI_Wtime();
     double tLast  = tStart;
-	for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep )
-	{
+	for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep ) {
+    for ( double internaltimestep = 0; internaltimestep < 1; internaltimestep +=
+        1./pow( 2, comBox.maxLevel - comBox.minLevel ) )
+    {
+        #if DEBUG_MAIN_YEE >= 90
+            if (timestep == 0) for (int lvl = comBox.minLevel; lvl<=comBox.maxLevel; lvl++)
+                tout << "internaltimestep: " << internaltimestep << " mod " << 1/pow(2,lvl) << " = " << 1 / pow(2, comBox.maxLevel - lvl ) << " == 0 ? " << (fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - lvl ) ) == 0) << "\n";
+        #endif
+        double t = timestep + internaltimestep;
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
             /* Function Generator on Cell in the Center */
-            OctreeType::Node * node = tree.FindLeafContainingPos( tree.center + 0.11*tree.size );
+            VecD pos = tree.center + 0.11*tree.size;
+            OctreeType::Node * node = tree.FindLeafContainingPos( pos );
             if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == comBox.rank ) {
-                OctCell & cellMatrix = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
-                VecI targetIndex = cellMatrix.findCellContaining( tree.center + 0.11*tree.size );
-                cellMatrix.t[0]->cells[targetIndex].E[Z] = t_spawn_func( timestep * DELTA_T_SI );
+                OctCell & simbox = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
                 #if DEBUG_MAIN_YEE >= 100
+                    tout << "Find position " << pos << " in tree sized " << tree.size << " positioned at center " << tree.center << " returned OctreeCell at " << node->center << " => Searching for position in simbox of that node with abspos " << simbox.abspos << ", localcells " << simbox.localcells << " and cellsize " << simbox.cellsize << "\n";
+                #endif
+                VecI targetIndex = simbox.findCellContaining( pos );
+                simbox.t[0]->cells[targetIndex].E[Z] = t_spawn_func( t * DELTA_T_SI );
+                #if DEBUG_MAIN_YEE >=100
                     tout << "Write to source in cell " << targetIndex << " in node at " << node->center << "\n";
                 #endif
             }
@@ -504,9 +517,9 @@ int main( int argc, char **argv )
             for ( int y = 0; y < N_CELLS_Y - 2*GUARDSIZE; y++ ) {
                 pos[Y] = GUARDSIZE + y;
                 //if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
-                    data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+                    data[pos].E[tcur][Z] = t_spawn_func( t * DELTA_T_SI );
                 //if( (pos[Y]>20 and pos[Y]<N_CELLS_Y/2-20) or (pos[Y]>N_CELLS_Y/2+20 and pos[Y]<N_CELLS_Y-20)
-                //	data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
+                //	data[pos].E[tcur][Z] = t_spawn_func( t * DELTA_T_SI );
             }*/
         #endif
         #if TIME_SPAWN_SETUP == 3
@@ -533,8 +546,8 @@ int main( int argc, char **argv )
                 VecI pos( pos0+GUARDSIZE ); pos[Y]+=j;
                 for (int i=0; i<10*lambda; i++) {
                     pos[X]++;
-                    data[pos].t[0].E[Z] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, timestep * DELTA_T, kx, i*CELL_SIZE_X, ky, j*CELL_SIZE_Y ) * TIME_SPAWN_FUNCTIONS::PSQ_STEP( T0y, timestep * DELTA_T );
-                        //* TIME_SPAWN_FUNCTIONS::sinewave( T0y, timestep * DELTA_T );
+                    data[pos].t[0].E[Z] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, t * DELTA_T, kx, i*CELL_SIZE_X, ky, j*CELL_SIZE_Y ) * TIME_SPAWN_FUNCTIONS::PSQ_STEP( T0y, t * DELTA_T );
+                        //* TIME_SPAWN_FUNCTIONS::sinewave( T0y, t * DELTA_T );
                     //std::cout << data[pos].t[0].E[Z] << " ";
                 }
                 //std::cout << std::endl;
@@ -555,12 +568,17 @@ int main( int argc, char **argv )
 
         /* Traverse all Octree Nodes and apply Yee-Solver there ( Do this     *
          * with a comBox iterator ???                                         */
+        tout << "internal timestep: " << internaltimestep << "\n";
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE );
+            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 ) {
+                tout << " Apply Yee-Solver to node at " << it->center << " with cellsizes " << ((OctCell*)it->data[comBox.CELL_DATA_INDEX])->cellsize << "...";
+                YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
+                tout << "OK\n";
+            }
         }
 
         comBox.FinishGuardUpdate( 1 );
@@ -570,7 +588,8 @@ int main( int argc, char **argv )
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-             YeeSolver::CalcH( simBox, 0, 1, SimulationBox::BORDER );
+            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
+                YeeSolver::CalcH( simBox, 0, 1, SimulationBox::BORDER, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
         }
 
         /* In the next halfstep, do the same for E-Field, but stay in timestep*/
@@ -581,7 +600,8 @@ int main( int argc, char **argv )
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::CORE );
+            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
+                YeeSolver::CalcE( simBox, 0, 1, SimulationBox::CORE, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
         }
 
         comBox.FinishGuardUpdate( 0 );
@@ -591,29 +611,34 @@ int main( int argc, char **argv )
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
+            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
+                YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
         }
+        MPI_Barrier(MPI_COMM_WORLD);
+    } // internaltimestep
 
 		if (timestep % PNG_INTERVAL == 0) {
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
-			sprintf( filename, "output/Ex_%05i", framecounter );
+			/*sprintf( filename, "output/Ex_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnEx, false );
             sprintf( filename, "output/Ey_%05i", framecounter );
-            comBox.PrintPNG( 0, filename, returnEy, false );
+            comBox.PrintPNG( 0, filename, returnEy, false );*/
             sprintf( filename, "output/Ez_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnEz, false );
-			sprintf( filename, "output/Hx_%05i", framecounter );
+            sprintf( filename, "output/Ez_%05i", framecounter );
+            comBox.PrintPNG( 1, filename, returnEz, false );
+			/*sprintf( filename, "output/Hx_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnHx, false );
 			sprintf( filename, "output/Hy_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnHy, false );
 			sprintf( filename, "output/Hz_%05i", framecounter );
-            comBox.PrintPNG( 0, filename, returnHz, false );
+            comBox.PrintPNG( 0, filename, returnHz, false );*/
 			sprintf( filename, "output/All_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnEandH, false );
-            sprintf( filename, "output/n_%05i", framecounter );
-            comBox.PrintPNG( 0, filename, returnn, false );
+            /*sprintf( filename, "output/n_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnn, false );*/
 		}
 
         MPI_Barrier(MPI_COMM_WORLD);

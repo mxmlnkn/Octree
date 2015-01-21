@@ -4,6 +4,7 @@ double t_spawn_func( double t_SI ) {
 	double T_SI  = 40e-9 /* m */ / SPEED_OF_LIGHT_SI;
 	double sigmaE = T_SI/2.;
 	double t0    = 40;
+	return cos( 2.*M_PI*t_SI / T_SI );
 	return sin( 2.*M_PI*t_SI / T_SI );
 	return ( t_SI < T_SI ? 1.0 : 0.0 );
 	return exp(-pow(t_SI-t0,2)/(2.*sigmaE*sigmaE));

@@ -38,24 +38,24 @@ template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE v[T_DIM] ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] = v[i];
+        this->data[i] = (T_DTYPE) v[i];
 }
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1 ) {
     assert( T_DIM == 2 );
-    this->data[0] = a0;
-    this->data[1] = a1;
+    this->data[0] = (T_DTYPE) a0;
+    this->data[1] = (T_DTYPE) a1;
 }
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2 ) {
     assert( T_DIM == 3 );
-    this->data[0] = a0;
-    this->data[1] = a1;
-    this->data[2] = a2;
+    this->data[0] = (T_DTYPE) a0;
+    this->data[1] = (T_DTYPE) a1;
+    this->data[2] = (T_DTYPE) a2;
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -100,16 +100,7 @@ Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const T_DTYPE a ) {
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator=( const Vec<T_ETYPE, T_DIM> & v ) {
-    for (int i=0; i<T_DIM; i++)
-        this->data[i] = v[i];
-    return *this;
-}
-
-template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+=( const Vec<T_ETYPE, T_DIM> & v ) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+=( const Vec & v ) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] += v[i];
     return *this;
@@ -117,26 +108,23 @@ Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+=( const Vec<T_ETYPE, T_DIM> & 
 
 /* Elementwise Multiplication with another Vec of double or int */
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*=( const Vec<T_ETYPE,T_DIM> & v ) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*=( const Vec & v ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] *= (T_DTYPE) v[i];
+        this->data[i] *= v[i];
     return *this;
 }
 
 /* Elementwise Division with another Vec of double or int */
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/=( const Vec<T_ETYPE, T_DIM> & v ) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/=( const Vec & v ) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] /= (T_DTYPE) v[i];
+        this->data[i] /= v[i];
     return *this;
 }
 
 /* Elementwise Division with another Vec of double or int */
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/( const Vec<T_ETYPE, T_DIM> & v ) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/( const Vec & v ) const {
     Vec tmp(*this);
     tmp /= v;
     return tmp;
@@ -268,28 +256,24 @@ Vec<T_DTYPE,3> Vec<T_DTYPE,3>::cross(const Vec<T_DTYPE,3> & b) const {
 
 /************************ Derived Declarations ********************************/
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const Vec<T_ETYPE, T_DIM> & v) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const Vec & v) const {
     Vec res = *this;
     res += v;
     return res;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator-= (const Vec<T_ETYPE, T_DIM> & v) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator-= (const Vec & v) {
     return (*this) += v * (-1);
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const Vec<T_ETYPE, T_DIM> & v) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const Vec & v) const {
     return (*this)+( v*(-1) );
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator*( const Vec<T_ETYPE,T_DIM> & v ) const {
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator*( const Vec & v ) const {
     Vec res = *this;
     res *= v;
     return res;
@@ -309,65 +293,57 @@ double Vec<T_DTYPE,T_DIM>::norm() const {
 /***************** Broadcasting Operators to save memory **********************/
 // this could also be done with , but we want to save memory !
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+= (const T_ETYPE a) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator+= (const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] += a;
     return *this;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator-= (const T_ETYPE a) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator-= (const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
         this->data[i] -= a;
     return *this;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*= (const T_ETYPE a) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator*= (const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] *= (T_DTYPE) a;
+        this->data[i] *= a;
     return *this;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/= (const T_ETYPE a) {
+Vec<T_DTYPE,T_DIM>& Vec<T_DTYPE,T_DIM>::operator/= (const T_DTYPE a) {
     for (int i=0; i<T_DIM; i++)
-        this->data[i] /= (T_DTYPE) a;
+        this->data[i] /= a;
     return *this;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const T_ETYPE a) const {
-    Vec<T_DTYPE,T_DIM> tmp( *this );
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator+ (const T_DTYPE a) const {
+    Vec tmp( *this );
     tmp += a;
     return tmp;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const T_ETYPE a) const {
-    Vec<T_DTYPE,T_DIM> tmp( *this );
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator- (const T_DTYPE a) const {
+    Vec tmp( *this );
     tmp -= a;
     return tmp;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator* (const T_ETYPE a) const {
-    Vec<T_DTYPE,T_DIM> tmp( *this );
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator* (const T_DTYPE a) const {
+    Vec tmp( *this );
     tmp *= a;
     return tmp;
 }
 
 template<typename T_DTYPE, int T_DIM>
-template<typename T_ETYPE>
-Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/ (const T_ETYPE a) const {
-    Vec<T_DTYPE,T_DIM> tmp( *this );
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/ (const T_DTYPE a) const {
+    Vec tmp( *this );
     tmp /= a;
     return tmp;
 }

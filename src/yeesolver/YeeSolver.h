@@ -7,32 +7,37 @@
 namespace YeeSolver {
 
 typedef SimulationBox::SimulationBox<SIMDIM,YeeCell> OctCell;
-typedef Vec<int,2> VecI;
+typedef Vec<int,SIMDIM> VecI;
 const int X = 0;
 const int Y = 1;
 const int Z = 2;
 
-void CalcH( OctCell & simBox, int tnext, int tcur, int area ) {
+void CalcH( OctCell & simbox, int tnext, int tcur, int area, double deltaT ) {
     typename OctCell::CellMatrix CellMatrix;
-    typename OctCell::IteratorType itnext = simBox.getIterator( tnext, area );
-    typename OctCell::IteratorType itcur  = simBox.getIterator( tcur , area );
+    typename OctCell::IteratorType itnext = simbox.getIterator( tnext, area );
+    typename OctCell::IteratorType itcur  = simbox.getIterator( tcur , area );
+
+    Vec<double,3> cellsize( (SIMDIM>=1) ? simbox.cellsize[0] : INF ,
+                            (SIMDIM>=2) ? simbox.cellsize[1] : INF ,
+                            (SIMDIM>=3) ? simbox.cellsize[2] : INF );
+
     for ( itnext=itnext.begin(); itnext != itnext.end(); ++itnext ) {
         /* we misuse the iterator as a fancy access operator. icell is the    *
          * only member changed when iterating, so copying that suffices.      *
          * copying the whole iterator would be wrong, because the shall       *
          * have different srcmats like given by getIterator( timestep, ... )  */
         itcur.icell = itnext.icell;
-        
+
         VecI xnext(0); if (SIMDIM>=1) xnext[X]++;
         VecI ynext(0); if (SIMDIM>=2) ynext[Y]++;
         VecI znext(0); if (SIMDIM>=3) znext[Z]++;
 
         /* Update all H components */
-        double nom = (1.0 + 0.5*itnext->sigmaM*DELTA_T / itnext->mu);
-        double Da  = (1.0 - 0.5*itnext->sigmaM*DELTA_T / itnext->mu) / nom;
-        double Dbx = DELTA_T / ( itnext->mu * CELL_SIZE_X ) / nom;
-        double Dby = DELTA_T / ( itnext->mu * CELL_SIZE_Y ) / nom;
-        double Dbz = DELTA_T / ( itnext->mu * CELL_SIZE_Z ) / nom;
+        double nom = (1.0 + 0.5*itnext->sigmaM*deltaT / itnext->mu);
+        double Da  = (1.0 - 0.5*itnext->sigmaM*deltaT / itnext->mu) / nom;
+        double Dbx = deltaT / ( itnext->mu * cellsize[0] ) / nom;
+        double Dby = deltaT / ( itnext->mu * cellsize[1] ) / nom;
+        double Dbz = deltaT / ( itnext->mu * cellsize[2] ) / nom;
 
         #if DEBUG_MAIN_YEE >= 100
             if ( (itcur+ynext)->E != itcur->E )
@@ -52,23 +57,28 @@ void CalcH( OctCell & simBox, int tnext, int tcur, int area ) {
 
 }
 
-void CalcE( OctCell & simBox, int tnext, int tcur, int area ) {
+void CalcE( OctCell & simbox, int tnext, int tcur, int area, double deltaT ) {
     typename OctCell::CellMatrix CellMatrix;
-    typename OctCell::IteratorType itnext = simBox.getIterator( tnext, area );
-    typename OctCell::IteratorType itcur  = simBox.getIterator( tcur , area );
+    typename OctCell::IteratorType itnext = simbox.getIterator( tnext, area );
+    typename OctCell::IteratorType itcur  = simbox.getIterator( tcur , area );
+
+    Vec<double,3> cellsize( (SIMDIM>=1) ? simbox.cellsize[0] : INF ,
+                            (SIMDIM>=2) ? simbox.cellsize[1] : INF ,
+                            (SIMDIM>=3) ? simbox.cellsize[2] : INF );
+
     for ( itnext=itnext.begin(); itnext != itnext.end(); ++itnext ) {
         itcur.icell = itnext.icell;
-        
+
         VecI xprev(0); if (SIMDIM>=1) xprev[X]--;
         VecI yprev(0); if (SIMDIM>=2) yprev[Y]--;
         VecI zprev(0); if (SIMDIM>=3) zprev[Z]--;
 
 		/* Now update all E components */
-        double nom = (1.0 + 0.5*itnext->sigmaE*DELTA_T / itnext->epsilon);
-        double Ca  = (1.0 - 0.5*itnext->sigmaE*DELTA_T / itnext->epsilon) / nom;
-        double Cbx = DELTA_T / ( itnext->epsilon * CELL_SIZE_X ) / nom;
-        double Cby = DELTA_T / ( itnext->epsilon * CELL_SIZE_Y ) / nom;
-        double Cbz = DELTA_T / ( itnext->epsilon * CELL_SIZE_Z ) / nom;
+        double nom = (1.0 + 0.5*itnext->sigmaE*deltaT / itnext->epsilon);
+        double Ca  = (1.0 - 0.5*itnext->sigmaE*deltaT / itnext->epsilon) / nom;
+        double Cbx = deltaT / ( itnext->epsilon * cellsize[0] ) / nom;
+        double Cby = deltaT / ( itnext->epsilon * cellsize[1] ) / nom;
+        double Cbz = deltaT / ( itnext->epsilon * cellsize[2] ) / nom;
 
         itnext->E[X] = Ca * itcur->E[X] +
              Cby*( itnext->H[Z] - (itnext+yprev)->H[Z] )

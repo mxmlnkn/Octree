@@ -94,7 +94,12 @@ void SimulationBox<T_DIM,T_CELLDATA>::PrintValues( int timestep ) const {
 template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::findCellContaining ( const VecD pabspos ) const {
     assert( pabspos >= this->abspos );
-    assert( pabspos <  this->abspos + this->localcells * this->cellsize );
+    bool toAssert = pabspos <= this->abspos + VecD(this->localcells) * this->cellsize;
+    #ifndef NDEBUG
+        if ( not toAssert )
+            terr << "Wanted cell at " << pabspos << " not lying in simbox at " << abspos << " sized " << localcells << " cells * " << cellsize << "\n";
+        assert( toAssert );
+    #endif
     /* again cells are supposed to be on the center */
     VecI index(this->guardsize);
     VecD rindex = ( pabspos - this->abspos ) / this->cellsize;
