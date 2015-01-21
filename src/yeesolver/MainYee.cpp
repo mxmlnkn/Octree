@@ -50,7 +50,7 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 typedef Vec<double,SIMDIM> VecD;
 typedef Vec<int   ,SIMDIM> VecI;
 #define YEE_CELL_TIMESTEPS_TO_SAVE 2
-#include "YeeCell.h"
+#include "YeeCell.old.h"
 typedef BaseMatrix<class YeeCell,SIMDIM> CellMatrix;
 
 
@@ -89,7 +89,7 @@ namespace TIME_SPAWN_FUNCTIONS {
 	}
 }
 
-int main( int argc, char **argv )
+int main( void )
 {
     tout.Open("out");
 
@@ -157,6 +157,7 @@ int main( int argc, char **argv )
 
 	for ( int timestep=0; timestep < 800; ++timestep )
 	{
+        tout << "timestep: " << timestep << "\n";
 		const int X = 0;
 		const int Y = 1;
 		const int Z = 2;
@@ -178,8 +179,8 @@ int main( int argc, char **argv )
 			//	data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
 		}*/
 		/* Function Generator on Cell in the Center */
-		/*VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[0]-=50;
-		data[pos].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI ); */
+		VecI post(NUMBER_OF_CELLS); post /= 2; post[0]-=50;
+		data[post].E[tcur][Z] = t_spawn_func( timestep * DELTA_T_SI );
 
 		/**********************************************************************
 		 * Sine plane Wave going to Direction alpha and beginning line going  *
@@ -191,10 +192,11 @@ int main( int argc, char **argv )
 		 *               |     --  /                                          *
 		 *               |_______\__________ x                                *
          **********************************************************************/
+        #if false
 		double const n = 1.33;
 		double alpha   = 45. / 360. * 2*M_PI; //0.9*asin(1./n); // radian
 		double lambda  = 10e-9 / UNIT_LENGTH;
-		VecI pos0(0); pos0[X] = 6*lambda;
+		VecI pos0(0); pos0[X] = int(6*lambda);
 		double T0x     = lambda / (SPEED_OF_LIGHT/n);
 		double T0y     = lambda / (SPEED_OF_LIGHT/n);
 		double kx      = 2*M_PI/lambda * cos(alpha);
@@ -210,6 +212,7 @@ int main( int argc, char **argv )
 			}
 			//std::cout << std::endl;
 		}
+        #endif
 		/**********************************************************************
 		 * Periodic Boundary Conditions for y-direction                       *
 		 * Initialize y-Guard with copied values to make boundaries periodic  *
@@ -261,19 +264,19 @@ int main( int argc, char **argv )
 
 
 		#if DEBUG_MAIN_YEE >= 100
-		std::cout << "E_z[x=GUARDSIZE,y=1...6...122...127,z=GUARDSIZE] before Timestep and after updating periodic boundary guards: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-			for ( int iy=0; iy < 3; ++iy ) {
-				VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
-				std::cout << data[pos].E[tcur][Z] << " ";
-			}
-			std::cout << "... ";
-			for ( int iy=125; iy < N_CELLS_Y; ++iy ) {
-				VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
-				std::cout << data[pos].E[tcur][Z] << " ";
-			}
-			std::cout << std::endl;
-		}
+            std::cout << "E_z[x=GUARDSIZE,y=1...6...122...127,z=GUARDSIZE] before Timestep and after updating periodic boundary guards: " << timestep << std::endl;
+            for ( int ix=0; ix < 8; ++ix ) {
+                for ( int iy=0; iy < 3; ++iy ) {
+                    VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
+                    std::cout << data[pos].E[tcur][Z] << " ";
+                }
+                std::cout << "... ";
+                for ( int iy=125; iy < N_CELLS_Y; ++iy ) {
+                    VecI pos(GUARDSIZE); pos[X]+=ix; pos[Y]=iy;
+                    std::cout << data[pos].E[tcur][Z] << " ";
+                }
+                std::cout << std::endl;
+            }
 		#endif
 
 		for ( int x = 0; x < N_CELLS_X - 2*GUARDSIZE; x++ )
@@ -382,19 +385,19 @@ int main( int argc, char **argv )
 			data[pos].E[tnext] = data[mirrorpos].E[tnext];
 		}
 
-		#if DEBUG_MAIN_YEE>=90
-		std::cout << "E_z after Timestep: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-		    VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[X]-=4; pos[X]+=ix;
-		    std::cout << data[pos].E[tnext][Z] << " ";
-		}
-		std::cout << std::endl;
-		std::cout << "H_y after Timestep: " << timestep << std::endl;
-		for ( int ix=0; ix < 8; ++ix ) {
-		    VecI pos(GUARDSIZE); pos[X]=ix;
-		    std::cout << data[pos].H[tnext][Y] << " ";
-		}
-		std::cout << std::endl;
+		#if DEBUG_MAIN_YEE>=100
+            std::cout << "E_z after Timestep: " << timestep << std::endl;
+            for ( int ix=0; ix < 8; ++ix ) {
+                VecI pos(NUMBER_OF_CELLS); pos /= 2; pos[X]-=4; pos[X]+=ix;
+                std::cout << data[pos].E[tnext][Z] << " ";
+            }
+            std::cout << std::endl;
+            std::cout << "H_y after Timestep: " << timestep << std::endl;
+            for ( int ix=0; ix < 8; ++ix ) {
+                VecI pos(GUARDSIZE); pos[X]=ix;
+                std::cout << data[pos].H[tnext][Y] << " ";
+            }
+            std::cout << std::endl;
 		#endif
 
 		if (timestep % 1 == 0) {
@@ -402,7 +405,7 @@ int main( int argc, char **argv )
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
-			{
+			/*{
 			sprintf( filename, "output/Ex_%05i.png", framecounter );
 			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
@@ -420,7 +423,7 @@ int main( int argc, char **argv )
 				image.plot( ix+1,iy+1, data[pos].E[tnext][Y], -data[pos].E[tnext][Y], 0.0);
 			}
 			image.close();
-			}{
+			}*/{
 			sprintf( filename, "output/Ez_%05i.png", framecounter );
 			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
@@ -436,7 +439,7 @@ int main( int argc, char **argv )
 			image.close();
 			}
 
-			{
+			/*{
 			sprintf( filename, "output/Hx_%05i.png", framecounter );
 			pngwriter image( N_CELLS_X,N_CELLS_Y, 0, filename );
 			for ( int ix=0; ix < N_CELLS_X; ++ix )
@@ -468,7 +471,7 @@ int main( int argc, char **argv )
 			image.close();
 			}
 
-			std::cout << "Image " << framecounter << std::endl;
+			std::cout << "Image " << framecounter << std::endl;*/
 		}
 	}
 

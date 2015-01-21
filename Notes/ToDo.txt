@@ -1,3 +1,8 @@
 MainYeeOctree:
-  - take command line arguments overwriting the default values inside parameter files!
-  
+  - komisches fluktuation sichtbar in zeitschritt 10 ( Ez_00002_rank-0_t0_Ex.png, http://maxinator.bplaced.net/share/Ez_00007_rank-0_t0_Ex.png );
+    -> sogar divergenz in zeitschritt 80 !!! selbe ursache ?
+    . vlt. mit 1D-Welle an linker seite initiallisiert testen, was und warum das passiert (+spalte zeilen auf 0, damit es nur nach rechts geht)
+      mit der init wird ja it->ynext - it->ycur -> 0
+  - courant kriterium an jeder zelle checken
+  - schrägen laser zum funktionieren bringen
+  - mit vampirtrace schwachstellen suchen

@@ -50,7 +50,7 @@ const uint16_t DEFAULT_PARTICLE_SHAPE  = 1;  //00:point-point, 01:ball-ball (CIC
 //output
 const uint32_t PRINT_INTERVAL          = 100;
 const uint32_t PRINTF_INTERVAL         = 10;
-const uint32_t PRINTF_SIMDATA_INTERVAL = min( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
+const uint32_t PRINTF_SIMDATA_INTERVAL = fmin( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
 // for dt = 1e-19 => Nprint = 10. for 1e-17 it prints every time step, so that we can see something
 
 //LASER:
@@ -101,5 +101,5 @@ const double CELL_SIZE_X               = CELL_SIZE_X_SI / UNIT_LENGTH;
 const double CELL_SIZE_Y               = CELL_SIZE_Y_SI / UNIT_LENGTH;
 const double CELL_SIZE_Z               = CELL_SIZE_Z_SI / UNIT_LENGTH;
 const double CELL_SIZE[3]              = { CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z };
-const double CELL_SIZE_MIN             = min( CELL_SIZE_X, min( CELL_SIZE_Y, CELL_SIZE_Z ) );
+const double CELL_SIZE_MIN             = fmin( CELL_SIZE_X, fmin( CELL_SIZE_Y, CELL_SIZE_Z ) );
 const uint32_t NUMBER_OF_CELLS[3]      = { NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z };

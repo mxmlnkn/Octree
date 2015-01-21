@@ -27,7 +27,6 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include <cmath>    // sin
 #include <cfloat>   // FLT_EPSILON
 #include <cstdlib>  // malloc, srand, rand, RAND_MAX
-//#include <random>   // normal_distribution
 #include "getopt.h"
 #include <pngwriter.h>
 #include <list>
@@ -336,24 +335,21 @@ int main( int argc, char **argv )
          data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
         typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::CORE );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[X] = 1.0;
+            itm->E[X] = 1.0;
         }
         itm = data.getIterator( 0, SimulationBox::BORDER );
         for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[X] = double(2*rand()-1.0)/double(RAND_MAX);
-            matrix[itm.icell].H[X] = double(2*rand()-1.0)/double(RAND_MAX);
+            itm->E[X] = double(2*rand()-1.0)/double(RAND_MAX);
+            itm->H[X] = double(2*rand()-1.0)/double(RAND_MAX);
+        }
+        itm = data.getIterator( 1, SimulationBox::BORDER );
+        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
+            itm->E[X] = -1.0;
         }
     } else if ( it->data.size() > comBox.CELL_DATA_INDEX ) {
         assert(false);
-        OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-        BaseMatrix<YeeCell,SIMDIM> & matrix = data.t[0]->cells;
-        typename OctCell::IteratorType itm = data.getIterator( 0, SimulationBox::BORDER );
-        for ( itm = itm.begin(); itm != itm.end(); ++itm ) {
-            matrix[itm.icell].E[X] = +1.0 * ( 1+ comBox.rank ) / (comBox.worldsize+1);
-        }
     }}
 
     comBox.PrintPNG( 0, "TestGuardCommunication_a", returnEandH );
@@ -478,7 +474,7 @@ int main( int argc, char **argv )
             /******************************************************************/
         }
     }
-//    comBox.PrintPNG( 0, "output/n_init", returnn, false );
+    comBox.PrintPNG( 0, "output/n_init", returnn, false );
 
     /**************************************************************************/
     /* (6) Actual Timestepping ************************************************/
@@ -490,7 +486,7 @@ int main( int argc, char **argv )
     for ( double internaltimestep = 0; internaltimestep < 1; internaltimestep +=
         1./pow( 2, comBox.maxLevel - comBox.minLevel ) )
     {
-        #if DEBUG_MAIN_YEE >= 90
+        #if DEBUG_MAIN_YEE >= 100
             if (timestep == 0) for (int lvl = comBox.minLevel; lvl<=comBox.maxLevel; lvl++)
                 tout << "internaltimestep: " << internaltimestep << " mod " << 1/pow(2,lvl) << " = " << 1 / pow(2, comBox.maxLevel - lvl ) << " == 0 ? " << (fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - lvl ) ) == 0) << "\n";
         #endif
@@ -498,7 +494,7 @@ int main( int argc, char **argv )
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
             /* Function Generator on Cell in the Center */
-            VecD pos = tree.center + 0.11*tree.size;
+            VecD pos = tree.center - 0.05*tree.size;
             OctreeType::Node * node = tree.FindLeafContainingPos( pos );
             if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == comBox.rank ) {
                 OctCell & simbox = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
@@ -556,6 +552,7 @@ int main( int argc, char **argv )
         #endif
 
         /* Swap timestep buffers for alle SimulationBoxes before Calculating */
+        #if false
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
@@ -563,34 +560,40 @@ int main( int argc, char **argv )
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
             simBox.copyCurrentToPriorTimestep();
         }
+        #endif
 
         /* 0 is timestep to be calculated, 1 is the previous one */
-        comBox.StartGuardUpdate( 1 );
+        comBox.StartGuardUpdate( 0 );
 
         /* Traverse all Octree Nodes and apply Yee-Solver there ( Do this     *
          * with a comBox iterator ???                                         */
-        tout << "internal timestep: " << internaltimestep << "\n";
+        #if DEBUG_MAIN_YEE >= 100
+            tout << "Internal Timestep: " << internaltimestep << "\n";
+        #endif
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 ) {
-                tout << " Apply Yee-Solver to node at " << it->center << " with cellsizes " << ((OctCell*)it->data[comBox.CELL_DATA_INDEX])->cellsize << "...";
-                YeeSolver::CalcH( simBox, 0, 1, SimulationBox::CORE, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
-                tout << "OK\n";
+            double dt = DELTA_T / pow( 2, it->getLevel() - comBox.minLevel );
+            if ( fmod( internaltimestep, dt ) == 0.0 ) {
+                #if DEBUG_MAIN_YEE >= 100
+                    tout << " Apply Yee-Solver to node at " << it->center << " with cellsizes " << ((OctCell*)it->data[comBox.CELL_DATA_INDEX])->cellsize << " with dt = " << dt << "\n";
+                #endif
+                YeeSolver::CalcH( simBox, 0, 0, SimulationBox::CORE, dt );
             }
         }
 
-        comBox.FinishGuardUpdate( 1 );
+        comBox.FinishGuardUpdate( 0 );
 
         for ( typename OctreeType::iterator it=tree.begin(); it!=tree.end(); ++it )
         if ( it->IsLeaf() ) if ( comBox.rank == ((OctreeCommType::CommData*)it->
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
-                YeeSolver::CalcH( simBox, 0, 1, SimulationBox::BORDER, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
+            double dt = DELTA_T / pow( 2, it->getLevel() - comBox.minLevel );
+            if ( fmod( internaltimestep, dt ) == 0.0 )
+                YeeSolver::CalcH( simBox, 0, 0, SimulationBox::BORDER, dt );
         }
 
         /* In the next halfstep, do the same for E-Field, but stay in timestep*/
@@ -601,8 +604,9 @@ int main( int argc, char **argv )
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
-                YeeSolver::CalcE( simBox, 0, 1, SimulationBox::CORE, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
+            double dt = DELTA_T / pow( 2, it->getLevel() - comBox.minLevel );
+            if ( fmod( internaltimestep, dt ) == 0.0 )
+                YeeSolver::CalcE( simBox, 0, 0, SimulationBox::CORE, dt );
         }
 
         comBox.FinishGuardUpdate( 0 );
@@ -612,8 +616,9 @@ int main( int argc, char **argv )
              data[OctreeCommType::COMM_HEADER_INDEX])->rank ) /* owned cells */
         {
             OctCell & simBox = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
-            if ( fmod( internaltimestep, 1 / pow(2, comBox.maxLevel - it->getLevel() ) ) == 0.0 )
-                YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER, DELTA_T / pow( 2, it->getLevel() - comBox.minLevel ) );
+            double dt = DELTA_T / pow( 2, it->getLevel() - comBox.minLevel );
+            if ( fmod( internaltimestep,dt ) == 0.0 )
+                YeeSolver::CalcE( simBox, 0, 0, SimulationBox::BORDER, dt );
         }
         MPI_Barrier(MPI_COMM_WORLD);
     } // internaltimestep
@@ -628,16 +633,14 @@ int main( int argc, char **argv )
             comBox.PrintPNG( 0, filename, returnEy, false );*/
             sprintf( filename, "output/Ez_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnEz, false );
-            sprintf( filename, "output/Ez_%05i", framecounter );
-            comBox.PrintPNG( 1, filename, returnEz, false );
 			/*sprintf( filename, "output/Hx_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnHx, false );
 			sprintf( filename, "output/Hy_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnHy, false );
 			sprintf( filename, "output/Hz_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnHz, false );*/
-			sprintf( filename, "output/All_%05i", framecounter );
-            comBox.PrintPNG( 0, filename, returnEandH, false );
+			/*sprintf( filename, "output/All_%05i", framecounter );
+            comBox.PrintPNG( 0, filename, returnEandH, false );*/
             /*sprintf( filename, "output/n_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnn, false );*/
 		}

@@ -1,6 +1,7 @@
 CXX     = g++
 # mark mpi as isystem to avoid a shitload of errors -.-
-INCLUDE = -isystem $(MPI_ROOT)/include -I . -I ./libs
+INCLUDE = -I . -I ./libs 
+#    -isystem $(MPI_ROOT)/include
 CWFLAGS = -Weffc++ -pedantic  \
     -pedantic-errors -Wextra -Wcast-align \
     -Wcast-qual  -Wchar-subscripts  -Wcomment -Wconversion \

@@ -111,27 +111,16 @@ template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
 ( VecI p_cellsPerOctreeCell, int p_guardsize, int timesteps ) {
     /* number of cells rises exponentially. Noone will use 2^255 Cells! */
-    this->minLevel = 255;
-    this->maxLevel = 0;
-    for ( typename T_OCTREE::iterator it = tree.begin(); it!=tree.end(); ++it )
-        if ( it->IsLeaf() ) {
-            int curLevel = it->getLevel();
-            assert( curLevel <= 255 );
-            if ( minLevel > curLevel )
-                minLevel = curLevel;
-            assert( curLevel >= 0 );
-            if ( maxLevel < curLevel )
-                maxLevel = curLevel;
-        }
-
+    this->minLevel           = tree.getMinLevel();
+    this->maxLevel           = tree.getMaxLevel();
     this->cellsPerOctreeCell = p_cellsPerOctreeCell;
-    this->guardsize = p_guardsize;
-    this->timestepbuffers = timesteps;
+    this->guardsize          = p_guardsize;
+    this->timestepbuffers    = timesteps;
     /* allocate data which stores assigned ranks and other communication      *
      * information to which pointers will given to octree. And default it to  *
      * the last rank                                                          */
-    this->NLeaves = tree.root->countLeaves();
-    this->comDataPtr = new CommData[NLeaves];
+    this->NLeaves            = tree.root->countLeaves();
+    this->comDataPtr         = new CommData[NLeaves];
     /* Insert Pointers to array elements of allocated chunk into octree and   *
      * assign weighting and caclulate total weighting and optimalCosts        */
     int dataInserted = 0;
@@ -554,7 +543,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
         filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
                     << "-" << now->tm_mday << "_" << now->tm_hour << "-"
                     << now->tm_min << "_";
-    filenamepng << name<< "_rank-" << this->rank << "_t" << timestep << "_Ex.png";
+    filenamepng << name<< "_rank-" << this->rank << "_t" << timestep << ".png";
     pngwriter image( sizepx[0],sizepx[1], 1.0, filenamepng.str().c_str() );
 #if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
