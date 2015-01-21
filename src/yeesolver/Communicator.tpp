@@ -182,7 +182,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
             if ( curRank == this->rank ) {
                 NOwnLeaves++;
                 assert(it->data.size() == CELL_DATA_INDEX);
-                VecD cellsize = tree.size / pow( 2, it->getLevel() ) / cellsPerOctreeCell;
+                VecD cellsize = tree.size / pow( 2, it->getLevel() ) / VecD(cellsPerOctreeCell);
                 assert( cellsize == VecD(CELL_SIZE) / pow( 2, it->getLevel() - tree.getMinLevel() ) );
 
                 it->data.push_back(
@@ -472,18 +472,22 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
                 assert( mask.sum() == T_DIM-1 );
                 if ( /* received data */ it->node->size > itT->size /* owned neighbor */ ) {
                     sizeS  = (VecI(1) - mask) * sizeB;
-                    sizeS += mask * sizeB / ( it->node->size  / itT->size );
+                    for (int i = 0; i < itT->size.dim; ++i) {
+                        assert( fmod( it->node->size[i], itT->size[i] ) == 0.0 );
+                        assert( mask[i] * sizeB[i] % int( it->node->size[i] / itT->size[i] ) == 0 );
+                    }
+                    sizeS += mask * sizeB / VecI( it->node->size  / itT->size );
                     sizeT  = sizeG;
                     VecI offset = ( lowerleftTarget - lowerleftSource ) /
-                                  it->node->size * cellsPerOctreeCell;
+                                  it->node->size * VecD(cellsPerOctreeCell);
                     posS  = posB + offset * mask;
                     posT  = posG;
                 } else { /* this case includes same-size-case */
                     sizeS  = sizeB;
                     sizeT  = (VecI(1) - mask) * sizeG;
-                    sizeT += mask * sizeG / ( itT->size / it->node->size );
+                    sizeT += mask * sizeG / VecI( itT->size / it->node->size );
                     VecI offset = ( lowerleftSource - lowerleftTarget ) /
-                                  itT->size * cellsPerOctreeCell;
+                                  itT->size * VecD(cellsPerOctreeCell);
                     posS  = posB;
                     posT  = posG + offset * mask;;
                 }
@@ -542,7 +546,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
 (int timestep, const char * name, T_FUNC colorFunctor, bool timestamp )
 {
     assert( T_DIM == 2 );
-    VecI sizepx = this->cellsPerOctreeCell * pow(2,this->maxLevel);
+    VecI sizepx = this->cellsPerOctreeCell * int(pow(2,this->maxLevel));
     time_t t = time(0);
     struct tm * now = localtime( &t );
     std::stringstream filenamepng;

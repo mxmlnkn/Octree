@@ -1,5 +1,6 @@
 CXX     = g++
-INCLUDE = -I . -I ./libs
+# mark mpi as isystem to avoid a shitload of errors -.-
+INCLUDE = -isystem $(MPI_ROOT)/include -I . -I ./libs
 CWFLAGS = -Weffc++ -pedantic  \
     -pedantic-errors -Wextra -Wcast-align \
     -Wcast-qual  -Wchar-subscripts  -Wcomment -Wconversion \
@@ -7,8 +8,8 @@ CWFLAGS = -Weffc++ -pedantic  \
     -Werror -Wformat \
     -Wformat-nonliteral -Wformat-security  \
     -Wformat-y2k -Wimport  -Winit-self  -Winline \
-    -Winvalid-pch   \
-    -Wunsafe-loop-optimizations  -Wlong-long -Wmissing-braces \
+    -Winvalid-pch -Wno-long-long \
+    -Wunsafe-loop-optimizations -Wmissing-braces \
     -Wmissing-field-initializers -Wmissing-format-attribute   \
     -Wmissing-include-dirs -Wmissing-noreturn \
     -Wpacked -Wparentheses -Wpointer-arith \
@@ -25,7 +26,7 @@ CWFLAGS = -Weffc++ -pedantic  \
 # -Wswitch-default   # too often I don't want a default switch (i know, security)
 # -Wpadded      # don't know what to do with those. Why do they matter anyway
 # -Wfloat-equal # these are wanted comparisons, because I know how float workgs!
-CFLAGS  = $(INCLUDE) -m64 -Wall $(CWFLAGS) -std=c++0x -g -O0 \
+CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall $(CWFLAGS) -g -O0 \
 
 all : libpngwriter testOctree testMatrix MainYee Main
 

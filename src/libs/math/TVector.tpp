@@ -354,19 +354,19 @@ Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::operator/ (const T_DTYPE a) const {
 /* overload global operator* to allow 3*Vec additionally to Vec*3 */
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside + scalar;
+    return righthandside + (T_DTYPE) scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator-( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside - scalar;
+    return righthandside - (T_DTYPE) scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator*( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside * scalar;
+    return righthandside * (T_DTYPE) scalar;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside / scalar;
+    return righthandside / (T_DTYPE) scalar;
 }
 
 /* Enables cout << Vec<int,2>(1); This also works with fstream and therefore with tout */

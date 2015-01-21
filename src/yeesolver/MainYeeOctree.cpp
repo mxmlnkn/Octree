@@ -27,10 +27,11 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include <cmath>    // sin
 #include <cfloat>   // FLT_EPSILON
 #include <cstdlib>  // malloc, srand, rand, RAND_MAX
-#include <random>   // normal_distribution
+//#include <random>   // normal_distribution
 #include "getopt.h"
 #include <pngwriter.h>
 #include <list>
+#include "mpi.h"
 #include "math/TVector.h"
 #include "math/TVector.tpp"
 #include "math/TBaseMatrix.h"

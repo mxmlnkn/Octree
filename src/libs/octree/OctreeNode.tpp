@@ -261,7 +261,7 @@ Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI targetDir, const VecI periodi
     Node * root = this;
     while ( root->parent != NULL )
         root = root->parent;
-    VecD theoreticalPosition = this->center + this->size * targetDir;
+    VecD theoreticalPosition = this->center + this->size * VecD(targetDir);
     /* if we couldn't find a neighbor, because we are e.g. at the border of   *
      * the octree global area (and we are not periodic (yet) ), then return   *
      * NULL                                                                   */

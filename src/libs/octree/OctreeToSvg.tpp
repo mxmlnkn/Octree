@@ -80,7 +80,7 @@ void OctreeToSvg<T_DIM>::PrintGrid(void) {
             upperleft -= 0.5*currentnode->size;
             upperleft *= imagesize;   // scale image up
             upperleft += imageborder;
-            VecD rect_size = currentnode->size * imagesize;
+            VecD rect_size = currentnode->size * VecD(imagesize);
             out << "<rect"                                   "\n"
                 << " id    =\"" << toBeStored.id        << "\"\n"
                 << " x     =\"" << upperleft[0] << "px" << "\"\n"
