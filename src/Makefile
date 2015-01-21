@@ -63,7 +63,7 @@ MainYeeOctree : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwri
 MainYeeOctreeNoDebug : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwriter
 	mkdir -p output
 	rm -f $@.exe
-	mpic++ $< -o $@.exe $(INCLUDE) -m64 -DNPNGOUTPUT -DNDEBUG -Wall -std=c++0x -O3 -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
+	mpic++ $< -o $@.exe $(INCLUDE) -m64 -DNDEBUG -Wall -std=c++0x -O3 -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
 testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h examples/testSimBox/Cell.h TVector TBaseMatrix
 	rm -f $@.exe

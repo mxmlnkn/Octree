@@ -10,16 +10,19 @@
 
 
 const int GUARDSIZE                    = 1;
+      int INITIAL_OCTREE_REFINEMENT    = 3; // yiels pow(INIT_..., [4,8]) octree cells minimum
+      int MAX_OCTREE_REFINEMENT        = 6; // yiels pow(INIT_..., [4,8]) octree cells minimum
+      int SIMULATION_SETUP             = 4;
+      int OCTREE_SETUP                 = 6;
 
 //componentsConfig.param
 const uint16_t SIMDIM                  = 2;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
 const double   CONSIDERATION_RATIO     = 100.;       // Force between particles will be calculated if distance between those two is smaller than CONSIDERATION_RATIO * CELL_SIZE. If 0 then force is not calculated periodically
-const uint32_t NUMBER_OF_STEPS         = 1e6;
+      int      NUMBER_OF_STEPS         = 1e6;
 const bool     FULL_N_SQUARED_FORCE    = false;    // if false, then force is calculated only with the particles in the same cell
 const uint32_t RANDOM_SEED             = 43907340; // if 0, then time() is used
 const bool     STOPPING                = false;    // if some momentum ist lost every time step. Can be used to determine state of lowest energy
-const int      NUMBER_OF_TIMESTEPS     = 20;
 
 //GasConfig.param
 const double GAS_DENSITY_SI            = 1.e30;    // 1/m^3
@@ -32,22 +35,20 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-const int INITIAL_OCTREE_REFINEMENT    = 3; // yiels pow(INIT_..., [4,8]) octree cells minimum
-const int MAX_OCTREE_REFINEMENT        = 6; // yiels pow(INIT_..., [4,8]) octree cells minimum
-const int NUMBER_OF_CELLS_X            = 512; // these is for the INITIAL_OCTREE_REFINEMENT ...
-const int NUMBER_OF_CELLS_Y            = 256;  // ... real number of cells will be higher
-const int NUMBER_OF_CELLS_Z            = 3;    // ... at critical places
-const int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
+      int NUMBER_OF_CELLS_X            = 512; // these is for the INITIAL_OCTREE_REFINEMENT ...
+      int NUMBER_OF_CELLS_Y            = 256;  // ... real number of cells will be higher
+      int NUMBER_OF_CELLS_Z            = 3;    // ... at critical places
+      int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
 const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
 const double CELL_SIZE_Y_SI            = CELL_SIZE_SI;
 const double CELL_SIZE_Z_SI            = 1./0.;
 const double DELTA_T_SI                = 0.6*CELL_SIZE_SI / SPEED_OF_LIGHT_SI;
-const uint16_t BOUNDARY_CONDITION      = 1;              //0:periodic, 1:reflecting, 2:adhering
+      int BOUNDARY_CONDITION           = 1;              //0:periodic, 1:reflecting, 2:adhering
 const int isPeriodic[3]                = {0,0,0};
 
 //particleConfig.param
-const int    SPECIES                   = 3;                    // 1:only electrons, 2:only ions, 3:both in equal parts (NUMBER_OF_PARTICLES_PER_CELL must be even!)
+      int    SPECIES                   = 3;                    // 1:only electrons, 2:only ions, 3:both in equal parts (NUMBER_OF_PARTICLES_PER_CELL must be even!)
 const double ELECTRON_TEMPERATURE_keV  = 0.200;                // keV !
 const double ION_TEMPERATURE_keV       = 0.100;                // keV
 const double ELECTRON_MASS_SI          = 9.109382e-31;         // kg
@@ -59,9 +60,10 @@ const double PARTICLE_RADIUS_SI        = 0.01*CELL_SIZE_SI; //0.84087e-15;      
 const uint16_t DEFAULT_PARTICLE_SHAPE  = 1;  //00:point-point, 01:ball-ball (CIC radialsymmetric equivalent), 99:sphere-sphere (all except 00 will use ION_RADIUS)
 
 //output
-const uint32_t PRINT_INTERVAL          = 100;
-const uint32_t PRINTF_INTERVAL         = 10;
-const uint32_t PRINTF_SIMDATA_INTERVAL = std::min( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
+int PNG_INTERVAL            = 100;
+int PRINT_INTERVAL          = 100;
+int PRINTF_INTERVAL         = 10;
+int PRINTF_SIMDATA_INTERVAL = std::min( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
 // for dt = 1e-19 => Nprint = 10. for 1e-17 it prints every time step, so that we can see something
 
 //LASER:
@@ -102,9 +104,9 @@ const double ION_TEMPERATURE           = ION_TEMPERATURE_SI / UNIT_ENERGY;
 const double ION_CHARGE                = ION_CHARGE_SI / UNIT_CHARGE;
 const double ION_MASS                  = ION_MASS_SI / UNIT_MASS;
 const double PARTICLE_RADIUS           = PARTICLE_RADIUS_SI / UNIT_LENGTH;
-const uint32_t NUMBER_OF_PARTICLES     = NUMBER_OF_PARTICLES_PER_CELL * NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y * NUMBER_OF_CELLS_Z;
-const uint32_t NUMBER_OF_EONS_PER_CELL = (SPECIES == 1) ? NUMBER_OF_PARTICLES_PER_CELL : ( (SPECIES == 2) ? 0 : NUMBER_OF_PARTICLES / 2 );
-const uint32_t NUMBER_OF_IONS_PER_CELL = (SPECIES == 2) ? NUMBER_OF_PARTICLES_PER_CELL : ( (SPECIES == 1) ? 0 : NUMBER_OF_PARTICLES / 2 );
+      int NUMBER_OF_PARTICLES          = NUMBER_OF_PARTICLES_PER_CELL * NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y * NUMBER_OF_CELLS_Z;
+      int NUMBER_OF_EONS_PER_CELL      = (SPECIES == 1) ? NUMBER_OF_PARTICLES_PER_CELL : ( (SPECIES == 2) ? 0 : NUMBER_OF_PARTICLES / 2 );
+      int NUMBER_OF_IONS_PER_CELL      = (SPECIES == 2) ? NUMBER_OF_PARTICLES_PER_CELL : ( (SPECIES == 1) ? 0 : NUMBER_OF_PARTICLES / 2 );
 
 //GridConfig.unitless
 const double DELTA_T                   = DELTA_T_SI / UNIT_TIME;
@@ -113,4 +115,7 @@ const double CELL_SIZE_Y               = CELL_SIZE_Y_SI / UNIT_LENGTH;
 const double CELL_SIZE_Z               = CELL_SIZE_Z_SI / UNIT_LENGTH;
 const double CELL_SIZE[3]              = { CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z };
 const double CELL_SIZE_MIN             = std::min( CELL_SIZE_X, std::min( CELL_SIZE_Y, CELL_SIZE_Z ) );
-const uint32_t NUMBER_OF_CELLS[3]      = { NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z };
+      int NUMBER_OF_CELLS[3]           = { NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z };
+
+//LASER:
+const double LAMBDA                    = LAMBDA_SI / UNIT_LENGTH;

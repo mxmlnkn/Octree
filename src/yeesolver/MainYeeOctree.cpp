@@ -28,6 +28,7 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include <cfloat>   // FLT_EPSILON
 #include <cstdlib>  // malloc, srand, rand, RAND_MAX
 #include <random>   // normal_distribution
+#include "getopt.h"
 #include <pngwriter.h>
 #include <list>
 #include "math/TVector.h"
@@ -52,15 +53,73 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
 
 
-int main( void /*int argc, char **argv*/ )
+int main( int argc, char **argv )
 {
+    /* NUMBER_OF_PARTICLES_PER_CELL, BOUNDARY_CONDITION, SPECIES, PNG_INTERVAL  -> Watch out for dependent Variables in Parameters.cpp!!! :  NUMBER_OF_EONS_PER_CELL, NUMBER_OF_IONS_PER_CELL       */
+
+    while ( true ) {
+        static struct option long_options[] = {
+            {"timesteps"       , required_argument, 0, 't'},
+            {"init-refinement" , required_argument, 0, 'i'},
+            {"max-refinement"  , required_argument, 0, 'm'},
+            {"number-of-cells" , required_argument, 0, 'n'},
+            {"octree-setup"    , required_argument, 0, 'o'},
+            {"simulation-setup", required_argument, 0, 's'},
+            {"png-interval"    , required_argument, 0, 'p'},
+            {0, 0, 0, 0}
+        };
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+        int c = getopt_long(argc, argv, "t:i:m:n:o:s:p:", long_options, &option_index);
+
+        if (c == -1)
+            break;
+
+        switch (c) {
+            case 't':
+                NUMBER_OF_STEPS = atoi(optarg);
+                break;
+            case 'i':
+                INITIAL_OCTREE_REFINEMENT = atoi(optarg);
+                break;
+            case 'm':
+                MAX_OCTREE_REFINEMENT = atoi(optarg);
+                break;
+            case 'n':
+                assert( argv[optind-1][0] != '-' );
+                assert( argv[optind-2][0] != '-' );
+                assert( argv[optind-3][0] != '-' );
+                NUMBER_OF_CELLS[0]  = atoi(argv[optind-1]);
+                NUMBER_OF_CELLS[1]  = atoi(argv[optind-2]);
+                NUMBER_OF_CELLS[2]  = atoi(argv[optind-3]);
+                NUMBER_OF_CELLS_X   = NUMBER_OF_CELLS[0];
+                NUMBER_OF_CELLS_Y   = NUMBER_OF_CELLS[1];
+                NUMBER_OF_CELLS_Z   = NUMBER_OF_CELLS[2];
+                NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES_PER_CELL *
+                    NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y * NUMBER_OF_CELLS_Z;
+                optind += 2; // two extra arguments taken
+                break;
+            case 'o':
+                SIMULATION_SETUP = atoi(optarg);
+                break;
+            case 's':
+                OCTREE_SETUP = atoi(optarg);
+                break;
+            case 'p':
+                PNG_INTERVAL = atoi(optarg);
+                break;
+            default:
+                abort();
+        }
+    }
+
     const int X = 0;
     const int Y = 1;
     const int Z = 2;
 
     typedef Vec<double,SIMDIM> VecD;
     typedef Vec<int   ,SIMDIM> VecI;
-    
+
     double tProgramStart = MPI_Wtime();
 
     /* Call (indirectly) Basic Communicator-, Octree- and File-Constructors */
@@ -110,80 +169,87 @@ int main( void /*int argc, char **argv*/ )
 	tout << "For stability in glass  Delta_T=" << DELTA_T << " =< " << xovercm << "=DELTA_X/sqrt(2)/c_M\n";
     if ( xovercm < DELTA_T )
         tout << " NOT FULFILLED!!!\n";
+    tout << "NUMBER_OF_STEPS          : " << NUMBER_OF_STEPS            << "\n";
+    tout << "INITIAL_OCTREE_REFINEMENT: " << INITIAL_OCTREE_REFINEMENT << "\n";
+    tout << "MAX_OCTREE_REFINEMENT    : " << MAX_OCTREE_REFINEMENT      << "\n";
+    tout << "SIMULATION_SETUP         : " << SIMULATION_SETUP           << "\n";
     tout << "\n";
+
 
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
-#define INITSETUP 6
-#if INITSETUP == 5 or INITSETUP == 6
+
     /********* refine all cells to initial homogenous min-Refinement **********/
-    for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
-        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
-            if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
+    if ( OCTREE_SETUP == 5 or OCTREE_SETUP == 6 ) {
+        for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
+            for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
+                if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
+        }
     }
-#endif
-#if INITSETUP == 6
     /*********************** Refine certain boundaries ************************/
-    assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     VecD M(0.5*tree.size);          // center of circle
     double R = 0.4*tree.size.min(); // radius of circle
-    for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
-        /* Get all circle angles, where it intersects with a cell border */
-        std::list<double> lphi;
-        std::list<double>::iterator it;
-        VecD cellsize = globSize / pow(2,lvl);
-        double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
-        double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
-        for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
-            /* acos in [0,2*pi] */
-            double phi = acos( (linex-M[0])/R );
-            lphi.push_back( phi );
-            /* also add value mirrored at y-axis to stack */
-            lphi.push_back( 2*M_PI-phi );
-        }
-        double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
-        double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
-        for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
-            /* asin in [-pi,pi] */
-            double phi = asin( (liney-M[1])/R );
-            lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
-            /* also add value mirrored at x-axis to stack */
-            lphi.push_back( M_PI-phi );
-        }
-        lphi.sort();
+    if ( OCTREE_SETUP == 6 ) {
+        assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
+        for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
+            /* Get all circle angles, where it intersects with a cell border */
+            std::list<double> lphi;
+            std::list<double>::iterator it;
+            VecD cellsize = globSize / pow(2,lvl);
+            double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
+            double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
+            for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
+                /* acos in [0,2*pi] */
+                double phi = acos( (linex-M[0])/R );
+                lphi.push_back( phi );
+                /* also add value mirrored at y-axis to stack */
+                lphi.push_back( 2*M_PI-phi );
+            }
+            double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
+            double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
+            for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
+                /* asin in [-pi,pi] */
+                double phi = asin( (liney-M[1])/R );
+                lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
+                /* also add value mirrored at x-axis to stack */
+                lphi.push_back( M_PI-phi );
+            }
+            lphi.sort();
 
-        /* Echo all found angles */
-        #if DEBUG_MAIN_YEE >= 100
-            tout << "Angle list contains:";
-            for (it=lphi.begin(); it!=lphi.end(); ++it)
-                tout << ' ' << *it;
-            tout << '\n';
-        #endif
+            /* Echo all found angles */
+            #if DEBUG_MAIN_YEE >= 100
+                tout << "Angle list contains:";
+                for (it=lphi.begin(); it!=lphi.end(); ++it)
+                    tout << ' ' << *it;
+                tout << '\n';
+            #endif
 
-        /* Grow up all cells, with which the circle intersects. Find them by  *
-         * using an angle between to successive circle intersection angles    */
-        for (it=lphi.begin(); it!=lphi.end(); ++it) {
-            VecD pos(0);
-            std::list<double>::iterator itnext = it;
-            double phi;
-            if ( ++itnext == lphi.end() ) {
-                itnext = lphi.begin();
-                phi = 0.5 * (2*M_PI + *itnext + *it);
-            } else
-                phi = 0.5 * (*itnext + *it);
-            pos[0] = M[0] + R*cos(phi);
-            pos[1] = M[1] + R*sin(phi);
-            OctreeType::Node * node = tree.FindLeafContainingPos(pos);
-            if ( node->getLevel() == lvl )
-                node->GrowUp();
+            /* Grow up all cells, with which the circle intersects. Find them by  *
+             * using an angle between to successive circle intersection angles    */
+            for (it=lphi.begin(); it!=lphi.end(); ++it) {
+                VecD pos(0);
+                std::list<double>::iterator itnext = it;
+                double phi;
+                if ( ++itnext == lphi.end() ) {
+                    itnext = lphi.begin();
+                    phi = 0.5 * (2*M_PI + *itnext + *it);
+                } else
+                    phi = 0.5 * (*itnext + *it);
+                pos[0] = M[0] + R*cos(phi);
+                pos[1] = M[1] + R*sin(phi);
+                OctreeType::Node * node = tree.FindLeafContainingPos(pos);
+                if ( node->getLevel() == lvl )
+                    node->GrowUp();
+            }
         }
     }
-#endif
-#if INITSETUP == 7
-    tree.root->GrowUp();
-    tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
-#endif
+    /******* Just grow up one point in upper left area (minimal setup) ********/
+    if ( OCTREE_SETUP == 7 ) {
+        tree.root->GrowUp();
+        tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
+    }
+    /**************************************************************************/
 
     tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n\n";
     svgoutput.PrintGrid();
@@ -334,7 +400,6 @@ int main( void /*int argc, char **argv*/ )
     {
         OctCell & data = *((OctCell*)it->data[comBox.CELL_DATA_INDEX]);
 
-        
         for ( typename OctCell::IteratorType itm = data.getIterator( 0,
               SimulationBox::GUARD ).begin(); itm != itm.end(); ++itm )
         {
@@ -370,43 +435,45 @@ int main( void /*int argc, char **argv*/ )
                     terr << "Lowerleft of node at " << it->center << " sized " << it->center << " is out of bounds!!\n";
                 assert( toAssert );
             }
-            VecD curPos = it->center + (VecD(itm.icell) - itm.guardsize + 0.5) /
+            VecD curPos = it->center - it->size/2 + (VecD(itm.icell) - itm.guardsize + 0.5) /
                           VecD(cellsPerOctreeCell) * it->size;
             curPos = tree.toGlobalCoords( curPos );
             assert( itm.ncells - 2*itm.guardsize == cellsPerOctreeCell );
 
-            #define YEE_INIT_SETUP 4
-            #if YEE_INIT_SETUP == 1
-                /* Result 009: absorbing Material on right side */
+            /********** Result 009: absorbing Material on right side **********/
+            if ( SIMULATION_SETUP == 1 ) {
                 if ( curPos[0] > 0.2 ) {
                     /* For INF instead of 2e8 it diverges! -> characteristic *
                      * wave length for exponential decay -> 0 for INF ?       */
                     itm->sigmaE  = 2e8;
                     itm->sigmaM  = 2e8 * MUE0/EPS0;
                 }
-            #endif
-            #if YEE_INIT_SETUP == 2
-                /* Result: 014 - broken total reflexion (two glass plates     *
-                 *               with small vacuum/air slit inbetween         */
+            }
+            /*************** Result 014: broken total reflexion ***************/
+            /* two glass plates with small vacuum/air slit inbetween          */
+            /******************************************************************/
+            if ( SIMULATION_SETUP == 2 ) {
                 const double n  = 1.33; // = sqrt( eps_r * mue_r )
                 if ( curPos[X] < 0.333*tree.size[X]
                 or   curPos[X] > 0.350*tree.size[X]  )
                     itm->epsilon = EPS0 * n*n;
-            #endif
-            #if YEE_INIT_SETUP == 3
-                /* Spawn Barrier with one slit and perfectly reflecting material else */
+            }
+            /********** Perfectly reflecting barrier with one slit ************/
+            if ( SIMULATION_SETUP == 3 ) {
                 const double wy = LAMBDA;
                 if ( curPos[X] > LAMBDA and curPos[X] < 2*LAMBDA )
                 if ( curPos[Y] > 0.5 - wy/2 and curPos[Y] < 0.5 + wy/2 ) {
                         itm->epsilon  = INF;//2*EPS0;
                         //itm->mu       = INF;
                 }
-            #endif
-            #if YEE_INIT_SETUP == 4 and INIT_SETUP == 3
+            }
+            /************************* Circular Lense *************************/
+            if ( SIMULATION_SETUP == 4 ) {
                 const double n  = 1.33; // = sqrt( eps_r * mue_r )
                 if ( (curPos - M).norm() < R )
                     itm->epsilon = EPS0 * n*n;
-            #endif
+            }
+            /******************************************************************/
         }
     }
     comBox.PrintPNG( 0, "output/n_init", returnn, false );
@@ -416,7 +483,7 @@ int main( void /*int argc, char **argv*/ )
     /**************************************************************************/
     double tStart = MPI_Wtime();
     double tLast  = tStart;
-	for ( int timestep=0; timestep < NUMBER_OF_TIMESTEPS; ++timestep )
+	for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep )
 	{
 		#define TIME_SPAWN_SETUP 1
         #if TIME_SPAWN_SETUP == 1
@@ -527,8 +594,7 @@ int main( void /*int argc, char **argv*/ )
             YeeSolver::CalcE( simBox, 0, 1, SimulationBox::BORDER );
         }
 
-        #ifndef NPNGOUTPUT
-		if (timestep % 1 == 0) {
+		if (timestep % PNG_INTERVAL == 0) {
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
@@ -549,7 +615,6 @@ int main( void /*int argc, char **argv*/ )
             sprintf( filename, "output/n_%05i", framecounter );
             comBox.PrintPNG( 0, filename, returnn, false );
 		}
-        #endif
 
         MPI_Barrier(MPI_COMM_WORLD);
         #if DEBUG_MAIN_YEE >= 90
@@ -558,7 +623,7 @@ int main( void /*int argc, char **argv*/ )
         tLast = MPI_Wtime();
 	}
 
-    tout << "All " << NUMBER_OF_TIMESTEPS << " together took " << tLast - tStart << " seconds\n";
+    tout << "All " << NUMBER_OF_STEPS << " together took " << tLast - tStart << " seconds\n";
     tout << "The whole program took " << tLast - tProgramStart << " seconds\n";
 
     /* doesn't work in destructor, because it would be called too late */
