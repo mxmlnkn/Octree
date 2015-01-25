@@ -41,6 +41,7 @@ public:
     bool operator<=(const Vec & v) const;
     bool operator>=(const Vec & v) const;
     Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
+    Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
     Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
 
     double norm2( void ) const;

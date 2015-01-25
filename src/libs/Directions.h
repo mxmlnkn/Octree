@@ -73,22 +73,23 @@ const int FRONT  = 9;
  *   - as all the values would be positive we also should shift it by the *
  *     position of the center, to get directions relative to it           */
 template<int T_DIM>
-Vec<int,T_DIM> getDirectionVector( int direction ) {
+Vec<int,T_DIM> getDirectionVector( const int direction ) {
     Vec<int,T_DIM> vec(0);
     assert( direction >= 1 and direction <= pow(3,T_DIM)+0.0001 );
     /* This may not be needed for 2D, but it also doesn't make the        *
      * results wrong                                                      */
-    switch( direction % 3 ) {
+    int t_direction = direction;
+    switch( t_direction % 3 ) {
         case 1: vec[X_AXIS] = +1; break;
         case 2: vec[X_AXIS] = -1; break;
     }
-    direction /= 3;
-    switch( direction % 3 ) {
+    t_direction /= 3;
+    switch( t_direction % 3 ) {
         case 1: vec[Y_AXIS] = +1; break;
         case 2: vec[Y_AXIS] = -1; break;
     }
-    direction /= 3;
-    switch( direction % 3 ) {
+    t_direction /= 3;
+    switch( t_direction % 3 ) {
         case 1: vec[Z_AXIS] = +1; break;
         case 2: vec[Z_AXIS] = -1; break;
     }
@@ -112,7 +113,7 @@ int getLinearDirection( const Vec<int,T_DIM> & v ) {
 }
 
 template<int T_DIM>
-int getOppositeDirection( int & direction ) {
+int getOppositeDirection( const int direction ) {
     return getLinearDirection( getDirectionVector<T_DIM>( direction )*(-1) );
 }
 
@@ -120,7 +121,7 @@ int getOppositeDirection( int & direction ) {
  *   RIGHT,LEFT -> 0, TOP,BOTTOM -> 1, FRONT,BACK -> 2, ...               *
  * returns -1 if e.g. RIGHT+LEFT                                          */
 template<int T_DIM>
-int getAxis( const int & direction) {
+int getAxis( const int direction) {
     Vec<int,T_DIM> v( getDirectionVector<T_DIM>( direction ) );
     int axis = -1;
     for (int i=0; i<v.dim; i++)

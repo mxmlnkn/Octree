@@ -68,6 +68,7 @@ bool SimulationBox<T_DIM,T_CELLDATA>::inArea( const VecI & pos, const int & area
 template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::IteratorType SimulationBox<T_DIM,T_CELLDATA>::getIterator
 ( const int timestep, const int area ) const {
+    assert( timestep < this->ntimesteps );
     return IteratorType( area, localcells + VecI(2*guardsize), guardsize, t[timestep]->cells );
 }
 
@@ -97,22 +98,37 @@ typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::
     bool toAssert = pabspos <= this->abspos + VecD(this->localcells) * this->cellsize;
     #ifndef NDEBUG
         if ( not toAssert )
-            terr << "Wanted cell at " << pabspos << " not lying in simbox at " << abspos << " sized " << localcells << " cells * " << cellsize << "\n";
+            terr << "Wanted cell with center at " << pabspos << " not lying in simbox at " << abspos << " sized " << localcells << " cells * " << cellsize << "\n";
         assert( toAssert );
     #endif
     /* again cells are supposed to be on the center */
-    VecI index(this->guardsize);
-    VecD rindex = ( pabspos - this->abspos ) / this->cellsize;
-    for ( int i=0; i<T_DIM; ++i )
+    VecI index( this->guardsize );
+    VecD rindex = ( pabspos - this->abspos ) / this->cellsize - 0.5;
+    for ( int i=0; i<T_DIM; ++i ) {
         index[i] += (int) floor( rindex[i] );
+        /* Border Case belongs to smaller index, because cell in [0,1) */
+        if ( floor( rindex[i] ) == rindex[i] )
+            index[i] -= 1;
+    }
     assert( index < this->localcells + this->guardsize );
     return index;
 }
 
 /****************************** getGlobalPosition *****************************/
 template<int T_DIM, typename T_CELLDATA>
-typename SimulationBox<T_DIM,T_CELLDATA>::VecD SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition ( const IteratorType it ) const {
-    return this->abspos + VecD(it.icell) * this->cellsize;
+typename SimulationBox<T_DIM,T_CELLDATA>::VecD 
+SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition
+( const VecI index ) const
+{
+    return this->abspos + ( VecD(index) + 0.5 ) * this->cellsize;
+}
+
+template<int T_DIM, typename T_CELLDATA>
+typename SimulationBox<T_DIM,T_CELLDATA>::VecD
+SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition
+( const IteratorType it ) const
+{
+    return this->abspos + ( VecD(it.icell) + 0.5 ) * this->cellsize;
 }
 
 /************************* copyCurrentToPriorTimestep ************************/

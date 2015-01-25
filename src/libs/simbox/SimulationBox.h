@@ -100,6 +100,7 @@ public:
     /* returns global position of cell by using global offset of the matrix,
      * */
     VecD getGlobalPosition( const IteratorType it ) const;
+    VecD getGlobalPosition( const VecI index ) const;
     VecI findCellContaining( VecD abspos ) const;
     void copyCurrentToPriorTimestep( void );
 };

@@ -66,9 +66,6 @@ struct {
 
 struct {
     Vec<double,3> operator() ( YeeCell cell ) {
-        double gray = 0;
-        if (cell.epsilon > EPS0)
-            gray = cell.epsilon / EPS0 / 10.0;
-        return Vec<double,3>(gray);
+        return Vec<double,3>(cell.epsilon / EPS0 / 10.0 + cell.sigmaE / ABSORBER_STRENGTH);
     }
 } returnn;

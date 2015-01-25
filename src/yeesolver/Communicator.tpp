@@ -532,18 +532,22 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 template<typename T_FUNC>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
-(int timestep, const char * name, T_FUNC colorFunctor, bool timestamp )
+(int timestep, const char * name, T_FUNC colorFunctor )
 {
     assert( T_DIM == 2 );
     VecI sizepx = this->cellsPerOctreeCell * int(pow(2,this->maxLevel));
     time_t t = time(0);
     struct tm * now = localtime( &t );
-    std::stringstream filenamepng;
-    if (timestamp)
-        filenamepng << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
+    static std::stringstream s_timestamp;
+    if ( s_timestamp.rdbuf()->in_avail() == 0 ) {
+        s_timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
                     << "-" << now->tm_mday << "_" << now->tm_hour << "-"
-                    << now->tm_min << "_";
-    filenamepng << name<< "_rank-" << this->rank << "_t" << timestep << ".png";
+                    << now->tm_min << "_output";
+        tout << "Creating directory " << boost::filesystem::absolute(s_timestamp.str()) << " with boost\n";
+        boost::filesystem::create_directory( boost::filesystem::absolute(s_timestamp.str()) );
+    }
+    std::stringstream filenamepng;
+    filenamepng << s_timestamp.str() << "/" << name << "_rank-" << this->rank << "_t" << timestep << ".png";
     pngwriter image( sizepx[0],sizepx[1], 1.0, filenamepng.str().c_str() );
 #if DEBUG_COMMUNICATOR >= 10
     tout << "Create " << sizepx << "px sized png named " << filenamepng.str() << "\n";
@@ -564,7 +568,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
          *  then scale up pixels in that level to maxLevel : * resizeFactor   */
         VecI abspos = ( it->center + tree.root->size/2 - it->size/2 ) / it->size;
         for ( int i=0; i<T_DIM; ++i )
-            assert( fmod( (it->center + tree.size/2 - it->size/2)[i], it->size[i] ) == 0 );
+            assert( fmod( (it->center + tree.root->size/2 - it->size/2)[i], it->size[i] ) == 0 );
         abspos *= this->cellsPerOctreeCell * resizeFactor;
 
         /* abspos member of SimulationBox is initialized bei Communicator.tpp *

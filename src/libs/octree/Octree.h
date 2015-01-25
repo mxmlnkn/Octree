@@ -99,6 +99,7 @@ public:
     typename Node::iterator begin(int ordering = Ordering::Morton) const;
     /* returns iterator with empty stack */
     typename Node::iterator end(void) const;
+    int countLeaves(void) const;
 
     friend std::ostream& operator<< <T_DIM>( std::ostream& out, Octree<T_DIM>& tree );
     /* internal coords have a range of [-0.5,0.5] in every dimension */

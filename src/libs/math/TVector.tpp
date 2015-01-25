@@ -44,18 +44,21 @@ Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE v[T_DIM] ) {
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1 ) {
-    assert( T_DIM == 2 );
+    assert( T_DIM <= 2 );
     this->data[0] = (T_DTYPE) a0;
-    this->data[1] = (T_DTYPE) a1;
+    if ( T_DIM >= 2 )
+        this->data[1] = (T_DTYPE) a1;
 }
 
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2 ) {
-    assert( T_DIM == 3 );
+    assert( T_DIM <= 3 );
     this->data[0] = (T_DTYPE) a0;
-    this->data[1] = (T_DTYPE) a1;
-    this->data[2] = (T_DTYPE) a2;
+    if ( T_DIM >= 2 )
+        this->data[1] = (T_DTYPE) a1;
+    if ( T_DIM >= 3 )
+        this->data[2] = (T_DTYPE) a2;
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -176,6 +179,14 @@ Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::GreaterThan( const Vec & v ) const {
     Vec<bool,T_DIM> res;
     for (int i=0; i<T_DIM; i++)
         res[i] = this->data[i] > v[i];
+    return res;
+}
+
+template<typename T_DTYPE, int T_DIM>
+Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::GreaterOrEqualThan( const Vec & v ) const {
+    Vec<bool,T_DIM> res;
+    for (int i=0; i<T_DIM; i++)
+        res[i] = this->data[i] >= v[i];
     return res;
 }
 
@@ -358,7 +369,7 @@ Vec<T_DTYPE,T_DIM> operator+( const T scalar, const Vec<T_DTYPE,T_DIM> & rightha
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator-( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside - (T_DTYPE) scalar;
+    return Vec<T_DTYPE,T_DIM>(scalar) - righthandside;
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator*( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
@@ -366,7 +377,7 @@ Vec<T_DTYPE,T_DIM> operator*( const T scalar, const Vec<T_DTYPE,T_DIM> & rightha
 }
 template<typename T, typename T_DTYPE, int T_DIM>
 Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside ) {
-    return righthandside / (T_DTYPE) scalar;
+    return Vec<T_DTYPE,T_DIM>(scalar) / righthandside;
 }
 
 /* Enables cout << Vec<int,2>(1); This also works with fstream and therefore with tout */

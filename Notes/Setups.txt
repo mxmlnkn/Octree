@@ -1,0 +1,9 @@
+Parabolspiegel: ./MainYeeOctreeNoDebug.exe -t3001 -p10 -i5 -m5 -w2 -s5
+make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -t3001 -p10 -i5 -m5 -w5
+    Gaussian pulse moving to circular glass
+make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -t3001 -p10 -i5 -m5 -w3
+    kindy tried to set up plane wave source moving to circular lense
+make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -t91 -n 128 32 0 -p10 -i0 -m0 -s0 -w 3 0 0 2 100
+    sine wave moving to right from left border (and from right border to left because it's periodic)
+make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -n 1024 512  0 -w7 -s0 -i0 -m0 -t 3001 -p10
+    ellipsoid lense

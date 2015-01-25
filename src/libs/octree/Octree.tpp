@@ -202,6 +202,15 @@ typename Octree<T_DIM>::VecD Octree<T_DIM>::toInternalCoords
 }
 
 template<int T_DIM>
+int Octree<T_DIM>::countLeaves(void) const {
+    int leavesFound = 0;
+    for ( typename Node::iterator it = this->begin(); it != this->end(); ++it )
+        if ( it->IsLeaf() )
+            ++leavesFound;
+    return leavesFound;
+}
+
+template<int T_DIM>
 typename Octree<T_DIM>::VecD Octree<T_DIM>::toGlobalCoords
 ( const VecD pos ) const {
     return center + pos*size;

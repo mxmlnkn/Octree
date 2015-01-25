@@ -123,15 +123,16 @@ Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
     while( ! tmp->IsLeaf() ) {
 /* E.g. center is (0,0) then pos =(0.3,-0.1) will with Greater() result in    *
  * (1,0) which in turn will be converted to (1,-1).                           */
-        VecD direction = 2*VecI( pos.GreaterThan( tmp->center )) - 1;
+        VecD direction = 2*VecI( pos.GreaterOrEqualThan( tmp->center )) - 1;
         tmp = tmp->children[ ConvertDirectionToNumber( direction ) ];
 #if DEBUG_OCTREE_NODE >= 10
         std::cerr << "Comparison with center " << tmp->center << " resulted in "
-                  << pos.GreaterThan( tmp->center ) << " -> "
-                  << 2*VecI( pos.GreaterThan( tmp->center )) - 1 << std::endl;
+                  << pos.GreaterOrEqualThan( tmp->center ) << " -> "
+                  << 2*VecI( pos.GreaterOrEqualThan( tmp->center )) - 1 << std::endl;
 #endif
     }
     assert( tmp->IsLeaf() );
+    assert( tmp->IsInside(pos) );
     return tmp;
 }
 

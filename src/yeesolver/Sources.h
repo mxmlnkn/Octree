@@ -29,4 +29,16 @@ namespace TIME_SPAWN_FUNCTIONS {
 	double gauss( double x, double mu=0, double sigmaE=1 ) {
 		return 1./(sigmaE*sqrt(2.*M_PI))*exp(-pow(x-mu,2)/(2.*sigmaE*sigmaE));
 	}
+	double GaussNotNormed( double x, double mu=0, double sigmaE=1 ) {
+		return exp(-pow(x-mu,2)/(2.*sigmaE*sigmaE));
+	}
+	double GaussianBeam( double z, double r, double t, double w0, double lambda,
+                         double T, double E0 = 1 )
+    {
+        assert( w0 > 2*lambda/M_PI );
+        double zR = M_PI*w0*w0/lambda;
+        double wz = w0*sqrt( 1 + z*z/(zR*zR) );
+        double Rz = z + zR*zR/z; // diverges for z->0 :S?
+		return E0*w0/wz * exp(-r*r/(wz*wz)) * cos( 2*M_PI/lambda*( z + r*r/(2*Rz) ) - 2.*M_PI*t/T );
+	}
 }

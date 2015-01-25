@@ -8,13 +8,6 @@
 #endif
 #define INF (1.0/0.0)
 
-
-const int GUARDSIZE                    = 1;
-      int INITIAL_OCTREE_REFINEMENT    = 3; // yiels pow(INIT_..., [4,8]) octree cells minimum
-      int MAX_OCTREE_REFINEMENT        = 6; // yiels pow(INIT_..., [4,8]) octree cells minimum
-      int SIMULATION_SETUP             = 4;
-      int OCTREE_SETUP                 = 6;
-
 //componentsConfig.param
 const uint16_t SIMDIM                  = 2;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
@@ -35,9 +28,10 @@ const double MUE0_SI                   = M_PI * 4.e-7;     // N/A^2 = kg*m/C^2
 const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF_LIGHT_SI);    // C^2/J*m, 8.854187817e-12
 
 //GridConfig.param
-      int NUMBER_OF_CELLS_X            = 512; // these is for the INITIAL_OCTREE_REFINEMENT ...
-      int NUMBER_OF_CELLS_Y            = 256;  // ... real number of cells will be higher
-      int NUMBER_OF_CELLS_Z            = 3;    // ... at critical places
+      int GUARDSIZE                    = 1;
+      int NUMBER_OF_CELLS_X            = 2048; // these is for the INITIAL_OCTREE_REFINEMENT ...
+      int NUMBER_OF_CELLS_Y            = 1024;  // ... real number of cells will be higher
+      int NUMBER_OF_CELLS_Z            = 1;    // ... at critical places
       int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
 const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
@@ -67,7 +61,7 @@ int PRINTF_SIMDATA_INTERVAL = std::min( int(ceil( 1e-18 / DELTA_T_SI )), 1 );
 // for dt = 1e-19 => Nprint = 10. for 1e-17 it prints every time step, so that we can see something
 
 //LASER:
-const double LAMBDA_SI                 = 40*CELL_SIZE_X_SI;
+const double LAMBDA_SI                 = 20*CELL_SIZE_X_SI;
 
 //COLORS:
 
@@ -113,9 +107,31 @@ const double DELTA_T                   = DELTA_T_SI / UNIT_TIME;
 const double CELL_SIZE_X               = CELL_SIZE_X_SI / UNIT_LENGTH;
 const double CELL_SIZE_Y               = CELL_SIZE_Y_SI / UNIT_LENGTH;
 const double CELL_SIZE_Z               = CELL_SIZE_Z_SI / UNIT_LENGTH;
-const double CELL_SIZE[3]              = { CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z };
+Vec<double,SIMDIM> CELL_SIZE           = Vec<double,SIMDIM>( CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z );
 const double CELL_SIZE_MIN             = std::min( CELL_SIZE_X, std::min( CELL_SIZE_Y, CELL_SIZE_Z ) );
-      int NUMBER_OF_CELLS[3]           = { NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z };
+Vec<int,SIMDIM> NUMBER_OF_CELLS        = Vec<int,SIMDIM>( NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z );
+Vec<double,SIMDIM> SIM_SIZE            = Vec<double,SIMDIM>( NUMBER_OF_CELLS ) * CELL_SIZE;
 
 //LASER:
 const double LAMBDA                    = LAMBDA_SI / UNIT_LENGTH;
+
+//SETUP:
+int INITIAL_OCTREE_REFINEMENT          = 3; // yiels pow(INIT_..., [4,8]) octree cells minimum
+int MAX_OCTREE_REFINEMENT              = 4; // yiels pow(INIT_..., [4,8]) octree cells minimum
+int OCTREE_SETUP                       = 6;
+
+int SIMULATION_SETUP                   = 4;
+double ABSORBING_BORDER_THICKNESS      = 10*CELL_SIZE_X + FLT_EPSILON;
+double ABSORBER_STRENGTH               = 2e4;
+Vec<double,SIMDIM> M                   = Vec<double,SIMDIM>( 0.5*SIM_SIZE[0], 0.5*SIM_SIZE[1] );    // center of circle
+double R                               = 0.4*SIM_SIZE[1]; // radius of circle
+double MIRROR_WIDTH                    = SIM_SIZE[1] - 2*ABSORBING_BORDER_THICKNESS;
+double MIRROR_LENGTH                   = SIM_SIZE[0]/8;
+Vec<double,SIMDIM> MIRROR_CENTER       = Vec<double,SIMDIM>( 2*ABSORBING_BORDER_THICKNESS, 0.5*SIM_SIZE[1] );
+double FOCAL_LENGTH                    = pow(MIRROR_WIDTH/2, 2) / (4*MIRROR_LENGTH);
+
+int WAVE_SPAWN_SETUP                   = 3;
+Vec<double,SIMDIM> SPAWN_AREA_SIZE     = Vec<double,SIMDIM>( 3*CELL_SIZE_X, 3*LAMBDA );
+Vec<double,SIMDIM> SPAWN_POS           = ABSORBING_BORDER_THICKNESS + Vec<double,SIMDIM>( 0.0, M[1] + 0.6*R );
+//Vec<double,SIMDIM> SPAWN_POS           =  MIRROR_CENTER + Vec<double,SIMDIM>( FOCAL_LENGTH, - 0.5 );
+Vec<double,SIMDIM> WAVE_GUIDE_SIZE     = 0;//Vec<double,SIMDIM>( 7*LAMBDA, 15.0 );

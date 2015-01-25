@@ -36,6 +36,8 @@ void CalcH( OctCell & simbox, int tnext, int tcur, int area, double dt ) {
         /* Update all H components */
         double nom = (1.0 + 0.5*itnext->sigmaM*dt / itnext->mu);
         double Da  = (1.0 - 0.5*itnext->sigmaM*dt / itnext->mu) / nom;
+        if ( itnext->sigmaM > sqrt(DBL_MAX) )
+            Da = (1.0/itnext->sigmaM - 0.5 / itnext->mu) / (1.0/itnext->sigmaM + 0.5*dt / itnext->mu);
         double Dbx = dt / ( itnext->mu * cellsize[0] ) / nom;
         double Dby = dt / ( itnext->mu * cellsize[1] ) / nom;
         double Dbz = dt / ( itnext->mu * cellsize[2] ) / nom;
@@ -81,6 +83,8 @@ void CalcE( OctCell & simbox, int tnext, int tcur, int area, double dt ) {
 		/* Now update all E components */
         double nom = (1.0 + 0.5*itnext->sigmaE*dt / itnext->epsilon);
         double Ca  = (1.0 - 0.5*itnext->sigmaE*dt / itnext->epsilon) / nom;
+        if ( itnext->sigmaE > sqrt(DBL_MAX) )
+            Ca = (1.0/itnext->sigmaE - 0.5 / itnext->epsilon) / (1.0/itnext->sigmaE + 0.5*dt / itnext->epsilon);
         double Cbx = dt / ( itnext->epsilon * cellsize[0] ) / nom;
         double Cby = dt / ( itnext->epsilon * cellsize[1] ) / nom;
         double Cbz = dt / ( itnext->epsilon * cellsize[2] ) / nom;
