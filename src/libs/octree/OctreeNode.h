@@ -10,6 +10,7 @@
 #include "math/TVector.h"
 #include "math/TBaseMatrix.h" // convertLinearToVectorIndex
 #include "Directions.h" // getOppositeDirection
+#include "teestream/TeeStream.h" // tout
 
 
 namespace Octree {
@@ -94,12 +95,12 @@ public:
      *       access. Also this only works for 2D !!!                          */
         static struct orderingTableStruct {
             struct {
-                int ordering   [2][4];
-                int orientation[2][4];
+                int ordering   [ compileTime::pow(2,T_DIM-1) ][ compileTime::pow(2,T_DIM) ];
+                int orientation[ compileTime::pow(2,T_DIM-1) ][ compileTime::pow(2,T_DIM) ];
             } GrayCode;
             struct {
-                int ordering   [4][4];
-                int orientation[4][4];
+                int ordering   [24][ compileTime::pow(2,T_DIM) ];
+                int orientation[24][ compileTime::pow(2,T_DIM) ];
             } Hilbert;
         } orderingTable;
     public:

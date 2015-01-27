@@ -7,20 +7,24 @@ namespace Octree {
 
 template<int T_DIM>
 typename Node<T_DIM>::iterator::orderingTableStruct
-    Node<T_DIM>::iterator::orderingTable =
+    Node<T_DIM>::iterator::orderingTable;
+
+template<>
+typename Node<2>::iterator::orderingTableStruct
+    Node<2>::iterator::orderingTable =
           {
             /* Gray-Code ordering */
             { /* ordering Table */
               { /* Row 0 meaning parent has orientation 0 */
                 /* Columns. 0th column contains index and orientation */
-                { 0,1,3,2 },
-                { 3,2,0,1 }
+                { 0,1,3,2 }, /* ordering if orientation is 0 */
+                { 3,2,0,1 }  /* ordering if orientation is 1 */
               },
               /* orientation Table */
               { /* Row 0 meaning parent has orientation 0 */
                 /* Columns. 0th column contains index and orientation */
-                { 0,1,1,0 },
-                { 1,0,0,1 }
+                { 0,1,1,0 }, /* orientation for children if orientation is 0 */
+                { 1,0,0,1 }  /* orientation for children if orientation is 1 */
               }
             },
             /* Hilbert ordering */
@@ -37,6 +41,86 @@ typename Node<T_DIM>::iterator::orderingTableStruct
                 { 0,1,1,3 },
                 { 3,2,2,0 },
                 { 2,3,3,1 }
+              }
+            }
+          };
+
+template<>
+typename Node<3>::iterator::orderingTableStruct
+    Node<3>::iterator::orderingTable =
+          {
+            /* Gray-Code ordering */
+            { /* ordering Table */
+              { /* Row 0 meaning parent has orientation 0 */
+                /* Columns. 0th column contains index and orientation */
+                { 0,1,3,2, 6,7,5,4 }, /* ordering if orientation is 0 */
+                { 5,4,6,7, 3,2,0,1 }, /* ordering if orientation is 1 */
+                { 3,2,0,1, 5,4,6,7 }, /* ordering if orientation is 2 */
+                { 6,7,5,4, 0,1,3,2 }  /* ordering if orientation is 3 */
+              },
+              /* orientation Table */
+              { /* Row 0 meaning parent has orientation 0 */
+                /* Columns. 0th column contains index and orientation */
+                { 0,1,2,3, 3,2,1,0 }, /* orientation for children if orientation is 0 */
+                { 1,0,3,2, 2,3,0,1 }, /* orientation for children if orientation is 1 */
+                { 2,3,0,1, 1,0,3,2 }, /* orientation for children if orientation is 2 */
+                { 3,2,1,0, 0,1,2,3 }  /* orientation for children if orientation is 3 */
+              }
+            },
+            /* Hilbert ordering */
+            { /* ordering Table */
+              {
+                {0,1,3,2, 6,7,5,4 }, /* orientation  0 */
+                {0,4,6,2, 3,7,5,1 }, /* orientation  1 */
+                {0,1,5,4, 6,7,3,2 }, /* orientation  2 */
+                {5,1,0,4, 6,2,3,7 }, /* orientation  3 */
+                {3,7,6,2, 0,4,5,1 }, /* orientation  4 */
+                {6,7,3,2, 0,1,5,4 }, /* orientation  5 */
+                {5,1,3,7, 6,2,0,4 }, /* orientation  6 */
+                {0,4,5,1, 3,7,6,2 }, /* orientation  7 */
+                {5,4,0,1, 3,2,6,7 }, /* orientation  8 */
+                {5,4,6,7, 3,2,0,1 }, /* orientation  9 */
+                {0,2,3,1, 5,7,6,4 }, /* orientation 10 */
+                {6,4,0,2, 3,1,5,7 }, /* orientation 11 */
+                {5,7,3,1, 0,2,6,4 }, /* orientation 12 */
+                {3,7,5,1, 0,4,6,2 }, /* orientation 13 */
+                {6,4,5,7, 3,1,0,2 }, /* orientation 14 */
+                {0,2,6,4, 5,7,3,1 }, /* orientation 15 */
+                {6,2,0,4, 5,1,3,7 }, /* orientation 16 */
+                {6,2,3,7, 5,1,0,4 }, /* orientation 17 */
+                {3,2,0,1, 5,4,6,7 }, /* orientation 18 */
+                {6,7,5,4, 0,1,3,2 }, /* orientation 19 */
+                {5,7,6,4, 0,2,3,1 }, /* orientation 20 */
+                {3,2,6,7, 5,4,0,1 }, /* orientation 21 */
+                {3,1,0,2, 6,4,5,7 }, /* orientation 22 */
+                {3,1,5,7, 6,4,0,2 }  /* orientation 23 */
+              },
+              /* orientation Table */
+              {
+                {1 ,2 ,0 ,3 , 4 ,0 ,5 ,6 },
+                {0 ,7 ,1 ,8 , 5 ,1 ,4 ,9 },
+                {15,0 ,2 ,22, 20,2 ,19,23},
+                {20,6 ,3 ,23, 15,3 ,16,22},
+                {22,13,4 ,12, 11,4 ,1 ,20},
+                {11,19,5 ,20, 22,5 ,0 ,12},
+                {9 ,3 ,6 ,2 , 21,6 ,17,0 },
+                {10,1 ,7 ,11, 12,7 ,13,14},
+                {12,9 ,8 ,14, 10,8 ,18,11},
+                {6 ,8 ,9 ,7 , 17,9 ,21,1 },
+                {7 ,15,10,16, 13,10,12,17},
+                {5 ,14,11,9 , 0 ,11,22,8 },
+                {8 ,20,12,19, 18,12,10,5 },
+                {18,4 ,13,5 , 8 ,13,7 ,19},
+                {17,11,14,1 , 6 ,14,23,7 },
+                {2 ,10,15,18, 19,15,20,21},
+                {19,17,16,21, 2 ,16,3 ,18},
+                {14,16,17,15, 23,17,6 ,10},
+                {13,21,18,17, 7 ,18,8 ,16},
+                {16,5 ,19,4 , 3 ,19,2 ,13},
+                {3 ,12,20,13, 16,20,15,4 },
+                {23,18,21,10, 14,21,9 ,15},
+                {4 ,23,22,6 , 1 ,22,11,3 },
+                {21,22,23,0 , 9 ,23,14,2 }
               }
             }
           };
@@ -68,7 +152,7 @@ Node<T_DIM>::iterator::~iterator( void ) {}
 
 /****************************** Copy Constructor ******************************/
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( const iterator & src ) 
+Node<T_DIM>::iterator::iterator( const iterator & src )
 : todo(src.todo), done(src.done), curpos(src.curpos), ordering(src.ordering)
 {}
 
@@ -86,7 +170,6 @@ typename Node<T_DIM>::iterator & Node<T_DIM>::iterator::operator=
 /***************************** Increment Operator *****************************/
 template<int T_DIM>
 typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
-    assert( T_DIM == 2 or ordering == Ordering::Morton );
     if ( this->ordering == Ordering::Rows ) {
         Node * root  = done.front();
         int maxdepth = root->getMaxLevel() - root->getLevel();
@@ -96,7 +179,7 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
         this->curpos = -1;
         for ( ; i < t_size.product(); i++ ) {
             VecD index = VecD(ConvertLinearToVectorIndex<T_DIM>(i,t_size)) + 0.5;
-            Node * found = root->FindLeafContainingPos( root->center - 
+            Node * found = root->FindLeafContainingPos( root->center -
                            root->size/2 + index*root->size/pow(2,maxdepth) );
             if ( std::find( done.begin(), done.end(), found) == done.end() ) {
                 done.push_back(found);
@@ -129,7 +212,7 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
             int childIndex       = -1;
             int childOrientation = -1;
             switch ( this->ordering ) {
-                case Ordering::Morton: 
+                case Ordering::Morton:
                     childIndex = todo.top().ichild;
                     childOrientation = todo.top().orientation;
                     break;
@@ -139,7 +222,7 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
                     childOrientation = orderingTable.GrayCode.orientation
                         [todo.top().orientation][todo.top().ichild];
                     break;
-                case Ordering::Hilbert: 
+                case Ordering::Hilbert:
                     childIndex = this->orderingTable.Hilbert.ordering
                         [todo.top().orientation][todo.top().ichild];
                     childOrientation = orderingTable.Hilbert.orientation
@@ -180,9 +263,9 @@ bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
 
 template<int T_DIM>
 bool Node<T_DIM>::iterator::operator!=( const iterator & src ) {
-    if (ordering == Ordering::Rows) {
-    }
-    return this->todo.size() != src.todo.size() or 
+    if (ordering == Ordering::Rows)
+        return this->curpos != src.curpos;
+    return this->todo.size() != src.todo.size() or
            this->curpos != src.curpos;
 }
 

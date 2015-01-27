@@ -32,7 +32,6 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 #include "Colors.h"
 #include "Directions.h"
 
-#define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;
 typedef Vec<double,SIMDIM> VecI;
 
@@ -55,7 +54,6 @@ int main( int argc, char **argv )
     basefolder << "/";
     
     tout.Open( std::string("out"), -1, basefolder.str() );
-    srand( RANDOM_SEED );
 
     while ( true ) {
         static struct option long_options[] = {
@@ -79,25 +77,6 @@ int main( int argc, char **argv )
             case 'm':
                 MAX_OCTREE_REFINEMENT = atoi(optarg);
                 break;
-            case 'n':
-                for (int i=0; i<SIMDIM; i++) {
-                    assert( argv[optind-1+i][0] != '-' );
-                    NUMBER_OF_CELLS[i]  = atoi(argv[optind-1+i]);
-                }
-                optind += SIMDIM-1; // extra arguments taken
-                NUMBER_OF_CELLS_X   = NUMBER_OF_CELLS[0];
-                if (SIMDIM > 1)
-                    NUMBER_OF_CELLS_Y = NUMBER_OF_CELLS[1];
-                else
-                    NUMBER_OF_CELLS_Y = 1;
-                if (SIMDIM > 2)
-                    NUMBER_OF_CELLS_Z = NUMBER_OF_CELLS[2];
-                else
-                    NUMBER_OF_CELLS_Z = 1;
-                NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES_PER_CELL *
-                    NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y * NUMBER_OF_CELLS_Z;
-                SIM_SIZE = Vec<double,SIMDIM>( NUMBER_OF_CELLS ) * CELL_SIZE;
-                break;
             case 'o':
                 OCTREE_SETUP = atoi(optarg);
                 break;
@@ -118,14 +97,15 @@ for ( int ORDERING = 0; ORDERING <= 3; ++ORDERING ) {
         case 3: sOrdering << "Rows" ; break;
         case 4: sOrdering << "Four-Color-Theorem" ; break;
     }
-    filename << basefolder.str() << "Octree-Setup-" << OCTREE_SETUP
+    filename << basefolder.str() << (SIMDIM == 2 ? "Quadtree" : "Octree")
+             << "-Setup-" << OCTREE_SETUP
              << "_Initial-" << INITIAL_OCTREE_REFINEMENT << "_Max-Refinement-"
              << MAX_OCTREE_REFINEMENT << "_" << sOrdering.str()
              << "_Ordering";
     resultsFile.open( filename.str() + std::string(".dat") );
     resultsFile << "# worldsize totalTraffic interTraffic messageCount\n" << std::flush;
 
-for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
+for ( int worldsize = 1; worldsize <= 16; ++worldsize ) {
     tout << "World Size      : " << worldsize << "\n";
 
     VecD globSize   = VecD(NUMBER_OF_CELLS);
@@ -137,23 +117,32 @@ for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
     if ( OCTREE_SETUP == 1 ) {
         for ( int i=0; i < INITIAL_OCTREE_REFINEMENT; i++)
             for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
-            it != it.end(); ++it ) if ( it->IsLeaf() )
-                it->GrowUp();
+            it != it.end(); )
+                if ( it->IsLeaf() and it->getLevel() == i )
+                    (it++)->GrowUp();
+                else
+                    ++it;
     }
     /* refine a subsection ( 2D-Ball ) of the cells one more time */
     if ( OCTREE_SETUP == 2 ) {
         for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
-        it != it.end(); ++it ) if ( it->IsLeaf() and it->center.norm() < 0.4 )
-            it->GrowUp();
+        it != it.end(); ) if ( it->IsLeaf() and it->center.norm() < 0.4 )
+            (it++)->GrowUp();
+        else
+            ++it;
         for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
-        it != it.end(); ++it ) if ( it->IsLeaf() and it->center.norm() < 0.25 )
-            it->GrowUp();
+        it != it.end(); ) if ( it->IsLeaf() and it->center.norm() < 0.25 )
+            (it++)->GrowUp();
+        else
+            ++it;
     }
     /* refine upper right corner one more time */
     if ( OCTREE_SETUP == 3 ) {
         for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
-        it != it.end(); ++it ) if ( it->IsLeaf() and it->center[0] > 0 )
-            it->GrowUp();
+        it != it.end(); ) if ( it->IsLeaf() and it->center[0] > 0 )
+            (it++)->GrowUp();
+        else
+            ++it;
         VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
         tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
     }
@@ -165,14 +154,17 @@ for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
     }
     /* refine some randomly chosen cells until target cell count reached */
     if ( OCTREE_SETUP == 5 ) {
+        srand( RANDOM_SEED );
         int targetCells  = int(pow(pow(2,SIMDIM),INITIAL_OCTREE_REFINEMENT));
         int currentCells = 1;
         while ( currentCells < targetCells ) {
             VecD pos(0);
-            pos[0] = double(rand()) / double(RAND_MAX) - 0.5;
-            pos[1] = double(rand()) / double(RAND_MAX) - 0.5;
-            tout << "Grow up cell at " << pos << " = " << tree.size*pos << "\n";
-            tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+            pos[0] = double(rand()) / double(RAND_MAX);
+            if ( SIMDIM >= 2 )
+                pos[1] = double(rand()) / double(RAND_MAX);
+            if ( SIMDIM >= 3 )
+                pos[2] = double(rand()) / double(RAND_MAX);
+            tree.FindLeafContainingPos( tree.center - 0.5*tree.size + pos*tree.size )->GrowUp();
             currentCells += int(pow(2,SIMDIM))-1;
         }
     }
@@ -183,8 +175,11 @@ for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
 
     /********* refine all cells to initial homogenous min-Refinement **********/
     for ( int lvl=0; lvl < INITIAL_OCTREE_REFINEMENT; lvl++) {
-        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
-            if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
+        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); )
+            if ( it->IsLeaf() and it->getLevel()==lvl )
+                (it++)->GrowUp();
+            else
+                ++it;
     }
     /*********************** Refine certain boundaries ************************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
@@ -292,6 +287,8 @@ for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
     double currentTime = 0;
     double rankDelay = 1./64.;// 8 frames per second at max achievable with SVG
 
+    //tout << "Tree:\n" << tree << "\n\n";
+    
     /*
         case 3: sOrdering << "Column-wise_" ; break;
         case 4: sOrdering << "Four-Color-Theorem_" ; break;

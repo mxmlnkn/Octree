@@ -215,12 +215,12 @@ std::ostream& operator<<( std::ostream& out, Octree::Octree<T_DIM>& tree ) {
             for ( int i=0; i < it->getLevel(); ++i )
                 out << "  ";
             out << "Leaf at "    << tree.size * it->center
-                << " with size " << tree.size * it->size << std::endl;
+                << " with size " << tree.size * it->size << " contains pointers:\n";
             typename Node::Datalist::iterator dataIt = it->data.begin();
             while ( dataIt != it->data.end() ) {
                 for ( int i=0; i < it->getLevel()+1; ++i )
                     out << "  ";
-                out << tree.size * dataIt->pos << " -> " << *(dataIt->object) << "\n";
+                out << *dataIt << "\n";
                 ++dataIt;
             }
         } else {

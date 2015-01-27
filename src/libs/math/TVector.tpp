@@ -44,10 +44,12 @@ Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE v[T_DIM] ) {
 template<typename T_DTYPE, int T_DIM>
 template<typename T_ETYPE>
 Vec<T_DTYPE,T_DIM>::Vec( const T_ETYPE a0, const T_ETYPE a1 ) {
-    assert( T_DIM <= 2 );
+    assert( T_DIM <= 3 );
     this->data[0] = (T_DTYPE) a0;
     if ( T_DIM >= 2 )
         this->data[1] = (T_DTYPE) a1;
+    for ( int i=2; i<T_DIM; i++ )
+        data[i] = 0;
 }
 
 template<typename T_DTYPE, int T_DIM>

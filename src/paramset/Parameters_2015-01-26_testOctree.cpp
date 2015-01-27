@@ -13,7 +13,7 @@
 #define INF (1.0/0.0)
 
 //componentsConfig.param
-const uint16_t SIMDIM                  = 2;
+const uint16_t SIMDIM                  = 3;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
 const double   CONSIDERATION_RATIO     = 100.;       // Force between particles will be calculated if distance between those two is smaller than CONSIDERATION_RATIO * CELL_SIZE. If 0 then force is not calculated periodically
       int      NUMBER_OF_STEPS         = 1e6;
@@ -35,7 +35,7 @@ const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF
       int GUARDSIZE                    = 1;
       int NUMBER_OF_CELLS_X            = 100; // these is for the INITIAL_OCTREE_REFINEMENT ...
       int NUMBER_OF_CELLS_Y            = 50;  // ... real number of cells will be higher
-      int NUMBER_OF_CELLS_Z            = 1;    // ... at critical places
+      int NUMBER_OF_CELLS_Z            = 50;    // ... at critical places
       int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
 const double CELL_SIZE_SI              = 1e-9; // m
 const double CELL_SIZE_X_SI            = CELL_SIZE_SI;   // (!!!) picongpu naming with width, height and depth seems to be too random => could lead to mixups
@@ -127,8 +127,8 @@ int OCTREE_SETUP                       = 6;
 int SIMULATION_SETUP                   = 4;
 double ABSORBING_BORDER_THICKNESS      = 10*CELL_SIZE_X + FLT_EPSILON;
 double ABSORBER_STRENGTH               = 2e4;
-Vec<double,SIMDIM> M                   = Vec<double,SIMDIM>( 0.5*SIM_SIZE[0], 0.5*SIM_SIZE[1] );    // center of circle
-double R                               = 0.3*SIM_SIZE[1]; // radius of circle
+Vec<double,SIMDIM> M                   = 0;    // center of circle
+double R                               = 0.3*SIM_SIZE.min(); // radius of circle
 double MIRROR_WIDTH                    = SIM_SIZE[1] - 2*ABSORBING_BORDER_THICKNESS;
 double MIRROR_LENGTH                   = SIM_SIZE[0]/8;
 Vec<double,SIMDIM> MIRROR_CENTER       = Vec<double,SIMDIM>( 2*ABSORBING_BORDER_THICKNESS, 0.5*SIM_SIZE[1] );
