@@ -44,14 +44,23 @@ typename Node<T_DIM>::iterator::orderingTableStruct
 /* used by begin() */
 template<int T_DIM>
 Node<T_DIM>::iterator::iterator( void )
- : todo(), ordering(Ordering::Morton) {}
+ : todo(), done(), curpos(-1), ordering(-1) {}
 
 template<int T_DIM>
 Node<T_DIM>::iterator::iterator( Node * root, int p_ordering )
- : todo(), ordering(p_ordering)
+ : todo(), done(), curpos(-1), ordering(p_ordering)
 {
-    tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
-    todo.push( toBeStored );
+    if ( ordering == Ordering::Rows ) {
+        this->curpos = 0;
+        int maxdepth = root->getMaxLevel()-root->getLevel();
+        VecD index = 0.5;
+        VecD t_pos = root->center - root->size/2 + index*root->size/pow(2,maxdepth);
+        done.push_back( root );
+        done.push_back( root->FindLeafContainingPos( t_pos ) );
+    } else {
+        tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
+        todo.push( toBeStored );
+    }
 }
 
 template<int T_DIM>
@@ -60,20 +69,43 @@ Node<T_DIM>::iterator::~iterator( void ) {}
 /****************************** Copy Constructor ******************************/
 template<int T_DIM>
 Node<T_DIM>::iterator::iterator( const iterator & src ) 
-: todo(src.todo), ordering(src.ordering)
+: todo(src.todo), done(src.done), curpos(src.curpos), ordering(src.ordering)
 {}
 
+/**************************** Assignment Operator *****************************/
 template<int T_DIM>
 typename Node<T_DIM>::iterator & Node<T_DIM>::iterator::operator=
 ( const iterator & src ) {
     this->todo     = src.todo;
+    this->done     = src.done;
+    this->curpos   = src.curpos;
     this->ordering = src.ordering;
     return *this;
 }
 
+/***************************** Increment Operator *****************************/
 template<int T_DIM>
 typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
     assert( T_DIM == 2 or ordering == Ordering::Morton );
+    if ( this->ordering == Ordering::Rows ) {
+        Node * root  = done.front();
+        int maxdepth = root->getMaxLevel() - root->getLevel();
+        VecI t_size  = int(pow(2,maxdepth));
+        int i = this->curpos + 1;
+        /* set to end(), if nothing valid found it won't be changed back */
+        this->curpos = -1;
+        for ( ; i < t_size.product(); i++ ) {
+            VecD index = VecD(ConvertLinearToVectorIndex<T_DIM>(i,t_size)) + 0.5;
+            Node * found = root->FindLeafContainingPos( root->center - 
+                           root->size/2 + index*root->size/pow(2,maxdepth) );
+            if ( std::find( done.begin(), done.end(), found) == done.end() ) {
+                done.push_back(found);
+                this->curpos = i;
+                break;
+            }
+        }
+        return *this;
+    }
 /* The iterator position is defined by what is currently at the top of the    *
  * todo-stack. Therefore we try to add exactly one element to the stack top.  *
  * If the stack top is a leaf, then that is the last iteration we were at, so *
@@ -137,41 +169,44 @@ typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int ) {
 
 template<int T_DIM>
 bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
-    bool allequal = true;
-    allequal = allequal and ( this->todo == src.todo );
+    /* bool allequal = true;
+    allequal = allequal and ( this->todo     == src.todo     );
+    allequal = allequal and ( this->done     == src.done     );
+    allequal = allequal and ( this->curpos   == src.curpos   );
     allequal = allequal and ( this->ordering == src.ordering );
-    return allequal;
+    return allequal; */
+    return not (*this != src);
 }
 
 template<int T_DIM>
 bool Node<T_DIM>::iterator::operator!=( const iterator & src ) {
-    return (this->todo.size()) != (src.todo.size());
+    if (ordering == Ordering::Rows) {
+    }
+    return this->todo.size() != src.todo.size() or 
+           this->curpos != src.curpos;
 }
 
 template<int T_DIM>
 typename Node<T_DIM>::Node & Node<T_DIM>::iterator::operator*( void ) const {
-    return *(this->todo.top().node);
+    if ( this->ordering == Ordering::Rows )
+        return *(this->done.back());
+    else
+        return *(this->todo.top().node);
 }
 
 template<int T_DIM>
 typename Node<T_DIM>::Node * Node<T_DIM>::iterator::operator->( void ) const {
-    return this->todo.top().node;
+    if ( this->ordering == Ordering::Rows )
+        return this->done.back();
+    else
+        return this->todo.top().node;
 }
 
-/* returns iterator with only root-node in todo stack */
+/* return iterator with empty stack */
 template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::begin( int ordering ) {
-    iterator it( this, ordering );
-    return it;
-}
-
-/* returns iterator with empty stack */
-template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::end( void ) {
+typename Node<T_DIM>::iterator Node<T_DIM>::iterator::end( void ) {
     iterator it;
     return it;
 }
-
-
 
 } // namespace Octree

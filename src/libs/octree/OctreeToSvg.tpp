@@ -9,7 +9,7 @@ namespace Octree {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 OctreeToSvg<T_DIM>::OctreeToSvg
-( const Octreetype & p_tree, const std::string filename )
+( const Octreetype & p_tree, const std::string filename, bool timestamp )
 : out(), tree( p_tree ), treesrc( &p_tree ),
   imagesize( int( 600. / p_tree.size[1] * p_tree.size[0] ) ,600 ),
   imageborder( 20,20 ), boxesDrawn()
@@ -18,9 +18,11 @@ OctreeToSvg<T_DIM>::OctreeToSvg
     time_t t = time(0);   // get time now
     struct tm * now = localtime( &t );
     std::stringstream fname;
-    fname << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
-          << now->tm_mday << "_" << now->tm_hour << "-" << now->tm_min  << "_"
-          << filename << ".svg";
+    if (timestamp)
+        fname << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
+              << now->tm_mday << "_" << now->tm_hour << "-" << now->tm_min
+              << "_";
+    fname << filename << ".svg";
     this->out.open( fname.str(), std::ofstream::out );
 
     out << "<?xml version=\"1.0\" standalone=\"no\"?>"              "\n"

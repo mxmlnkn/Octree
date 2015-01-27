@@ -19,16 +19,18 @@ CWFLAGS = -Weffc++ -pedantic  \
     -Wstrict-aliasing -Wstrict-aliasing=2 -Wswitch \
     -Wswitch-enum -Wtrigraphs  -Wuninitialized \
     -Wunknown-pragmas -Wunreachable-code \
-    -Wunused-function -Wunused-label -Wunused-parameter \
+    -Wunused-function -Wunused-label -Wno-unused-parameter \
     -Wunused-value -Wno-unused-variable -Wvariadic-macros \
     -Wvolatile-register-var  -Wwrite-strings \
     -Wno-unused-variable
 # -Waggregate-return # wtf, too many warnings
 # -Wunused-variable  # happens with parameter files
+# -Wunused-parameter # needed for some operator() which don't use parameter
 # -Wswitch-default   # too often I don't want a default switch (i know, security)
 # -Wpadded      # don't know what to do with those. Why do they matter anyway
 # -Wfloat-equal # these are wanted comparisons, because I know how float workgs!
-CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall -lboost_system $(CWFLAGS) -g -O0 -Wno-unused-variable
+LIBS    = -lboost_system -lboost_filesystem
+CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall -lboost_system $(CWFLAGS) -g -O0 -Wno-unused-variable $(LIBS)
 
 all : libpngwriter testOctree testMatrix MainYee Main
 
@@ -66,7 +68,7 @@ MainYeeOctree : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwri
 MainYeeOctreeNoDebug : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwriter
 	mkdir -p output
 	rm -f $@.exe
-	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lboost_system -lboost_filesystem -lz -lpngwriter -lpng
+	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 -lboost_system -lboost_filesystem -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
 testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h examples/testSimBox/Cell.h TVector TBaseMatrix
 	rm -f $@.exe

@@ -51,6 +51,7 @@ namespace Ordering {
     const int Morton   = 0;
     const int GrayCode = 1;
     const int Hilbert  = 2;
+    const int Rows     = 3;
 }
 
 template< int T_DIM>
@@ -64,7 +65,7 @@ public:
     VecD center, size;
     typedef class Node<T_DIM> Node;
     typedef typename Node::iterator iterator;
-    Node * root; // root can be leaf or child!
+    Node * root; // root can be leaf or parent!
 
     Octree(void);
     /* This is a feature of Octree. It can convert the fixed internal sizes   *

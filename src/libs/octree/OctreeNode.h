@@ -4,7 +4,12 @@
 #include <iostream>
 #include <cstdlib>   // malloc
 #include <vector>
+#include <stack>
+#include <list>
+#include <algorithm> // find
 #include "math/TVector.h"
+#include "math/TBaseMatrix.h" // convertLinearToVectorIndex
+#include "Directions.h" // getOppositeDirection
 
 
 namespace Octree {
@@ -78,6 +83,8 @@ public:
     private:
         typedef struct{ int ichild; Node* node; int orientation; } tododata;
         std::stack<tododata> todo;
+        std::list<Node*> done; /* for ordering method 3 (Rows) */
+        int curpos;
     /* Ordering 0: Morton (Depth first traversal), 1: GrayCode, 2: Hilbert    */
         int ordering;
     /* [ordering method,see above][parentOrientiation][n-th child to traverse]*
@@ -108,8 +115,11 @@ public:
         bool operator!=(const iterator &);
         Node& operator*(void) const;
         Node* operator->(void) const;
+        iterator end(void);
     };
+/* returns iterator with only root-node in todo stack */
     iterator begin(int ordering = 0);
+/* returns iterator with empty stack */
     iterator end(void);
 
 
@@ -139,9 +149,14 @@ public:
     bool IsLeaf( void ) const;
 
 /* Returns the depth for this node. The root node returns 0. If the root leaf *
- * becomes a parent, then the childs will return 1. This being calculated     *
+ * becomes a parent, then the children will return 1. This being calculated   *
  * with the parents member                                                    */
     int getLevel( void ) const;
+/* Returns level at which first leaf can be found */
+    int getMinLevel( void );
+/* Returns maximum depth of tree */
+    int getMaxLevel( void );
+    
 /* Returns total amount of leaves, including those contained by childnodes if *
  * existing                                                                   */
     int countLeaves( void );
@@ -153,6 +168,11 @@ public:
  * added to the position of this node. BEWARE!!! Returns NULL if not periodic *
  * and on border, meaning there is no neighbor                                */
     Node * getNeighbor( const VecI direction, const VecI periodic );
+/* returns all neighbors of that cell as an iterator with a prefilled todo-   *
+ * stack of leaf nodes. Because they are leaf nodes the iterator++ will just  *
+ * pop one after another until it's empty. This just expands the neighbor     *
+ * if it is not a leaf node, because it has smaller children than the source  */
+    iterator getNeighbors( const VecI direction, const VecI periodic );
 
 
 /* <> would also suffice after operator<< instead of <T_DIM>, but one *

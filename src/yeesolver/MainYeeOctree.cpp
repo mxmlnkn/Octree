@@ -655,9 +655,9 @@ int main( int argc, char **argv )
                     itm->sigmaE  = ABSORBER_STRENGTH;
                     itm->sigmaM  = ABSORBER_STRENGTH / SPEED_OF_LIGHT * MUE0/EPS0;
                  }
-                 if ( isLense ) {
+                 /*if ( isLense ) {
                     itm->epsilon = EPS0 * nLense*nLense;
-                 }
+                 }*/
                  /* Set AbsorberBorders */
                  if ( (curPos[X] - 0 < ABSORBING_BORDER_THICKNESS) or
                       (tree.center[X] + tree.size[X]/2 - curPos[X] < ABSORBING_BORDER_THICKNESS) or

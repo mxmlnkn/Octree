@@ -2,20 +2,22 @@ TeeStream::TeeStream( int verbosityIn )
 : verbosity(verbosityIn), filestream()
 {}
 
-void TeeStream::Open( std::string filename, int rank ) {
+void TeeStream::Open( std::string filename, int rank, std::string folder ) {
     /* Create Timestamp and rank strings for filenames */
     time_t t = time(0);   // get time now
     struct tm * now = localtime( &t );
-    std::stringstream timestamp;
-    timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
-              << now->tm_mday << "_" << now->tm_hour << "-"
-              << now->tm_min << "_";
-    std::string timesr = timestamp.str();
-    std::stringstream ranksr; ranksr << rank;
-
-    filestream.open( timesr + filename + std::string("_rank_") 
-                     + ranksr.str() + std::string(".log"),
-                     std::ofstream::out | std::ofstream::app );
+    std::stringstream fullname;
+    if ( folder == std::string("./") )
+        fullname << 1900 + now->tm_year << "-" << std::setfill('0') 
+                 << std::setw(2) << 1 + now->tm_mon << "-" << now->tm_mday 
+                 << "_" << now->tm_hour << "-" << now->tm_min << "_";
+    else
+        fullname << folder;
+    fullname << filename;
+    if ( rank != -1 )
+        fullname << "_rank_" << rank;
+    fullname << ".log";
+    filestream.open( fullname.str(), std::ofstream::out | std::ofstream::app );
 }
 
 TeeStream::~TeeStream(void) {

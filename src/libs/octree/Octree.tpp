@@ -126,28 +126,12 @@ typename Octree<T_DIM>::Node* Octree<T_DIM>::FindLeafContainingPos( const VecD &
 
 template<int T_DIM>
 int Octree<T_DIM>::getMinLevel( void ) {
-    int minLevel = 255;
-    for ( iterator it = this->begin(); it!=this->end(); ++it )
-        if ( it->IsLeaf() ) {
-            int curLevel = it->getLevel();
-            assert( curLevel <= 255 );
-            if ( minLevel > curLevel )
-                minLevel = curLevel;
-        }
-    return minLevel;
+    return root->getMinLevel();
 }
 
 template<int T_DIM>
 int Octree<T_DIM>::getMaxLevel( void ) {
-    int maxLevel = 0;
-    for ( iterator it = this->begin(); it!=this->end(); ++it )
-        if ( it->IsLeaf() ) {
-            int curLevel = it->getLevel();
-            assert( curLevel >= 0 );
-            if ( maxLevel < curLevel )
-                maxLevel = curLevel;
-        }
-    return maxLevel;
+    return root->getMaxLevel();
 }
 
 /******************************* CheckIntegrity *******************************/

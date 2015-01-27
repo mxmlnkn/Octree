@@ -45,7 +45,7 @@ Node<T_DIM>::~Node( void ) {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 Node<T_DIM>::Node( void )
- : parent( NULL ), center( VecD(0) ), size( VecD(0) ), data(), 
+ : parent( NULL ), center( VecD(0) ), size( VecD(0) ), data(),
    nchildren( compileTime::pow(2,T_DIM) )
 {
     for (int i=0; i<nchildren; i++)
@@ -54,7 +54,7 @@ Node<T_DIM>::Node( void )
 
 template<int T_DIM>
 Node<T_DIM>::Node(Node * const p_parent, VecD const p_center, VecD const p_size)
-: parent( p_parent ), center( p_center ), size( p_size ), data(), 
+: parent( p_parent ), center( p_center ), size( p_size ), data(),
   nchildren( compileTime::pow(2,T_DIM) )
 {
     for (int i=0; i<nchildren; i++)
@@ -75,6 +75,7 @@ bool Node<T_DIM>::IsLeaf( void ) const {
     return children[0] == NULL;
 }
 
+/************************* ConvertNumberToDirection ***************************/
 template<int T_DIM>
 typename Node<T_DIM>::VecI Node<T_DIM>::ConvertNumberToDirection( const int number ) const {
     VecI direction;
@@ -104,7 +105,8 @@ int Node<T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
     return tmp;
 }
 
-template<int T_DIM> 
+/*************************** FindLeafContainingPos ****************************/
+template<int T_DIM>
 Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
 /* Prone to rounding errors :(, except if worldsize is e.g. 1 and center is   *
  * 0, because in that case all sizes and new centers will be in the form of   *
@@ -136,6 +138,7 @@ Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
     return tmp;
 }
 
+/*********************************** GrowUp ***********************************/
 template<int T_DIM>
 void Node<T_DIM>::GrowUp( void ) {
     for (int i=0; i<nchildren; ++i) {
@@ -225,6 +228,34 @@ int Node<T_DIM>::getLevel( void ) const {
     return level;
 }
 
+/******************************** getMinLevel *********************************/
+template<int T_DIM>
+int Node<T_DIM>::getMinLevel( void ) {
+    int minLevel = 255;
+    for ( iterator it = this->begin(); it != it.end(); ++it )
+        if ( it->IsLeaf() ) {
+            int curLevel = it->getLevel();
+            assert( curLevel <= 255 );
+            if ( minLevel > curLevel )
+                minLevel = curLevel;
+        }
+    return minLevel;
+}
+
+/******************************** getMaxLevel *********************************/
+template<int T_DIM>
+int Node<T_DIM>::getMaxLevel( void ) {
+    int maxLevel = 0;
+    for ( iterator it = this->begin(); it != it.end(); ++it )
+        if ( it->IsLeaf() ) {
+            int curLevel = it->getLevel();
+            assert( curLevel >= 0 );
+            if ( maxLevel < curLevel )
+                maxLevel = curLevel;
+        }
+    return maxLevel;
+}
+
 template<int T_DIM>
 int Node<T_DIM>::countLeaves( void ) {
     int sum = 0;
@@ -236,8 +267,11 @@ int Node<T_DIM>::countLeaves( void ) {
     return sum;
 }
 
+/******************************** getNeighbor *********************************/
 template<int T_DIM>
-Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI targetDir, const VecI periodic ) {
+Node<T_DIM> * Node<T_DIM>::getNeighbor
+( const VecI targetDir, const VecI periodic )
+{
     /* We want to find the neighbor of same size if possible, so go down as   *
      * much levels as we did have to go up. Depending on the direction the    *
      * target neighbor node is in and the position the Current Node is in the *
@@ -289,6 +323,40 @@ Node<T_DIM> * Node<T_DIM>::getNeighbor( const VecI targetDir, const VecI periodi
     return neighbor;
 }
 
+/******************************** getNeighbors ********************************/
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::getNeighbors
+( const VecI targetDir, const VecI periodic )
+{
+/* Neighbors may be not leaves (e.g. right neighbor of 3 is is parent of 1).  *
+ * In that case iterate over it's children. 4 of 1 will with this +-----+-+-+ *
+ * strategy iterate only one time, because  it2.begin() is a      |     |4|1| *
+ * leaf. To check whether the node or its children are direct     |  5  +-+-+ *
+ * neighbors, we test if getNeighbor in the opposite direction    |     |3|2| *
+ * returns the current node (it). Because this only works from    +-----+-+-+ *
+ * small to big, also test the other way around. E.g. left of 4 is 5, but     *
+ * right of 5 will yield parent of 4                                          */
+    iterator neighbors;
+    VecI opdir = getOppositeDirection<T_DIM>( targetDir );
+    for ( iterator it = this->getNeighbor(targetDir, periodic)->begin();
+          it != it.end(); ++it )
+        if ( it->getNeighbor( opdir, periodic ) == this or it->IsLeaf() )
+            neighbors.todo.push_back( *it );
+    return neighbors;
+}
+
+/*********************************** begin ************************************/
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::begin( int ordering ) {
+    iterator it( this, ordering );
+    return it;
+}
+
+template<int T_DIM>
+typename Node<T_DIM>::iterator Node<T_DIM>::end( void ) {
+    iterator it;
+    return it;
+}
 
 } // namespace Octree
 

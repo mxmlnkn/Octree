@@ -10,6 +10,9 @@ make testOctree && ./testOctree.exe
 #include <cstdlib>  // malloc, rand
 #include <random>   // normal_distribution
 #include <ctime>    // time
+#include "getopt.h"
+#include <ctime>
+#include <boost/filesystem.hpp>
 
 namespace compileTime {
 
@@ -21,7 +24,7 @@ inline constexpr T pow(const T base, unsigned const exponent) {
 
 } // compileTime
 
-#include "paramset/Parameters_2015-01-16.cpp"
+#include "paramset/Parameters_2015-01-26_testOctree.cpp"
 #include "math/TVector.h"
 #include "octree/Octree.h"
 #include "octree/OctreeToSvg.h"
@@ -39,109 +42,152 @@ typedef Vec<double,SIMDIM> VecI;
 
 int main( int argc, char **argv )
 {
-    tout.Open("out");
+    time_t t = time(0);
+    struct tm * now = localtime( &t );
+    std::stringstream basefolder;
+    basefolder << "output/" << 1900 + now->tm_year << "-" << std::setfill('0') 
+               << std::setw(2) << 1 + now->tm_mon << "-" 
+               << std::setw(2) << now->tm_mday << "_"
+               << std::setw(2) << now->tm_hour << "-"
+               << std::setw(2) << now->tm_min;
+    boost::filesystem::create_directory( 
+        boost::filesystem::absolute(basefolder.str()) );
+    basefolder << "/";
+    
+    tout.Open( std::string("out"), -1, basefolder.str() );
     srand( RANDOM_SEED );
 
+    while ( true ) {
+        static struct option long_options[] = {
+            {"init-refinement" , required_argument, 0, 'i'},
+            {"max-refinement"  , required_argument, 0, 'm'},
+            {"number-of-cells" , required_argument, 0, 'n'},
+            {"octree-setup"    , required_argument, 0, 'o'},
+            {0, 0, 0, 0}
+        };
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+        int c = getopt_long(argc, argv, "t:i:m:n:o:s:p:w:", long_options, &option_index);
+
+        if (c == -1)
+            break;
+
+        switch (c) {
+            case 'i':
+                INITIAL_OCTREE_REFINEMENT = atoi(optarg);
+                break;
+            case 'm':
+                MAX_OCTREE_REFINEMENT = atoi(optarg);
+                break;
+            case 'n':
+                for (int i=0; i<SIMDIM; i++) {
+                    assert( argv[optind-1+i][0] != '-' );
+                    NUMBER_OF_CELLS[i]  = atoi(argv[optind-1+i]);
+                }
+                optind += SIMDIM-1; // extra arguments taken
+                NUMBER_OF_CELLS_X   = NUMBER_OF_CELLS[0];
+                if (SIMDIM > 1)
+                    NUMBER_OF_CELLS_Y = NUMBER_OF_CELLS[1];
+                else
+                    NUMBER_OF_CELLS_Y = 1;
+                if (SIMDIM > 2)
+                    NUMBER_OF_CELLS_Z = NUMBER_OF_CELLS[2];
+                else
+                    NUMBER_OF_CELLS_Z = 1;
+                NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES_PER_CELL *
+                    NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y * NUMBER_OF_CELLS_Z;
+                SIM_SIZE = Vec<double,SIMDIM>( NUMBER_OF_CELLS ) * CELL_SIZE;
+                break;
+            case 'o':
+                OCTREE_SETUP = atoi(optarg);
+                break;
+            default:
+                abort();
+        }
+    }
+
 /* Run this Programm for several Ordering Methods ! */
-for ( int ORDERING = 0; ORDERING < 3; ++ORDERING ) {
+for ( int ORDERING = 0; ORDERING <= 3; ++ORDERING ) {
 /* Run this Programm for several world sizes ! */
     std::ofstream resultsFile;
-    std::stringstream sOrdering;
+    std::stringstream sOrdering, filename;
     switch (ORDERING) {
-        case 0: sOrdering << "Morton_"  ; break;
-        case 1: sOrdering << "GrayCode_"; break;
-        case 2: sOrdering << "Hilbert_" ; break;
-    } sOrdering << "Ordering_";
-    resultsFile.open( std::string("Octree_Benchmark_point_minRecursion4_") + sOrdering.str() + std::string(".dat") );
+        case 0: sOrdering << "Morton"  ; break;
+        case 1: sOrdering << "GrayCode"; break;
+        case 2: sOrdering << "Hilbert" ; break;
+        case 3: sOrdering << "Rows" ; break;
+        case 4: sOrdering << "Four-Color-Theorem" ; break;
+    }
+    filename << basefolder.str() << "Octree-Setup-" << OCTREE_SETUP
+             << "_Initial-" << INITIAL_OCTREE_REFINEMENT << "_Max-Refinement-"
+             << MAX_OCTREE_REFINEMENT << "_" << sOrdering.str()
+             << "_Ordering";
+    resultsFile.open( filename.str() + std::string(".dat") );
     resultsFile << "# worldsize totalTraffic interTraffic messageCount\n" << std::flush;
 
-for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
+for ( int worldsize = 1; worldsize < 16; ++worldsize ) {
     tout << "World Size      : " << worldsize << "\n";
 
-    VecD size(100), center(50), globSize(size), globCenter(center);
+    VecD globSize   = VecD(NUMBER_OF_CELLS);
+    VecD globCenter = 0;
     typedef Octree::Octree<SIMDIM> OctreeType;
-    Octree::Octree<SIMDIM> tree( center, size );
-    Octree::Octree<SIMDIM>::iterator it;
+    Octree::Octree<SIMDIM> tree( globCenter, globSize );
 
-    #define INITSETUP 6
-    #if INITSETUP == 1
     /* refine all cells to some value */
-        tout << "Initial homogenous Refinement\n";
-        int maxRecursion = 2;
-        for ( int i=0; i<maxRecursion; i++) {
-            tout << i << "th Refinement\n";
-            it = tree.begin();
-            while ( it!=tree.end() ) {
-                if ( it->IsLeaf() )
-                    (it++)->GrowUp();
-                else
-                    ++it;
-            }
-        }
-    #endif
-    #if INITSETUP == 2
-        /* refine a subsection of the cells one more time */
-        tout << "Refinement of a subsection\n";
-        it = tree.begin();
-        while ( it!=tree.end() ) {
-            if ( it->IsLeaf() and it->center.norm() < 0.4 )
-                (it++)->GrowUp();
-            else
-                ++it;
-        }
-        it = tree.begin();
-        while ( it!=tree.end() ) {
-            if ( it->IsLeaf() and it->center.norm() < 0.25 )
-                (it++)->GrowUp();
-            else
-                ++it;
-        }
-    #endif
-    #if INITSETUP == 3
-        /* refine a subsection of the cells one more time */
-        tout << "Refinement of a subsection\n";
-        it = tree.begin();
-        while ( it!=tree.end() ) {
-            if ( it->IsLeaf() and it->center[0] > 0 )
-                (it++)->GrowUp();
-            else
-                ++it;
-        }
+    if ( OCTREE_SETUP == 1 ) {
+        for ( int i=0; i < INITIAL_OCTREE_REFINEMENT; i++)
+            for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
+            it != it.end(); ++it ) if ( it->IsLeaf() )
+                it->GrowUp();
+    }
+    /* refine a subsection ( 2D-Ball ) of the cells one more time */
+    if ( OCTREE_SETUP == 2 ) {
+        for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
+        it != it.end(); ++it ) if ( it->IsLeaf() and it->center.norm() < 0.4 )
+            it->GrowUp();
+        for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
+        it != it.end(); ++it ) if ( it->IsLeaf() and it->center.norm() < 0.25 )
+            it->GrowUp();
+    }
+    /* refine upper right corner one more time */
+    if ( OCTREE_SETUP == 3 ) {
+        for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
+        it != it.end(); ++it ) if ( it->IsLeaf() and it->center[0] > 0 )
+            it->GrowUp();
         VecD pos(0); pos[0]=0.375; pos[1]=-0.125;
-        tree.FindLeafContainingPos( pos*tree.size )->GrowUp(); */
-    #endif
-    #if INITSETUP == 4
-        /* refine cells including fixed point many times */
-        int maxRecursion = 10;
+        tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
+    }
+    /* refine cells at fixed point many times */
+    if ( OCTREE_SETUP == 4 ) {
         VecD pos(0); pos[0]=0.1; pos[1]=0.1;
-        for ( int i = 0; i < maxRecursion; ++i )
+        for ( int i = 0; i < MAX_OCTREE_REFINEMENT; ++i )
             tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
-    #endif
-    #if INITSETUP == 5
-        int targetCells  = 200;
+    }
+    /* refine some randomly chosen cells until target cell count reached */
+    if ( OCTREE_SETUP == 5 ) {
+        int targetCells  = int(pow(pow(2,SIMDIM),INITIAL_OCTREE_REFINEMENT));
         int currentCells = 1;
         while ( currentCells < targetCells ) {
             VecD pos(0);
             pos[0] = double(rand()) / double(RAND_MAX) - 0.5;
             pos[1] = double(rand()) / double(RAND_MAX) - 0.5;
+            tout << "Grow up cell at " << pos << " = " << tree.size*pos << "\n";
             tree.FindLeafContainingPos( pos*tree.size )->GrowUp();
-            currentCells += 3;
+            currentCells += int(pow(2,SIMDIM))-1;
         }
-    #endif
-    #if INITSETUP == 6
+    }
+    if ( OCTREE_SETUP == 6 ) {
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
 
     /********* refine all cells to initial homogenous min-Refinement **********/
-    for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
+    for ( int lvl=0; lvl < INITIAL_OCTREE_REFINEMENT; lvl++) {
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
             if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
     }
     /*********************** Refine certain boundaries ************************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
-    VecD M(0.5*globSize);          // center of circle
-    double R = 0.2*globSize.min(); // radius of circle
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
         /* Get all circle angles, where it intersects with a cell border */
         std::list<double> lphi;
@@ -193,12 +239,12 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
                 node->GrowUp();
         }
     }
-    #endif
+    }
     tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n";
 
     int NValues = tree.root->countLeaves();
 
-    /* allocate data (which stores assigned ranks) to which pointers will     *
+    /* allocate data (which stores assigned ranks) to which pointers will be  *
      * given to octree. And default it to the last rank                       */
     int * data = (int*) malloc( sizeof(int)*NValues );
     for (int i=0; i<NValues; ++i)
@@ -208,95 +254,100 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
      * the center of every leaf node. By default all cells will be assigned   *
      * to last rank                                                           */
     int dataInserted = 0;
-    for ( it = tree.begin( ORDERING ); it!=tree.end(); ++it )
-        if ( it->IsLeaf() ) {
-            assert( dataInserted < NValues );
-            assert( it->data.empty() );
-            it->data.push_back( &(data[dataInserted]) );
-            ++dataInserted;
+    for ( Octree::Octree<SIMDIM>::iterator it = tree.begin(); it!=tree.end();
+    ++it ) if ( it->IsLeaf() )
+    {
+        assert( dataInserted < NValues );
+        assert( it->data.empty() );
+        it->data.push_back( &(data[dataInserted]) );
+        ++dataInserted;
+    }
+
+    /* cost function */
+    struct T_WEIGHT_FUNC {
+        double operator() (const Octree::Octree<SIMDIM>::Node & curnode) {
+            return 1;
+            //return 1. / node.getSize().min();
         }
+    } weightfunc;
 
     /* Calculate total costs of all cells. Could be done when counting cells  */
     double totalCosts = 0;
-    it = tree.begin();
-    while ( it!=tree.end() ) {
+    for ( Octree::Octree<SIMDIM>::iterator it=tree.begin(); it!=it.end(); ++it )
         if ( it->IsLeaf() )
-            totalCosts += 1. / it->size.min();
-        ++it;
-    }
+            totalCosts += weightfunc(*it);
     double optimalCosts = totalCosts / double(worldsize);
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
 
     /* Print tree to SVG */
-    std::stringstream sWorldsize; sWorldsize << worldsize;
-    std::stringstream sOrdering;
-    switch (ORDERING) {
-        case 0: sOrdering << "Morton_"  ; break;
-        case 1: sOrdering << "GrayCode_"; break;
-        case 2: sOrdering << "Hilbert_" ; break;
-    } sOrdering << "Ordering_";
-    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, std::string("Octree_") + sOrdering.str() + std::string("worldsize_") + sWorldsize.str() );
+    std::stringstream sWorldsize;
+    sWorldsize << filename.str() << "_worldsize-" << worldsize << ".svg";
+    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, sWorldsize.str(), false );
+    tout << "Open: " << sWorldsize.str() << "\n";
     svgoutput.PrintGrid();
 
     /* Assign cells to all the processes */
     double cumulativeCosts = 0;
     int curRank = 0;
-    int currentTime  = 0;
-    double delay     = 1./64.; // 8 frames per second at max achievable with SVG
-    double rankDelay = 1./64.;
+    double currentTime = 0;
+    double rankDelay = 1./64.;// 8 frames per second at max achievable with SVG
 
+    /*
+        case 3: sOrdering << "Column-wise_" ; break;
+        case 4: sOrdering << "Four-Color-Theorem_" ; break;
+    */
     Octree::Octree<SIMDIM>::iterator it0 = tree.begin();
     Octree::Octree<SIMDIM>::iterator it1 = tree.begin();
-    for ( it = tree.begin( ORDERING ); it!=tree.end(); ++it ) {
-        if ( it->IsLeaf() ) {
-            cumulativeCosts += 1. / it->getSize().min();
-            if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
-                cumulativeCosts = 1. / it->getSize().min();
-                curRank++;
-            }
-            *((int*)it->data[0]) = curRank;
-
-            /* Graphical output of traversal line */
-            it0 = it1;
-            it1 = it;
-            if ( it0->IsLeaf() and it1->IsLeaf() ) {
-                size_t id = reinterpret_cast<size_t>( it0->data[0] );
-                VecD r0 = svgoutput.convertToImageCoordinates( it0->center );
-                VecD r1 = svgoutput.convertToImageCoordinates( it1->center );
-                /* Spawn invisible line element */
-                svgoutput.out
-                  << "<line"                                               "\n"
-                  << " id=\"path" << id << "\""                            "\n"
-                  << " x1=\"" << r0[0] << "px\" y1=\"" << r0[1] << "px\""  "\n"
-                  << " x2=\"" << r1[0] << "px\" y2=\"" << r1[1] << "px\""  "\n"
-                  << " style=\"stroke:none;stroke-width:3px\""             "\n"
-                  << "/>"                                                  "\n";
-                /* Animate line element to become visible after some time */
-                svgoutput.out
-                  << "<set"                                            "\n"
-                  << " xlink:href=\"#path" << id << "\""               "\n"
-                  << " attributeName=\"stroke\""                       "\n"
-                  << " begin=\"" << delay*double(currentTime) << "s\"" "\n"
-                  << " to   =\"#008000\""                              "\n"
-                  << "/>"                                              "\n";
-                currentTime += rankDelay / delay;
-            }
-
-            /* Graphical output of and cell-rank-mapping */
-            svgoutput.boxesDrawnIt = svgoutput.boxesDrawn.find( it->center );
-            int id = svgoutput.boxesDrawnIt->second.id;
-            int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
-            int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
-            int b  = Colors::getBlue ( Colors::BuPu[8 - curRank % 9] );
-            svgoutput.out
-                << "<set"                                                "\n"
-                << " xlink:href=\"#" << id << "\""                       "\n"
-                << " attributeName=\"fill\""                             "\n"
-                << " begin=\"" << delay*double(currentTime) << "s\""     "\n"
-                << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
-                << "/>"                                                  "\n";
+    for ( Octree::Octree<SIMDIM>::iterator it = tree.begin( ORDERING );
+          it != tree.end(); ++it ) if ( it->IsLeaf() )
+    {
+        cumulativeCosts += weightfunc(*it);
+        if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
+            cumulativeCosts = weightfunc(*it);
+            curRank++;
         }
+        *((int*)it->data[0]) = curRank;
+
+        /* Graphical output of traversal line */
+        it0 = it1;
+        it1 = it;
+        if ( it0->IsLeaf() and it1->IsLeaf() ) {
+            size_t id = reinterpret_cast<size_t>( it0->data[0] );
+            VecD r0 = svgoutput.convertToImageCoordinates( it0->center );
+            VecD r1 = svgoutput.convertToImageCoordinates( it1->center );
+            /* Spawn invisible line element */
+            svgoutput.out
+              << "<line"                                               "\n"
+              << " id=\"path" << id << "\""                            "\n"
+              << " x1=\"" << r0[0] << "px\" y1=\"" << r0[1] << "px\""  "\n"
+              << " x2=\"" << r1[0] << "px\" y2=\"" << r1[1] << "px\""  "\n"
+              << " style=\"stroke:none;stroke-width:3px\""             "\n"
+              << "/>"                                                  "\n";
+            /* Animate line element to become visible after some time */
+            svgoutput.out
+              << "<set"                                            "\n"
+              << " xlink:href=\"#path" << id << "\""               "\n"
+              << " attributeName=\"stroke\""                       "\n"
+              << " begin=\"" << currentTime << "s\"" "\n"
+              << " to   =\"#008000\""                              "\n"
+              << "/>"                                              "\n";
+            currentTime += rankDelay;
+        }
+
+        /* Graphical output of and cell-rank-mapping */
+        int id = svgoutput.boxesDrawn.find( it->center )->second.id;
+        int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
+        int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
+        int b  = Colors::getBlue ( Colors::BuPu[8 - curRank % 9] );
+        svgoutput.out
+            << "<set"                                                "\n"
+            << " xlink:href=\"#" << id << "\""                       "\n"
+            << " attributeName=\"fill\""                             "\n"
+            << " begin=\"" << currentTime << "s\""     "\n"
+            << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+            << "/>"                                                  "\n";
     }
+    svgoutput.close();
 
     /* Count Neighbors intra- and interprocessdata to transmit */
     double * costs = new double[worldsize];
@@ -307,47 +358,45 @@ for ( int worldsize = 3; worldsize < 5; ++worldsize ) {
     double totalTraffic = 0;
     const int bytesPerCell = (6+4)*8;
 
-    it = tree.begin( ORDERING );
-    while ( it!=tree.end() ) {
-        if ( it->IsLeaf() ) {
-            costs[ *((int*)it->data[0]) ] += 1. / it->getSize().min();
-            int nNeighbors = 0;
-            int nLeavesOnOtherNodes = 0;
-            int thisRank = *((int*)it->data[0]);
+    for ( Octree::Octree<SIMDIM>::iterator it = tree.begin( ORDERING );
+          it!=tree.end(); ++it ) if ( it->IsLeaf() )
+    {
+        costs[ *((int*)it->data[0]) ] += weightfunc(*it);
+        int nNeighbors = 0;
+        int nLeavesOnOtherNodes = 0;
+        int thisRank = *((int*)it->data[0]);
 
-            int lindirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
-            VecI dir[4];
-            dir[0][0]=+1; dir[0][1]= 0;
-            dir[1][0]=-1; dir[1][1]= 0;
-            dir[2][0]= 0; dir[2][1]=+1;
-            dir[3][0]= 0; dir[3][1]=-1;
+        int lindirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
+        VecI dir[4];
+        dir[0][0]=+1; dir[0][1]= 0;
+        dir[1][0]=-1; dir[1][1]= 0;
+        dir[2][0]= 0; dir[2][1]=+1;
+        dir[3][0]= 0; dir[3][1]=-1;
 
-            for ( int lindir = 0; lindir < 4; lindir++ ) {
-                assert( getDirectionVector<SIMDIM>(lindirs[lindir]) == dir[lindir]);
-                Octree::Node<SIMDIM> * neighbor = it->getNeighbor( dir[lindir] );
-                if ( neighbor == NULL )
-                    continue;
+        for ( int lindir = 0; lindir < 4; lindir++ ) {
+            assert( getDirectionVector<SIMDIM>(lindirs[lindir]) == dir[lindir]);
+            Octree::Node<SIMDIM> * neighbor = it->getNeighbor( dir[lindir], VecI(0) );
+            if ( neighbor == NULL )
+                continue;
 
-                nNeighbors += neighbor->countLeaves();
+            nNeighbors += neighbor->countLeaves();
 
-                Octree::Octree<SIMDIM>::iterator itn = neighbor->begin();
-                while ( itn != neighbor->end() ) {
-                    if ( itn->IsLeaf() ) {
-                        int neighborRank = *((int*)itn->data[0]);
-                        if ( thisRank != neighborRank )
-                            nLeavesOnOtherNodes++;
-                    }
-                    ++itn;
+            Octree::Octree<SIMDIM>::iterator itn = neighbor->begin();
+            while ( itn != neighbor->end() ) {
+                if ( itn->IsLeaf() ) {
+                    int neighborRank = *((int*)itn->data[0]);
+                    if ( thisRank != neighborRank )
+                        nLeavesOnOtherNodes++;
                 }
+                ++itn;
             }
-
-            totalTraffic += bytesPerCell * nNeighbors;
-            interTraffic += bytesPerCell * nLeavesOnOtherNodes;
-
-            //tout << it->center << " needs data from "
-            //     << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n";
         }
-        ++it;
+
+        totalTraffic += bytesPerCell * nNeighbors;
+        interTraffic += bytesPerCell * nLeavesOnOtherNodes;
+
+        //tout << it->center << " needs data from "
+        //     << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n";
     }
 
     tout << "Number of Cells : " << tree.root->countLeaves() << "\n";
