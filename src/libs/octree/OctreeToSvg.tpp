@@ -9,9 +9,9 @@ namespace Octree {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 OctreeToSvg<T_DIM>::OctreeToSvg
-( const Octreetype & p_tree, const std::string filename, bool timestamp )
+( const Octreetype & p_tree, const std::string filename, bool timestamp, int height )
 : out(), tree( p_tree ), treesrc( &p_tree ),
-  imagesize( int( 600. / p_tree.size[1] * p_tree.size[0] ) ,600 ),
+  imagesize( int( double(height) / p_tree.size[1] * p_tree.size[0] ), height ),
   imageborder( 20,20 ), boxesDrawn()
 {
     /* Create Timestamp and rank strings for filenames */
@@ -30,9 +30,9 @@ OctreeToSvg<T_DIM>::OctreeToSvg
         << "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">""\n"
         << "<svg"                                                   "\n"
         << " xmlns:xlink = \"http://www.w3.org/1999/xlink\""        "\n"
-        << " xmlns   = \"http://www.w3.org/2000/svg\">"             "\n"
-        << " width   = \"" << 2*imageborder[0]+imagesize[0] << "px\" \n"
-        << " height  = \"" << 2*imageborder[1]+imagesize[1] << "px\" \n"
+        << " xmlns   = \"http://www.w3.org/2000/svg\""              "\n"
+        << " width   = \"" << 2*imageborder[0]+imagesize[0] <<    "\"\n"
+        << " height  = \"" << 2*imageborder[1]+imagesize[1] <<    "\"\n"
         << " version = \"1.1\""                                     "\n"
         << ">"                                                      "\n"
         << "<defs>"                                                 "\n"
@@ -40,7 +40,7 @@ OctreeToSvg<T_DIM>::OctreeToSvg
         << "   rect {"                                              "\n"
         << "    fill : none;"                                       "\n"
         << "    stroke : white;"                                    "\n"
-        << "    stroke-width : " << STROKE_WIDTH << "px"            "\n"
+        << "    stroke-width : " << STROKE_WIDTH <<                 "\n"
         << "   }"                                                   "\n"
         << "   circle {"                                            "\n"
         << "    fill : red;"                                        "\n"
@@ -83,13 +83,13 @@ void OctreeToSvg<T_DIM>::PrintGrid(void) {
             upperleft *= imagesize;   // scale image up
             upperleft += imageborder;
             VecD rect_size = currentnode->size * VecD(imagesize);
-            out << "<rect"                                   "\n"
-                << " id    =\"" << toBeStored.id        << "\"\n"
-                << " x     =\"" << upperleft[0] << "px" << "\"\n"
-                << " y     =\"" << upperleft[1] << "px" << "\"\n"
-                << " width =\"" << rect_size[0] << "px" << "\"\n"
-                << " height=\"" << rect_size[1] << "px" << "\"\n"
-                << "/>"                                      "\n";
+            out << "<rect"                            "\n"
+                << " id    =\"" << toBeStored.id << "\"\n"
+                << " x     =\"" << upperleft[0] <<  "\"\n"
+                << " y     =\"" << upperleft[1] <<  "\"\n"
+                << " width =\"" << rect_size[0] <<  "\"\n"
+                << " height=\"" << rect_size[1] <<  "\"\n"
+                << "/>"                               "\n";
         }
         if ( currentnode->IsLeaf() )
             todo.pop();
@@ -128,12 +128,12 @@ void OctreeToSvg<T_DIM>::PrintPositions(void) {
                 center *= imagesize;   // scale image up
                 center += imageborder;
                 size_t id = reinterpret_cast<size_t>( current->getDataPtr(i).object );
-                out << "<circle"                          "\n"
-                    << " id=\"" << id                << "\"\n"
-                    << " cx=\"" << center[0] << "px" << "\"\n"
-                    << " cy=\"" << center[1] << "px" << "\"\n"
-                    << " r =\"3px\""                      "\n"
-                    << "/>"                               "\n";
+                out << "<circle"                  "\n"
+                    << " id=\"" << id <<        "\"\n"
+                    << " cx=\"" << center[0] << "\"\n"
+                    << " cy=\"" << center[1] << "\"\n"
+                    << " r =\"3\""                "\n"
+                    << "/>"                       "\n";
                 ++i;
             }
             todo.pop();
@@ -204,14 +204,14 @@ void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
                 upperleft += imageborder;
                 VecD rect_size = currentnode->size * imagesize;
 
-                out << "<rect"                                   "\n"
-                    << " id    =\"" << toBeStored.id        << "\"\n"
-                    << " x     =\"" << upperleft[0] << "px" << "\"\n"
-                    << " y     =\"" << upperleft[1] << "px" << "\"\n"
-                    << " width =\"" << rect_size[0] << "px" << "\"\n"
-                    << " height=\"" << rect_size[1] << "px" << "\"\n"
-                    << " style =\"stroke:none\""                 "\n"
-                    << "/>"                                      "\n";
+                out << "<rect"                            "\n"
+                    << " id    =\"" << toBeStored.id << "\"\n"
+                    << " x     =\"" << upperleft[0] <<  "\"\n"
+                    << " y     =\"" << upperleft[1] <<  "\"\n"
+                    << " width =\"" << rect_size[0] <<  "\"\n"
+                    << " height=\"" << rect_size[1] <<  "\"\n"
+                    << " style =\"stroke:none\""          "\n"
+                    << "/>"                               "\n";
             }
             /* Some Box which was drawn, but is not visible, reappeard */
             if (   boxesDrawnIt != boxesDrawn.end() and
@@ -265,8 +265,8 @@ void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
                             << " fill =\"freeze\""                   "\n"
                             << " begin=\"" << DUR*currentTime <<  "s\"\n"
                             << " dur  =\"" << DUR             <<  "s\"\n"
-                            << " from =\"" << oldpos[0]       << "px\"\n"
-                            << " to   =\"" << newpos[0]       << "px\"\n"
+                            << " from =\"" << oldpos[0]       <<   "\"\n"
+                            << " to   =\"" << newpos[0]       <<   "\"\n"
                             << "/>"                                  "\n";
                         out << "<animate"                            "\n"
                             << " xlink:href=\"#" << id        <<   "\"\n"
@@ -274,8 +274,8 @@ void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
                             << " fill =\"freeze\""                   "\n"
                             << " begin=\"" << DUR*currentTime <<  "s\"\n"
                             << " dur  =\"" << DUR             <<  "s\"\n"
-                            << " from =\"" << oldpos[1]       << "px\"\n"
-                            << " to   =\"" << newpos[1]       << "px\"\n"
+                            << " from =\"" << oldpos[1]       <<   "\"\n"
+                            << " to   =\"" << newpos[1]       <<   "\"\n"
                             << "/>"                                  "\n";
                     } else { /* NAN means the datum wasn't found anymore */
 

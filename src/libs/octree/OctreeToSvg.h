@@ -53,7 +53,8 @@ public:
 
 public:
     OctreeToSvg(void) { assert(false); }
-    OctreeToSvg(const Octreetype & tree, const std::string filename, bool timestamp = true);
+    OctreeToSvg( const Octreetype & tree, const std::string filename,
+                 bool timestamp = true, int height = 600 );
     OctreeToSvg & operator=( const OctreeToSvg & src ) { assert(false); };
     OctreeToSvg( const OctreeToSvg & src ) { assert(false); };
     ~OctreeToSvg(void) {}
