@@ -13,7 +13,7 @@
 #define INF (1.0/0.0)
 
 //componentsConfig.param
-const uint16_t SIMDIM                  = 3;
+const uint16_t SIMDIM                  = 2;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
 const double   CONSIDERATION_RATIO     = 100.;       // Force between particles will be calculated if distance between those two is smaller than CONSIDERATION_RATIO * CELL_SIZE. If 0 then force is not calculated periodically
       int      NUMBER_OF_STEPS         = 1e6;
@@ -33,7 +33,7 @@ const double EPS0_SI                   = 1.0/(MUE0_SI*SPEED_OF_LIGHT_SI*SPEED_OF
 
 //GridConfig.param
       int GUARDSIZE                    = 1;
-      int NUMBER_OF_CELLS_X            = 100; // these is for the INITIAL_OCTREE_REFINEMENT ...
+      int NUMBER_OF_CELLS_X            = 50; // these is for the INITIAL_OCTREE_REFINEMENT ...
       int NUMBER_OF_CELLS_Y            = 50;  // ... real number of cells will be higher
       int NUMBER_OF_CELLS_Z            = 50;    // ... at critical places
       int NUMBER_OF_PARTICLES_PER_CELL = 26;   // NUM instead of NUMBER_OF in picongpu is also inconsistent, and there are other longer names, soo ...
