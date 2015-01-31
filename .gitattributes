@@ -3,6 +3,15 @@
 *.cpp text
 *.h text
 *.tpp text
+*.gitattributes text
+*.gitignore text
+*.py text
+*Makefile text
+
 *.png binary
 *.webm binary
+*.pdf binary
+*.dat binary
+*.svg binary
+*.mkv binary
 
