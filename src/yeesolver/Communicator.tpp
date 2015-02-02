@@ -144,7 +144,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::initCommData
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering) {
     this->distOrdering = ordering;
-    
+
     /* Calculate Costs optimal Costs */
     double totalCosts = 0;
     for ( typename T_OCTREE::iterator it = tree.begin(); it != tree.end(); ++it )
@@ -152,7 +152,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
             totalCosts += ((CommData*)it->data[COMM_HEADER_INDEX])->weighting;
     double optimalCosts = totalCosts / double(worldsize);
     tout << "Total Costs: " << totalCosts << " => Optimal Costs: " << optimalCosts << std::endl;
-    
+
     /* Assign cells to all the processes and allocate memory */
     double cumulativeCosts = 0;
     int curRank = 0;
@@ -160,11 +160,10 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::distributeCells(int ordering
         if ( it->IsLeaf() ) {
             CommData * curCommData = (CommData*)it->data[COMM_HEADER_INDEX];
             const double curWeighting = curCommData->weighting;
+            curRank = int( cumulativeCosts / optimalCosts );
+            /* only should happen if last cell(s) in traversal has 0 weighting */
+            assert( curRank < worldsize );
             cumulativeCosts += curWeighting;
-            if ( cumulativeCosts >= optimalCosts and curRank != worldsize-1) {
-                cumulativeCosts = curWeighting;
-                curRank++;
-            }
             curCommData->rank = curRank;
 
             /* Allocate memory for celldata only if cell belongs to us */
@@ -540,7 +539,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
     struct tm * now = localtime( &t );
     static std::stringstream s_timestamp;
     if ( s_timestamp.rdbuf()->in_avail() == 0 ) {
-        s_timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon 
+        s_timestamp << 1900 + now->tm_year << "-" << 1 + now->tm_mon
                     << "-" << now->tm_mday << "_" << now->tm_hour << "-"
                     << now->tm_min << "_output";
         tout << "Creating directory " << boost::filesystem::absolute(s_timestamp.str()) << " with boost\n";
@@ -574,7 +573,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
         /* abspos member of SimulationBox is initialized bei Communicator.tpp *
          * with it->center - 0.5*it->size, meaning lower left corner with     *
          * internal units of OctreeNode ( no rounding errors should happen )  */
-        for ( typename OctCell::IteratorType itm = data.getIterator( timestep, 
+        for ( typename OctCell::IteratorType itm = data.getIterator( timestep,
               SimulationBox::CORE + SimulationBox::BORDER ).begin();
               itm != itm.end(); ++itm )
         {

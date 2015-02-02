@@ -214,7 +214,7 @@ int main( int argc, char **argv )
     /**************************************************************************/
 
     /********* refine all cells to initial homogenous min-Refinement **********/
-    if ( OCTREE_SETUP == 7 or OCTREE_SETUP == 6 ) {
+    if ( OCTREE_SETUP == 7 or OCTREE_SETUP == 6 or OCTREE_SETUP == 9 ) {
         for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
             for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
                 if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
@@ -292,7 +292,16 @@ int main( int argc, char **argv )
         }
     }
     /**************************************************************************/
-
+    if ( OCTREE_SETUP == 7 ) {
+        assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
+        for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++)
+            for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it ) {
+                bool insideLense = false;
+                if ( it->IsLeaf() and it->getLevel()==lvl and insideLense )
+                    it->GrowUp();
+            }
+    }
+    
     tout << "Tree-Integrity: " << tree.CheckIntegrity() << "\n\n";
     svgoutput.PrintGrid();
 
@@ -622,7 +631,7 @@ int main( int argc, char **argv )
                   * wave which will be spawned! That's why we search for a    *
                   * wanted pos and get back the center of the cell containing *
                   * that position                                             */
-                 static bool firstCall = true;
+                /* static bool firstCall = true;
                  if ( firstCall ) {
                      firstCall = false;
                      R = 2*LAMBDA;
@@ -631,7 +640,7 @@ int main( int argc, char **argv )
                      M = t_simbox.getGlobalPosition( t_simbox.findCellContaining( guessedPos ) );
                      SPAWN_POS = M; // doesn't work with M, why !!! It's a border case, but anyway ...
                      tout << "R: " << R << ", M: " << M << ", M_again: " << t_simbox.getGlobalPosition( t_simbox.findCellContaining( M ) ) << "\n";
-                 }
+                 }*/
                  const double nVacuum = 1.0;
                  const double nLense  = 1.33;
                  const double e    = nVacuum / nLense;
@@ -707,7 +716,7 @@ int main( int argc, char **argv )
                 #endif
             }
         }
-        if (WAVE_SPAWN_SETUP == 2) {
+        if ( WAVE_SPAWN_SETUP == 2 ) {
             /* shield function generator in one direction */
             OctreeType::Node * node = tree.FindLeafContainingPos( SPAWN_POS );
             if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == combox.rank ) {
@@ -872,7 +881,7 @@ int main( int argc, char **argv )
         MPI_Barrier(MPI_COMM_WORLD);
     } // internaltimestep
 
-		if (timestep % PNG_INTERVAL == 0) {
+		if (timestep+1 % PNG_INTERVAL == 0) {
 			static int framecounter = 0;
 			framecounter++;
 			char filename[100];
@@ -896,7 +905,7 @@ int main( int argc, char **argv )
 
         MPI_Barrier(MPI_COMM_WORLD);
         #if DEBUG_MAIN_YEE >= 90
-            tout << "Timestep " << timestep << " took " << MPI_Wtime() - tLast << " seconds\n";
+            tout << "Timestep " << timestep << " took " << MPI_Wtime() - tLast << " seconds\n" << std::flush;
         #endif
         tLast = MPI_Wtime();
 	}

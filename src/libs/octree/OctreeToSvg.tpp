@@ -14,7 +14,7 @@ OctreeToSvg<T_DIM>::OctreeToSvg
   imagesize( int( double(height) / ptree.size[1] * ptree.size[0] ), height ),
   imageborder( 20,20 ),
   Camera( /* Eye */ Vec<double,3>(0) + Vec<double,3>(0.5, 0.5, 5.0),
-          /* looks at */ ptree.center )/* camera is in internal octree units */,
+          /* looks at */ Vec<double,3>(0) )/* camera is in internal octree units */,
   mvp(4,4), boxesDrawn()
 {
 	Matrix projection_matrix = CalcProjection( M_PI/2.0, double(imagesize[0]) /
