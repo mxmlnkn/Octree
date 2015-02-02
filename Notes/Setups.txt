@@ -7,3 +7,11 @@ make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -t91 -n 128 32 0 -p10 -i0 
     sine wave moving to right from left border (and from right border to left because it's periodic)
 make MainYeeOctreeNoDebug; ./MainYeeOctreeNoDebug.exe -n 1024 512  0 -w7 -s0 -i0 -m0 -t 3001 -p10
     ellipsoid lense
+make OctreeBenchmark; ./OctreeBenchmark.exe -o6 -i6 -m10 --svg 0 --ordering 0..4
+    Benchmark for SIMDIM 3
+make OctreeBenchmark; ./OctreeBenchmark.exe -o6 -i8 -m12 --svg 0 --ordering 0..4
+    Benchmark for SIMDIM 2
+make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o1 -i2 -m2 --svg 1 --ordering 2 --number-of-worldsizes 1
+    2 refinements for comparison of 3D-SVG with paper
+make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o3 --svg 1 --ordering 2 --number-of-worldsizes 1
+    more complex 3D Case

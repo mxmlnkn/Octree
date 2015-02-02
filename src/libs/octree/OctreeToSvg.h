@@ -8,14 +8,14 @@
 #include <string>
 
 #include "Octree.h"
+#include "opengl/3D-Projection.h"
+#include "math/Matrix.h"
 
 namespace Octree {
 
 template<int T_DIM>
 class OctreeToSvg {
 public:
-    typedef Vec<double,T_DIM> VecD;
-    typedef Vec<int   ,T_DIM> VecI;
     const int dim = T_DIM;
     typedef class Octree<T_DIM> Octreetype;
     typedef class Node<T_DIM> Node;
@@ -26,8 +26,10 @@ public:
     Octreetype tree;
     const Octreetype * treesrc;
 
-    VecI imagesize;   // in px
-    VecI imageborder; // in px
+    Vec<int,2> imagesize;    // in px
+    Vec<int,2> imageborder;  // in px
+    CameraData Camera; // only needed if T_DIM == 3
+    Matrix mvp;
 
     int currentTime = 1;
     const int DUR = 2; //2s per update
@@ -35,7 +37,7 @@ public:
 
     /* Thanks to https://stackoverflow.com/questions/16362231/ */
     struct StrictWeakOrderingVecD {
-        bool operator()( const VecD & a, const VecD & b ) const {
+        bool operator()( const Vec<double,T_DIM> & a, const Vec<double,T_DIM> & b ) const {
             for (int i=0; i<T_DIM; i++) {
                 if (a[i] < b[i]) return true;
                 if (a[i] > b[i]) return false;
@@ -47,7 +49,7 @@ public:
  * currently visible (the last <set/> was "stroke:white" or not. If a box can *
  * be found in this map, than it must already have been drawn with <rect/>    */
     typedef struct { int id; bool visible; } Keyvalues;
-    typedef std::map<VecD,Keyvalues,StrictWeakOrderingVecD> VecDMap;
+    typedef std::map<Vec<double,T_DIM>,Keyvalues,StrictWeakOrderingVecD> VecDMap;
     int NboxesDrawn = 0;
     VecDMap boxesDrawn;
 
@@ -61,7 +63,7 @@ public:
     void PrintGrid(void);
     void PrintPositions(void);
     void AnimateUpdated( const Octreetype & newtree );
-    VecD convertToImageCoordinates( const VecD pos );
+    Vec<double,2> convertToImageCoordinates( const Vec<double,T_DIM> pos );
     void close(void) {
         out << "</svg>\n";
         out.close();

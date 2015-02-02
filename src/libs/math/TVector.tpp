@@ -204,12 +204,22 @@ Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::SmallerThan( const Vec & v ) const {
 /********************** Horizontal Vector Operations **********************/
 
 /* Scalarproduct */
-/*T_DTYPE operator* (const Vec & v) const {
-    T_DTYPE sum = 0;
+template<typename T_DTYPE, int T_DIM>
+T_DTYPE Vec<T_DTYPE,T_DIM>::scp(const Vec & v) const {
+    T_DTYPE tsum = 0;
     for (int i=0; i<T_DIM; i++)
-        sum += (this->data[i]) * v[i];
-    return sum;
-}*/
+        tsum += (this->data[i]) * v[i];
+    return tsum;
+}
+
+template<typename T_DTYPE, int T_DIM>
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::abs(void) const
+{
+    Vec tmp;
+    for (int i=0; i<T_DIM; i++)
+        tmp = std::abs( (*this)[i] );
+    return tmp;
+}
 
 template<typename T_DTYPE, int T_DIM>
 double Vec<T_DTYPE,T_DIM>::norm2( void ) const {
@@ -258,14 +268,16 @@ T_DTYPE Vec<T_DTYPE,T_DIM>::mean( void ) const {
     return this->sum() / double(T_DIM);
 }
 
-/*template<typename T_DTYPE> // only available for 3D
-Vec<T_DTYPE,3> Vec<T_DTYPE,3>::cross(const Vec<T_DTYPE,3> & b) const {
-    Vec<T_DTYPE,3> res(0);
+template<typename T_DTYPE, int T_DIM> // only available for 3D
+Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::cross(const Vec & b) const {
+    assert( T_DIM == 3 );
+    Vec res(0);
     res.data[0] += this->data[1] * b.data[2] - this->data[2] * b.data[1];
     res.data[1] += this->data[2] * b.data[0] - this->data[0] * b.data[2];
     res.data[2] += this->data[0] * b.data[1] - this->data[1] * b.data[0];
     return res;
-}*/
+}
+
 
 /************************ Derived Declarations ********************************/
 template<typename T_DTYPE, int T_DIM>

@@ -43,13 +43,16 @@ public:
     Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
     Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
     Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
-
+    
+    T_DTYPE scp(const Vec & v) const;
+    Vec abs(void) const;
     double norm2( void ) const;
     T_DTYPE product( void ) const;
     T_DTYPE sum( void ) const;
     T_DTYPE min( void ) const;
     T_DTYPE max( void ) const;
     T_DTYPE mean( void ) const;
+    Vec cross(const Vec & b) const;
 
     Vec  operator+ (const Vec & v) const;
     Vec& operator-=(const Vec & v);

@@ -17,13 +17,14 @@ setupnames = [ "Circle Shape Refinement",
 setupnames = [ "3D Sphere Refinement, less cells",
                "3D Refinement at only one point",
                "3D Uniform randomly refined mesh" ]"""
-basestrings = [ "./output/2015-01-31_05-12/Octree-Setup-6_Initial-8_Max-Refinement-12_"]
-setupnames = [ "Circle Refinement 93184 Cells" ]
+basestrings = [ "./output/2015-02-01_05-59/Quadtree-Setup-6_Initial-8_Max-Refinement-12_",
+                "./output/2015-02-01_05-59/Octree-Setup-6_Initial-6_Max-Refinement-10_" ]
+setupnames = [ "Circle Refinement 93184 Cells",
+               "Sphere Refinement 278272 Cells" ]
 
 fig = figure( figsize=(12,8) );
-
 for isetup in range(len(basestrings)):
-    subplot( 2,2,isetup )
+    subplot( 2,1,isetup )
     title( setupnames[isetup] )
     for i in range(len(orderings)):
         data = genfromtxt( basestrings[isetup] + orderings[i] + ".dat", comments='#' )
@@ -37,20 +38,21 @@ for isetup in range(len(basestrings)):
     ylabel( 'Communication Data / kiB' );
 tight_layout()
 fig.savefig( 'Octree-SFC-Benchmarks.pdf', format='PDF' )
-
+"""
 for isetup in range(len(basestrings)):
     fig = figure( figsize=(6,5) );
     title( setupnames[isetup] )
     for i in range(len(orderings)):
-        data = genfromtxt( basestrings[isetup] + orderings[i] + ".dat", comments='#' )
+        data = genfromtxt( basestrings[isetup] + orderings[i] + "_Ordering.dat", comments='#' )
         plot( data[:,0], data[:,2]/1024., '-o', label = orderings[i] )
     plot( data[:,0], data[:,1]/1024., '-o', label = "Maximum" )
     xlim( ( min(data[:,0])-0.5, max(data[:,0])+0.5 ) )
     ylim( ( 0, max(data[:,1]/1024.)*1.1 ) )
+    #xscale('log')
     legend( loc='best' )
     xlabel( 'Processors / #' )
     ylabel( 'Communication Data / kiB' );
     tight_layout()
     fig.savefig( 'Octree-SFC-Benchmark_'+str(isetup)+'.pdf', format='PDF' )
-
+"""
 show()

@@ -57,7 +57,7 @@ private:
  * representation is essentially treated as an array of sign bits. With this  *
  * we can map 0...7 to all eight neighbors in an Octree or respectively 0...3 *
  * for a Quadtree or 0...2^N-1 for a tree in N dimensions                     */
-    VecI ConvertNumberToDirection( const int  ) const;
+    VecI ConvertNumberToDirection( const int number ) const;
 /* If the direction contains an entry which is not 1 or -1 then it's not the  *
  * format we expect => return -1                                              */
     static int ConvertDirectionToNumber( const VecI );
