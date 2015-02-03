@@ -15,6 +15,20 @@ make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o1 -i2 -m2 --svg 1 --orde
     2 refinements for comparison of 3D-SVG with paper
 make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o3 --svg 1 --ordering 2 --number-of-worldsizes 1
     more complex 3D Case
-    
+
 make MainYeeOctreeNoDebug; mpirun -n 2 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -i3 -m4 -t 3001 -p10000
     elliptic with partial refinement -> took 287mb per process ( 2 processes )
+
+
+make MainYeeOctreeNoDebug; mpirun -n 3 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 3001 -p10000
+    version where elliptic lense border is refined
+    every one of the 3 processes needs ~1 235 436 K -> allocate 2gb on taurus for n=2
+    allocate 4gb for n=1 (rewrite program without needing mpi, but with same maxLevel-minLevel in OctreeRefinement
+        => ... muss schon exakt so sein, sondern werden ganz andere bereiche refined ... octree refinement kommt also wirklich aus problemstellung ...
+    Heimrechner:
+        Cells in Octree : 355
+            => sollte bis n=128 ohne große Scaling-Probleme laufen, vor allem da jetzt das mit division statt += verbessert wurde: curRank = int( cumulativeCosts / optimalCosts );
+        Timestep 3 took 20.4822 seconds
+        Timestep 4 took 22.1363 seconds
+        Timestep 5 took 24.0264 seconds
+      => internalTimestep <=> time between mpi communication ~ 22 / 2^3 = 2.75s => sollte genug sein

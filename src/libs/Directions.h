@@ -75,7 +75,7 @@ const int FRONT  = 9;
 template<int T_DIM>
 Vec<int,T_DIM> getDirectionVector( const int direction ) {
     Vec<int,T_DIM> vec(0);
-    assert( direction >= 1 and direction <= pow(3,T_DIM)+0.0001 );
+    assert( direction >= 1 and direction <= pow(3,T_DIM) );
     /* This may not be needed for 2D, but it also doesn't make the        *
      * results wrong                                                      */
     int t_direction = direction;

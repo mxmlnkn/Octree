@@ -98,6 +98,12 @@ int main( int argc, char **argv )
     tout.Open( basefilename.str() + std::string("out.txt"), combox.rank );
     terr.Open( basefilename.str() + std::string("err.txt"), combox.rank );
 
+    /* Dynamically calcualte spawning-pos / center of ellipse */
+    if ( WAVE_SPAWN_SETUP == 7 ) {
+        R = 2*LAMBDA;
+        M = VecD(ABSORBING_BORDER_THICKNESS + R, SIM_SIZE[1]/2 );
+    }
+    
     /**************************** Print Parameters ****************************/
     srand(RANDOM_SEED);
 	const double S = SPEED_OF_LIGHT * DELTA_T * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm();
@@ -157,7 +163,7 @@ int main( int argc, char **argv )
          << "Cells per Octree Cell         : " << cellsPerOctreeCell << "\n\n";
     combox.initCommData( cellsPerOctreeCell, GUARDSIZE, 1 /*timestepbuffer*/ );
 
-    const int ORDERING = Octree::Ordering::Morton; // -> Parameters -> need to include Octree there :S ?
+    const int ORDERING = Octree::Ordering::Hilbert; // -> Parameters -> need to include Octree there :S ?
     combox.distributeCells(ORDERING);
 
     /*********************** Initialize SVG output file ***********************/

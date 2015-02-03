@@ -1,5 +1,5 @@
 /********************** Gaussian Wave Pulse ***********************/
-if ( WAVE_SPAWN_SETUP % 10 == 5 ) {
+if ( WAVE_SPAWN_SETUP / 10 == 5 ) {
     /**************************************************************
      * Sine plane Wave going to Direction alpha and beginning     *
      * line going through pos0  y                                 *
@@ -58,7 +58,7 @@ if ( WAVE_SPAWN_SETUP % 10 == 5 ) {
     }
 }
 /********* Using Lens to make point source to plane wave **********/
-if ( WAVE_SPAWN_SETUP % 10 == 7 ) {
+if ( WAVE_SPAWN_SETUP == 7 ) {
     /**************************************************************
      *           y                                                *
      * Absorber  ^    Air/Vacuum                                  *

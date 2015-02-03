@@ -161,8 +161,9 @@ public:
 /* Returns total amount of leaves, including those contained by childnodes if *
  * existing                                                                   */
     int countLeaves( void );
-/* returns neighboring cell in direction. (doesn't work with diagonal         *
- * neighbors yet! If the neighbor cell in that direction is larger and has no *
+/* returns neighboring cell in direction. Works with diagonal directions and  *
+ * also with VecI(0), returning the leaf itself then.                         *
+ * If the neighbor cell in that direction is larger and has no                *
  * childnodes, then that is returned. If this cell is larger than the neigh-  *
  * boring cells in that direction, then the cell of same size will be         *
  * returned. The format of direction is a movement vector, which will just be *
