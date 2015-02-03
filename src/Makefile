@@ -78,6 +78,11 @@ MainYeeOctreeNoDebug : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree li
 	rm -f $@.exe
 	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 $(LIBS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
+MainYeeOctreeNoMpi : yeesolverserial/MainYeeOctree.cpp
+	mkdir -p output
+	rm -f $@.exe
+	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 $(LIBS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
+
 testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h examples/testSimBox/Cell.h TVector TBaseMatrix
 	rm -f $@.exe
 	mpic++ $< -o $@.exe $(CFLAGS)

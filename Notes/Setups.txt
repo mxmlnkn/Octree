@@ -32,3 +32,18 @@ make MainYeeOctreeNoDebug; mpirun -n 3 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0
         Timestep 4 took 22.1363 seconds
         Timestep 5 took 24.0264 seconds
       => internalTimestep <=> time between mpi communication ~ 22 / 2^3 = 2.75s => sollte genug sein
+
+    printf '#!/bin/bash\nmpirun hostname' | sbatch --ntasks 3
+
+    module load gcc/4.9.1 openmpi/1.8.3 boost/1.56.0-gnu4.9.1
+    mpicc --show-me
+        gcc -I/sw/taurus/libraries/openmpi/1.6.5/x86_64/include -pthread -L/sw/taurus/libraries/openmpi/1.6.5/x86_64/lib -lmpi -ldl -lm -lnuma -Wl,--export-dynamic -lrt -lnsl -lutil
+    module load scorep/1.3.0-gcc-xmpi-cuda5.5
+    salloc -n 1
+        make MainYeeOctreeNoDebug
+        exit
+
+    printf '#!/bin/bash\nmpirun hostname\nmpirun ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 3001 -p10000' | sbatch --exclusive --time=00:20:00 --ntasks 16 --partition=sandy --mem-per-cpu=1927M
+
+    squeue -u s3495379
+
