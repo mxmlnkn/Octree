@@ -98,12 +98,6 @@ int main( int argc, char **argv )
     tout.Open( basefilename.str() + std::string("out.txt"), combox.rank );
     terr.Open( basefilename.str() + std::string("err.txt"), combox.rank );
 
-    /* Initialize SVG output file */
-    std::stringstream svgfilename;
-    svgfilename << basefilename.str() << "Octree_worldsize-"
-                << combox.worldsize << "_rank-" << combox.rank << ".svg";
-    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, svgfilename.str() );
-
     /**************************** Print Parameters ****************************/
     srand(RANDOM_SEED);
 	const double S = SPEED_OF_LIGHT * DELTA_T * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm();
@@ -141,9 +135,7 @@ int main( int argc, char **argv )
     tout << "PNG_INTERVAL             : " << PNG_INTERVAL               << "\n";
     tout << "\n";
 
-
     #include "InitOctreeRefinement.cpp"
-    svgoutput.PrintGrid();
 
     /**************************************************************************/
     /* (2) Distribute weighting and Octree cells to processes *****************/
@@ -166,11 +158,20 @@ int main( int argc, char **argv )
     combox.initCommData( cellsPerOctreeCell, GUARDSIZE, 1 /*timestepbuffer*/ );
 
     const int ORDERING = Octree::Ordering::Morton; // -> Parameters -> need to include Octree there :S ?
-    combox.distributeCells( ORDERING );
+    combox.distributeCells(ORDERING);
 
+    /*********************** Initialize SVG output file ***********************/
+    std::stringstream svgfilename;
+    svgfilename << basefilename.str() << "Octree_worldsize-"
+                << combox.worldsize << "_rank-" << combox.rank << ".svg";
+    Octree::OctreeToSvg<SIMDIM> svgoutput( tree, svgfilename.str() );
+    
+    svgoutput.PrintGrid();
+    
     /* Graphical output of cell-rank-mapping */
     for ( typename OctreeType::iterator it = tree.begin(); it != it.end(); ++it)
     if ( it->IsLeaf() ) {
+        assert( it->data.size() > 0 );
         int id = svgoutput.boxesDrawn.find( it->center )->second.id;
         int curRank = ((typename OctreeCommType::CommData *)it->data[OctreeCommType::COMM_HEADER_INDEX])->rank;
         int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
@@ -184,7 +185,7 @@ int main( int argc, char **argv )
             << "/>"                                                  "\n";
     }
 
-    //svgoutput.PrintTraversal(ORDERING);
+    svgoutput.PrintTraversal(ORDERING);
     svgoutput.close();
 
     /* Set Core, Border and Guard to different test values */

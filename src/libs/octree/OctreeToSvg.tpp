@@ -159,14 +159,15 @@ void OctreeToSvg<T_DIM>::PrintTraversal( int pordering ) {
     typename OctreeType::iterator it0 = tree.begin();
     typename OctreeType::iterator it1 = tree.begin();
     for ( typename OctreeType::iterator it = tree.begin( pordering );
-          it!=tree.end(); ++it ) if ( it->IsLeaf() )
+          it != it.end(); ++it ) if ( it->IsLeaf() )
     {
         it0 = it1;
         it1 = it;
         if ( it0->IsLeaf() and it1->IsLeaf() ) {
+            assert( it0->data.size() > 0 );
             size_t id = reinterpret_cast<size_t>( it0->data[0] );
-            Vec<double,T_DIM> r0 = convertToImageCoordinates( it0->center );
-            Vec<double,T_DIM> r1 = convertToImageCoordinates( it1->center );
+            Vec<double,2> r0 = convertToImageCoordinates( it0->center );
+            Vec<double,2> r1 = convertToImageCoordinates( it1->center );
             /* Spawn invisible line element */
             this->out
               << "<line"                                               "\n"
