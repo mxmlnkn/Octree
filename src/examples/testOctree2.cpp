@@ -42,20 +42,23 @@ typedef Vec<double,SIMDIM> VecI;
 
 int main( int argc, char **argv )
 {
-    time_t t = time(0);
-    struct tm * now = localtime( &t );
-    std::stringstream basefolder;
-    basefolder << "output/" << 1900 + now->tm_year << "-" << std::setfill('0')
+    /* Create timestamp and basefolder for filenames */
+    time_t tmp_time = time(0);
+    struct tm * now = localtime( &tmp_time );
+    std::stringstream basefolder, timestamp, basefilename;
+    timestamp  << 1900 + now->tm_year << "-" << std::setfill('0')
                << std::setw(2) << 1 + now->tm_mon << "-"
                << std::setw(2) << now->tm_mday << "_"
                << std::setw(2) << now->tm_hour << "-"
-               << std::setw(2) << now->tm_min;
+               << std::setw(2) << now->tm_min  << "-"
+               << std::setw(2) << now->tm_sec;
+    basefolder << "output/" << timestamp.str();
     boost::filesystem::create_directory(
         boost::filesystem::absolute(basefolder.str()) );
-    basefolder << "/";
+    basefilename << basefolder.str() << "/" << timestamp.str() << "_";
 
-    tout.Open( std::string("out"), -1, basefolder.str() );
-    terr.Open( std::string("err"), -1, basefolder.str() );
+    tout.Open( basefilename.str() + std::string("out"), -1 );
+    terr.Open( basefilename.str() + std::string("err"), -1 );
     tout << "Write logs to: " << basefolder.str() << "\n";
 
     bool PRINT_SVG = true;

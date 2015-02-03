@@ -9,7 +9,7 @@ namespace Octree {
 /******************************** Constructor *********************************/
 template<int T_DIM>
 OctreeToSvg<T_DIM>::OctreeToSvg
-( const Octreetype & ptree, const std::string filename, bool timestamp, int height )
+( const OctreeType & ptree, const std::string filename, bool timestamp, int height )
 : out(), tree( ptree ), treesrc( &ptree ),
   imagesize( int( double(height) / ptree.size[1] * ptree.size[0] ), height ),
   imageborder( 20,20 ),
@@ -19,25 +19,9 @@ OctreeToSvg<T_DIM>::OctreeToSvg
 {
 	Matrix projection_matrix = CalcProjection( M_PI/2.0, double(imagesize[0]) /
         double(imagesize[1]), 0, 1.5 );
-    #if DEBUG_OCTREE_SVG == 0
-        tout << "view: " << CalcView(Camera) << "\n";
-        tout << "projection: " << projection_matrix << "\n";
-        tout << "model matrix: " << CalcModelMatrix( Vec<double,3>(0), 1, 1, 0 ) << "\n";
-        tout << "mvp: " << mvp << "\n\n";
-    #endif
     mvp = CalcModelMatrix( Vec<double,3>(0), 1, 1, 0 ) * projection_matrix * CalcView(Camera);
 
-    /* Create Timestamp and rank strings for filenames */
-    time_t t = time(0);   // get time now
-    struct tm * now = localtime( &t );
-    std::stringstream fname;
-    if (timestamp)
-        fname << 1900 + now->tm_year << "-" << 1 + now->tm_mon << "-"
-              << now->tm_mday << "_" << now->tm_hour << "-" << now->tm_min
-              << "_";
-    fname << filename << ".svg";
-    this->out.open( fname.str(), std::ofstream::out );
-
+    this->out.open( filename, std::ofstream::out );
     out << "<?xml version=\"1.0\" standalone=\"no\"?>"              "\n"
         << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\""       "\n"
         << "  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">""\n"
@@ -166,7 +150,55 @@ void OctreeToSvg<3>::PrintGrid(void) {
 }
 
 template<int T_DIM>
-void OctreeToSvg<T_DIM>::AnimateUpdated( const Octreetype & newtree )
+void OctreeToSvg<T_DIM>::PrintTraversal( int pordering ) {
+    /* Graphical output of traversal line */
+    int    ncells  = tree.root->countLeaves();
+    int    curcell = 0;
+    double curtime = 0;
+    double delay   = 1./64.; // 8 frames per second at max achievable with SVG
+    typename OctreeType::iterator it0 = tree.begin();
+    typename OctreeType::iterator it1 = tree.begin();
+    for ( typename OctreeType::iterator it = tree.begin( pordering );
+          it!=tree.end(); ++it ) if ( it->IsLeaf() )
+    {
+        it0 = it1;
+        it1 = it;
+        if ( it0->IsLeaf() and it1->IsLeaf() ) {
+            size_t id = reinterpret_cast<size_t>( it0->data[0] );
+            Vec<double,T_DIM> r0 = convertToImageCoordinates( it0->center );
+            Vec<double,T_DIM> r1 = convertToImageCoordinates( it1->center );
+            /* Spawn invisible line element */
+            this->out
+              << "<line"                                               "\n"
+              << " id=\"path" << id << "\""                            "\n"
+              << " x1=\"" << r0[0] << "px\" y1=\"" << r0[1] << "px\""  "\n"
+              << " x2=\"" << r1[0] << "px\" y2=\"" << r1[1] << "px\""  "\n"
+              << " style=\"stroke:none;stroke-width:3px\""             "\n"
+              << "/>"                                                  "\n";
+            /* Animate line element to become visible after some time */
+            assert( curcell < ncells );
+            int r = int( floor( 256 * double(curcell) / double(ncells) ) );
+            int g = 128;
+            int b = int( floor( 256 * double(curcell) / double(ncells) ) );
+            assert( r >= 0 and r <= 255 );
+            assert( g >= 0 and r <= 255 );
+            assert( b >= 0 and r <= 255 );
+            this->out
+              << "<set"                                                "\n"
+              << " xlink:href=\"#path" << id << "\""                   "\n"
+              << " attributeName=\"stroke\""                           "\n"
+              << " begin=\"" << curtime << "s\""                       "\n"
+              << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+              << "/>"                                                  "\n";
+            curtime += delay;
+            curcell++;
+        }
+    }
+    return;
+}
+
+template<int T_DIM>
+void OctreeToSvg<T_DIM>::AnimateUpdated( const OctreeType & newtree )
 {
     /*std::cerr << "-boxesDrawn-\n";
     typename std::map<VecD,Keyvalues>::iterator it = boxesDrawn.begin();
@@ -325,6 +357,12 @@ Vec<double,2> OctreeToSvg<T_DIM>::convertToImageCoordinates
     newpos += imageborder;
     //tout << " -> " << newpos << "\n";
     return newpos;
+}
+
+template<int T_DIM>
+void OctreeToSvg<T_DIM>::close(void) {
+    out << "</svg>\n";
+    out.close();
 }
 
 } // namespace Octree

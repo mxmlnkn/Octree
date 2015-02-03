@@ -3,8 +3,6 @@
 #include <iostream>
 #include <fstream>
 #include <map>
-#include <ctime>
-#include <sstream>
 #include <string>
 
 #include "Octree.h"
@@ -17,14 +15,14 @@ template<int T_DIM>
 class OctreeToSvg {
 public:
     const int dim = T_DIM;
-    typedef class Octree<T_DIM> Octreetype;
+    typedef class Octree<T_DIM> OctreeType;
     typedef class Node<T_DIM> Node;
 
 //private:
     std::ofstream out;
 
-    Octreetype tree;
-    const Octreetype * treesrc;
+    OctreeType tree;
+    const OctreeType * treesrc;
 
     Vec<int,2> imagesize;    // in px
     Vec<int,2> imageborder;  // in px
@@ -55,19 +53,16 @@ public:
 
 public:
     OctreeToSvg(void) { assert(false); }
-    OctreeToSvg( const Octreetype & tree, const std::string filename,
+    OctreeToSvg( const OctreeType & tree, const std::string filename,
                  bool timestamp = true, int height = 600 );
     OctreeToSvg & operator=( const OctreeToSvg & src ) { assert(false); };
     OctreeToSvg( const OctreeToSvg & src ) { assert(false); };
     ~OctreeToSvg(void) {}
     void PrintGrid(void);
-    void PrintPositions(void);
-    void AnimateUpdated( const Octreetype & newtree );
+    void PrintTraversal( int pordering );
+    void AnimateUpdated( const OctreeType & newtree );
     Vec<double,2> convertToImageCoordinates( const Vec<double,T_DIM> pos );
-    void close(void) {
-        out << "</svg>\n";
-        out.close();
-    }
+    void close(void);
 };
 
 } // namespace Octree

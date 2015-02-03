@@ -3,17 +3,8 @@ TeeStream::TeeStream( int verbosityIn )
 {}
 
 void TeeStream::Open( std::string filename, int rank, std::string folder ) {
-    /* Create Timestamp and rank strings for filenames */
-    time_t t = time(0);   // get time now
-    struct tm * now = localtime( &t );
     std::stringstream fullname;
-    if ( folder == std::string("./") )
-        fullname << 1900 + now->tm_year << "-" << std::setfill('0') 
-                 << std::setw(2) << 1 + now->tm_mon << "-" << now->tm_mday 
-                 << "_" << now->tm_hour << "-" << now->tm_min << "_";
-    else
-        fullname << folder;
-    fullname << filename;
+    fullname << folder << filename;
     if ( rank != -1 )
         fullname << "_rank_" << rank;
     fullname << ".log";

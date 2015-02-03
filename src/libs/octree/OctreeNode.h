@@ -108,7 +108,7 @@ public:
         iterator( Node *, int ordering = 0 );
         ~iterator(void);
         iterator(const iterator &);
-        Node<T_DIM>::iterator & operator= (const iterator &);
+        iterator & operator= (const iterator &);
 
         iterator& operator++(void);
         iterator operator++( int unused );

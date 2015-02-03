@@ -31,6 +31,7 @@ public:
     int guardsize;
 
     Iterator( const int area, const VecI ncells, const int guardsize, CellMatrix & srcmat );
+    Iterator( void );
     ~Iterator( void );
     Iterator( const Iterator & src );
     int getCellIndex( void ) const;

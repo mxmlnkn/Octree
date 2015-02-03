@@ -18,6 +18,10 @@ Iterator<T_DIM,T_CELLDATA>::Iterator
     assert( area != CORE+GUARD ); 
 }
 
+template<int T_DIM, typename T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::Iterator( void )
+: area(-1), core(0), border(0), guard (0), srcmat(NULL), icell(0), ncells(0), guardsize(0)
+{}
+
 /******************************** Destructor **********************************/
 template<int T_DIM, typename T_CELLDATA>
 Iterator<T_DIM,T_CELLDATA>::~Iterator( void )
@@ -147,13 +151,14 @@ bool Iterator<T_DIM,T_CELLDATA>::operator!=( const Iterator & it ) {
 template<int T_DIM, typename T_CELLDATA>
 Iterator<T_DIM,T_CELLDATA> & Iterator<T_DIM,T_CELLDATA>::operator=
 ( const Iterator & src ) {
-    this->core   = src.core  ;
-    this->border = src.border;
-    this->guard  = src.guard ;
-    this->area   = src.area ;
-    this->icell  = src.icell ;
-    this->ncells = src.ncells;
-    this->srcmat = src.srcmat;
+    this->core      = src.core  ;
+    this->border    = src.border;
+    this->guard     = src.guard ;
+    this->area      = src.area ;
+    this->srcmat    = src.srcmat;
+    this->icell     = src.icell ;
+    this->ncells    = src.ncells;
+    this->guardsize = src.guardsize;
     return *this;
 }
 

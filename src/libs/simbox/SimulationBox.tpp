@@ -69,7 +69,7 @@ template<int T_DIM, typename T_CELLDATA>
 typename SimulationBox<T_DIM,T_CELLDATA>::IteratorType SimulationBox<T_DIM,T_CELLDATA>::getIterator
 ( const int timestep, const int area ) const {
     assert( timestep < this->ntimesteps );
-    return IteratorType( area, localcells + VecI(2*guardsize), guardsize, t[timestep]->cells );
+    return IteratorType( area, localcells + VecI(2*this->guardsize), this->guardsize, t[timestep]->cells );
 }
 
 #if DEBUG_SIMBOX >= 1
@@ -103,14 +103,11 @@ typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::
     #endif
     /* again cells are supposed to be on the center */
     VecI index( this->guardsize );
-    VecD rindex = ( pabspos - this->abspos ) / this->cellsize - 0.5;
-    for ( int i=0; i<T_DIM; ++i ) {
+    VecD rindex = ( pabspos - this->abspos ) / this->cellsize;
+    for ( int i=0; i<T_DIM; ++i )
         index[i] += (int) floor( rindex[i] );
-        /* Border Case belongs to smaller index, because cell in [0,1) */
-        if ( floor( rindex[i] ) == rindex[i] )
-            index[i] -= 1;
-    }
     assert( index < this->localcells + this->guardsize );
+    assert( index >= this->guardsize );
     return index;
 }
 

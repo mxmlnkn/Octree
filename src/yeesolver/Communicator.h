@@ -24,7 +24,7 @@
 #endif
 
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
-class OctreeCommunicator{
+class OctreeCommunicator {
 public:
     /* Make Copy- and Assignment-Constructors unavailable, to prevent       *
      * copies. If there is an error at                                      *
@@ -97,7 +97,7 @@ public:
         std::list<struct BorderData> sRecvData; // s->source
 
         /* simple constructor / initializer */
-        NeighborData(void) : sendData(NULL), cellsToSend(0), sSendData(), 
+        NeighborData(void) : sendData(NULL), cellsToSend(0), sSendData(),
                              recvData(NULL), cellsToRecv(0), sRecvData() {};
         NeighborData & operator=( const NeighborData & src ) { assert(false); }
         NeighborData( const NeighborData & src ) { assert(false); }
@@ -112,7 +112,7 @@ public:
     int timestepSent;
 
     /******************************** Methods *********************************/
-    
+
     /* squash the cube (CORE+BORDER) we want to send to guardsize in each     *
      * direction we want to sent it to, e.g.                                  *
      *   guard = 1, core+border = 3 => begin with 3x3x3 cube.                 *
@@ -134,24 +134,6 @@ public:
      * complicated stride in all directions it can't be communicated directly */
     void FinishGuardUpdate( int timestep );
 
-#if DEBUG_COMMUNICATOR >= 100
-    void Print( void ) {
-        terr << "Printing from Communicator on rank " << this->rank
-             << " with cartesian coordinates: " << VecI( this->coords )
-             << " My neighbors are: " << endl;
-
-        for (int direction = 1; direction <= this->nneighbors; direction++) {
-            terr << (VecI(this->coords) + getDirectionVector<T_DIM>( direction ))
-                 << "(lin=" << direction << ") -> Rank: "
-                 << this->neighbors[direction] << endl << flush;
-        }
-
-        /* Wait a bit till everything is flushed out, to not get scrambled output */
-        double t0 = MPI_Wtime();
-        while( MPI_Wtime() - t0 < 0.1 ) {}
-    }
-#endif
-
     OctreeCommunicator(void);
     OctreeCommunicator(T_OCTREE& tree, const VecI periodic);
     ~OctreeCommunicator();
@@ -163,12 +145,57 @@ public:
      * todo: take argument for weighting function/operator                    */
     void initCommData( VecI cellsPerOctreeCell, int guardsize, int timesteps );
     /* initCommData needs to be called before this ! */
-    void distributeCells( int ordering = Octree::Ordering::Hilbert );
+    void distributeCells( int ordering = Octree::Ordering::Morton );
 
     /* The function must take YeeCell as an argument and should return a      *
      * 3-dimensional double Vector VecD (R,G,B)                               */
     template<typename T_FUNC>
-    void PrintPNG( int timestep, const char * name, T_FUNC function );
+    void PrintPNG( int timestep, const char * pname, T_FUNC function );
+    template<typename T_FUNC>
+    void PrintPNG( int timestep, const std::string pname, T_FUNC function );
+    T_CELLTYPE * findCell( VecD ppos, VecD * pfoundpos = NULL );
+    
+    /****************************** Iterators *********************************/
+    typedef typename T_OCTREE::Node::iterator NodeIterator;
+    struct LeafIterator : public NodeIterator {
+        LeafIterator( typename T_OCTREE::Node * root, int pordering )
+         : NodeIterator(root,pordering) {};
+        LeafIterator(const LeafIterator & src) : NodeIterator(src) {};
+        /* overwrite operator++, end() stays the same */
+        LeafIterator& operator++(void);
+        LeafIterator operator++(int unused);
+    };
+    LeafIterator getLeafIterator( int pordering = Octree::Ordering::Morton ) {
+        return LeafIterator( tree.root, pordering );
+    }
+
+    #if 1==0
+    struct CellIterator {
+        typename T_OCTREE::iterator it;
+        typename OctCell::IteratorType itm;
+        const OctreeCommunicator & combox;
+        int timestep, area, ordering;
+        
+        /* implicit operator=, constructor, destructor and copy constructor */
+        CellIterator( const OctreeCommunicator & pcombox, int area, int timestep, int pordering );
+        CellIterator begin( void ) const;
+        CellIterator end( void ) const;
+        CellIterator& operator++( void );
+        bool operator==( const CellIterator & it );
+        bool operator!=( const CellIterator & it );
+        T_CELLTYPE& operator*(void) const;
+        T_CELLTYPE* operator->(void) const;
+        VecD getGlobalPosition(void) const;
+    };
+    #endif
+    #include "CommunicatorIterators.tpp"
+    
+    CellIterator getCellIterator( int parea = SimulationBox::CORE + 
+        SimulationBox::BORDER + SimulationBox::GUARD, int ptimestep = 0,
+        int pordering = Octree::Ordering::Morton )
+    {
+        return CellIterator( *this, parea, ptimestep, pordering ).begin();
+    }
 };
 
 #include "Communicator.tpp"

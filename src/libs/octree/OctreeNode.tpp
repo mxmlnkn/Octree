@@ -84,10 +84,6 @@ typename Node<T_DIM>::VecI Node<T_DIM>::ConvertNumberToDirection( const int numb
         direction[i] = ( (tmp & 1) == 0 ) ? +1 : -1;
         tmp = tmp >> 1;
     }
-#if DEBUG_OCTREE_NODE >= 11
-    std::cerr << "number: " << number << " => " << direction << std::endl;
-#endif
-    //assert( ConvertDirectionToNumber(direction) == number );
     return direction;
 }
 
@@ -99,39 +95,24 @@ int Node<T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
             return -1;
         tmp = ( tmp << 1) | (1-direction[i])/2;
     }
-#if DEBUG_OCTREE_NODE >= 11
-    std::cerr << "direction: " << direction << " => " << tmp << std::endl;
-#endif
     return tmp;
 }
 
 /*************************** FindLeafContainingPos ****************************/
 template<int T_DIM>
 Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
+    if ( not this->IsInside(pos) )
+        return NULL;
 /* Prone to rounding errors :(, except if worldsize is e.g. 1 and center is   *
  * 0, because in that case all sizes and new centers will be in the form of   *
  * 1/2^N which can be represented exactly with floating points!               *
  *   => Use this internally and overlay it with user-sizes !                  */
-    bool insideNode = this->IsInside(pos);
-    if (!insideNode) {
-        std::cout << "pos: " << pos << " center: " << this->center << " size: "
-                  << this->size << std::endl;
-        assert( insideNode );
-    }
     Node * tmp = this;
-#if DEBUG_OCTREE_NODE >= 10
-        std::cerr << "Try to find correct leaf for " << pos << std::endl;
-#endif
     while( ! tmp->IsLeaf() ) {
 /* E.g. center is (0,0) then pos =(0.3,-0.1) will with Greater() result in    *
  * (1,0) which in turn will be converted to (1,-1).                           */
         VecD direction = 2*VecI( pos.GreaterOrEqualThan( tmp->center )) - 1;
         tmp = tmp->children[ ConvertDirectionToNumber( direction ) ];
-#if DEBUG_OCTREE_NODE >= 10
-        std::cerr << "Comparison with center " << tmp->center << " resulted in "
-                  << pos.GreaterOrEqualThan( tmp->center ) << " -> "
-                  << 2*VecI( pos.GreaterOrEqualThan( tmp->center )) - 1 << std::endl;
-#endif
     }
     assert( tmp->IsLeaf() );
     assert( tmp->IsInside(pos) );

@@ -15,3 +15,6 @@ make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o1 -i2 -m2 --svg 1 --orde
     2 refinements for comparison of 3D-SVG with paper
 make testOctree2 2>&1 | head -n 30; ./testOctree2.exe -o3 --svg 1 --ordering 2 --number-of-worldsizes 1
     more complex 3D Case
+    
+make MainYeeOctreeNoDebug; mpirun -n 2 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -i3 -m4 -t 3001 -p10000
+    elliptic with partial refinement -> took 287mb per process ( 2 processes )
