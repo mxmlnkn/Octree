@@ -29,7 +29,7 @@ CWFLAGS = -Weffc++ -pedantic  \
 # -Wswitch-default   # too often I don't want a default switch (i know, security)
 # -Wpadded      # don't know what to do with those. Why do they matter anyway
 # -Wfloat-equal # these are wanted comparisons, because I know how float workgs!
-LIBS    = -lboost_system -lboost_filesystem
+LIBS    = -L$(BOOST_LIB) -lboost_system -lboost_filesystem
 CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall $(CWFLAGS) -g -O0 -Wno-unused-variable $(LIBS)
 
 
@@ -71,12 +71,12 @@ MainYee : yeesolver/MainYee.cpp yeesolver/YeeCell.h libpngwriter
 MainYeeOctree : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwriter
 	mkdir -p output
 	rm -f $@.exe
-	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lboost_system -lboost_filesystem -lz -lpngwriter -lpng
+	mpic++ $< -o $@.exe $(CFLAGS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter $(LIBS) -lz -lpngwriter -lpng
 
 MainYeeOctreeNoDebug : yeesolver/MainYeeOctree.cpp yeesolver/YeeCell.h Octree libpngwriter
 	mkdir -p output
 	rm -f $@.exe
-	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 -lboost_system -lboost_filesystem -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
+	mpic++ $< -o $@.exe $(INCLUDE) -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 $(LIBS) -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
 
 testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h examples/testSimBox/Cell.h TVector TBaseMatrix
 	rm -f $@.exe
