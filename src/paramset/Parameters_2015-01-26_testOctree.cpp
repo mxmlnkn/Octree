@@ -7,11 +7,6 @@
 #include <float.h>   // FLT_EPSILON
 #include "math/TVector.h"
 
-#ifndef M_PI
-#   define M_PI 3.14159265358979323846
-#endif
-#define INF (1.0/0.0)
-
 //componentsConfig.param
 const uint16_t SIMDIM                  = 3;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell

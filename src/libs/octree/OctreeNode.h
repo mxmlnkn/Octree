@@ -11,6 +11,7 @@
 #include "math/TBaseMatrix.h" // convertLinearToVectorIndex
 #include "Directions.h" // getOppositeDirection
 #include "teestream/TeeStream.h" // tout
+#include "CompileTime.h"
 
 
 namespace Octree {
@@ -144,6 +145,7 @@ public:
 /* Tries to collapse all children into the parent                             */
     bool Rejuvenate(void);
     bool HasOnlyLeaves(void) const;
+    void DeleteChildren(void);
 
 /* This is for example needed to decide whether we have reached an end in our *
  * recursive search for some data                                             */

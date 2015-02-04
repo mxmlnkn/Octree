@@ -43,7 +43,42 @@ make MainYeeOctreeNoDebug; mpirun -n 3 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0
         make MainYeeOctreeNoDebug
         exit
 
-    printf '#!/bin/bash\nmpirun hostname\nmpirun ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 3001 -p10000' | sbatch --exclusive --time=00:20:00 --ntasks 16 --partition=sandy --mem-per-cpu=1927M
+printf '#!/bin/bash
+srun hostname
+echo "============ 1 Core ============"
+mpirun -n 1 ./MainYeeOctreeNoMpi.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 2 Core ============"
+srun -n 2 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 4 Core ============"
+srun -n 4 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 8 Core ============"
+srun -n 8 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+' | sbatch --exclusive --time=01:30:00 --ntasks 8 --mem-per-cpu=3900M
+
+printf '#!/bin/bash
+srun hostname
+echo "============ 16 Core ============"
+srun -n 16 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 32 Core ============"
+srun -n 32 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 64 Core ============"
+srun -n 64 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+echo "============ 128 Core ============"
+srun -n 128 ./MainYeeOctreeNoDebug.exe -n 2048 1024 0 -w7 -s0 -o9 -i3 -m6 -t 21 -p20
+' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=1900M
 
     squeue -u s3495379
+
+printf '#!/bin/bash\nmpirun hostname
+' | sbatch --exclusive --time=00:30:00 --ntasks 8 --partition=sandy --mem-per-cpu=500M
+
+printf '#!/bin/bash
+mpirun hostname
+export SCOREP_ENABLE_TRACING=yes
+scorep mpic++ yeesolver/MainYeeOctree.cpp -o MainYeeOctreeNoDebugScoreP.exe -I . -I ./libs -DNDEBUG -Wall -Wno-unused-variable -std=c++0x -O3 -L/sw/taurus/libraries/boost/1.56.0-gnu4.9.1/lib -lboost_system -lboost_filesystem -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lz -lpngwriter -lpng
+mpirun -n 8 ./MainYeeOctreeNoDebugScoreP.exe -n 1024 512 0 -w7 -s0 -o9 -i3 -m6 -t 3 -p20
+' | sbatch --exclusive --time=20:00:00 --ntasks 8 --mem-per-cpu=1900M
+
+
+make MainYeeOctreeNoDebug 2>&1 | grep "error"; ./MainYeeOctreeNoDebug.exe -n 8192 4096 0 -w7 -s163 -s4 -o1 -o6 -o9 -i4 -m5 -t 21 -p20
 

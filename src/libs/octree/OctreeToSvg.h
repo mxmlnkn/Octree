@@ -8,6 +8,7 @@
 #include "Octree.h"
 #include "opengl/3D-Projection.h"
 #include "math/Matrix.h"
+#include "CompileTime.h"  // M_PI
 
 namespace Octree {
 
@@ -29,7 +30,7 @@ public:
     CameraData Camera; // only needed if T_DIM == 3
     Matrix mvp;
 
-    int currentTime = 1;
+    double currentTime = 0;
     const int DUR = 2; //2s per update
     const int STROKE_WIDTH = 1;
 
@@ -59,7 +60,11 @@ public:
     OctreeToSvg( const OctreeToSvg & src ) { assert(false); };
     ~OctreeToSvg(void) {}
     void PrintGrid(void);
-    void PrintTraversal( int pordering );
+    /* colorfunc will be called with value in [0,1) and returns VecI with rgb *
+     * delay >= 1./64. => 8 frames per second at max achievable with SVG      */
+    template<typename T_FUNCTOR>
+    void PrintTraversal( int pordering, T_FUNCTOR colorfunc, double delay = 1./64. );
+    void PrintTraversal( int pordering, double delay = 1./64. );
     void AnimateUpdated( const OctreeType & newtree );
     Vec<double,2> convertToImageCoordinates( const Vec<double,T_DIM> pos );
     void close(void);

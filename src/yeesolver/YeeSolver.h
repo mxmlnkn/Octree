@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yeesolver/YeeCell.h"
+#include "YeeCell.h"
 #include "simbox/SimulationBox.h"
 #include "math/TVector.h"
 

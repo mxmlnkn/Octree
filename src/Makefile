@@ -29,7 +29,7 @@ CWFLAGS = -Weffc++ -pedantic  \
 # -Wswitch-default   # too often I don't want a default switch (i know, security)
 # -Wpadded      # don't know what to do with those. Why do they matter anyway
 # -Wfloat-equal # these are wanted comparisons, because I know how float workgs!
-LIBS    = -L$(BOOST_LIB) -lboost_system -lboost_filesystem
+LIBS    = -lboost_system -lboost_filesystem
 CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall $(CWFLAGS) -g -O0 -Wno-unused-variable $(LIBS)
 
 
@@ -52,6 +52,10 @@ testOctree  : examples/testOctree.cpp TVector Octree
 	g++ $< -o $@.exe $(CFLAGS)
 
 testOctree2 : examples/testOctree2.cpp TVector Octree
+	rm -f $@.exe
+	g++ $< -o $@.exe $(CFLAGS)
+
+ShowSFCRefinemt : examples/ShowSFCRefinemt.cpp TVector Octree
 	rm -f $@.exe
 	g++ $< -o $@.exe $(CFLAGS)
 
@@ -95,7 +99,7 @@ testSimBox : examples/testSimBox/Main.cpp examples/testSimBox/Communicator.h exa
 openglexample : opengl/Simulation.c
 	gcc $< -o $@.exe -L"./opengl/MinGW/lib/" -lglew32 -lglut -lopengl32 -I"./opengl/MinGW/include/" -Wall -mwindows -m64
 	cp ./opengl/*.dll ./opengl/cityandwindmill.obj ./opengl/FragShader.c ./opengl/VertShader.c .
-	
+
 
 clean:
 	cd pngwriter; make clean

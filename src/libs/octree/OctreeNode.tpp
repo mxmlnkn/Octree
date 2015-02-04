@@ -155,19 +155,10 @@ bool Node<T_DIM>::Rejuvenate( void )
         int sumelements = 0;
         for ( int i=0; i < this->nchildren; ++i )
             if ( children[i] != NULL ) {
-                #if DEBUG_OCTREE_NODE >= 9
-                std::cerr << "Child[" << i << "] = " << children[i]->data.size()
-                          << std::endl;
-                #endif
-                sumelements += children[i]->data.size();
+                sumelements += (int) children[i]->data.size();
             }
-        #if DEBUG_OCTREE_NODE >= 9
-        std::cerr << "Rejuvenating Parent at " << center << " sized "
-                  << size << " if " << sumelements << " =< "
-                  << maxdata << std::endl;
-        #endif
+        /* If we can collapse, then do so by copying all data into this node. */
         if ( sumelements <= maxdata ) {
-/* If we can collapse, then do so by copying all data into this node.         */
             assert( this->data.empty() );
             for ( int i=0; i < nchildren; ++i )
                 if (  children[i] != this
@@ -182,6 +173,16 @@ bool Node<T_DIM>::Rejuvenate( void )
         }
     }
     return false;
+}
+
+template<int T_DIM>
+void Node<T_DIM>::DeleteChildren( void )
+{
+    for ( int i=0; i < nchildren; ++i )
+        if ( children[i] != NULL ) {
+            delete children[i];
+            children[i] = NULL;
+        }
 }
 
 template<int T_DIM>

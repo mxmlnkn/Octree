@@ -1,4 +1,5 @@
-if ( WAVE_SPAWN_SETUP == 1 or WAVE_SPAWN_SETUP == 2 or WAVE_SPAWN_SETUP == 7 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 1) or CONTAINS(WAVE_SPAWN_SETUP, 2)
+     or CONTAINS(WAVE_SPAWN_SETUP, 7) ) {
     /* Function Generator on Cell in the Center */
     #if 1 == 0
     OctreeType::Node * node = tree.FindLeafContainingPos( SPAWN_POS );
@@ -18,7 +19,7 @@ if ( WAVE_SPAWN_SETUP == 1 or WAVE_SPAWN_SETUP == 2 or WAVE_SPAWN_SETUP == 7 ) {
     if ( cell != NULL )
         cell->E[2] = 20*t_spawn_func( t * DELTA_T_SI );
 }
-if ( WAVE_SPAWN_SETUP == 2 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 2) ) {
     /* shield function generator in one direction */
     OctreeType::Node * node = tree.FindLeafContainingPos( SPAWN_POS );
     if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == combox.rank ) {
@@ -44,7 +45,7 @@ if ( WAVE_SPAWN_SETUP == 2 ) {
         simbox.t[0]->cells[targetIndex + VecI(9,4)  ].E[Z] = 0;*/
     }
 }
-if ( WAVE_SPAWN_SETUP == 3 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
     /**********************************************************************
      * Sine plane Wave going to Direction alpha and beginning line going  *
      * through pos0  y                                                    *
