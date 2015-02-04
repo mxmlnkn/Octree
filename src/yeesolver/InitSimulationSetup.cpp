@@ -69,3 +69,70 @@ if ( CONTAINS(SIMULATION_SETUP,5) ) {
         itm->sigmaM  = INF / SPEED_OF_LIGHT * MUE0/EPS0;
    }
 }
+
+/********* Using Lens to make point source to plane wave **********/
+if ( CONTAINS(SIMULATION_SETUP,7) ) {
+    /**************************************************************
+     *           y                                                *
+     * Absorber  ^    Air/Vacuum                                  *
+     *         __|______         o...Source = M + R = (x0,y0)     *
+     *       -   |  -   --                                        *
+     *      - Air|   -    \                                       *
+     *      |    o    | nG |                                      *
+     *      -    |   -    /                                       *
+     *       - __|__-___--                                        *
+     *           |                                                *
+     *           |---------------> x                              *
+     **************************************************************/
+    /* We want the center to be exactly the center there of the  *
+     * wave which will be spawned! That's why we search for a    *
+     * wanted pos and get back the center of the cell containing *
+     * that position                                             */
+    static bool firstCall = true;
+    if ( firstCall ) {
+        SPAWN_POS = VecD( ABSORBING_BORDER_THICKNESS + SPHERICAL_SCREEN_RADIUS,
+                          ABSORBING_BORDER_THICKNESS + SPHERICAL_LENSE_CENTER[1] 
+                          + 0.7*SPHERICAL_LENSE_RADIUS );
+        firstCall = false;
+        /* if found cell, then send new corrected position to all other      *
+         * processes. Problem here is, that the other processes don't know   *
+         * at runtime, which process has had success / to receive from       */
+        VecD * Ms = new VecD[combox.worldsize];
+        VecD found = VecD(-8192);
+        combox.findCell( SPAWN_POS, &found );
+        MPI_Allgather( &found, sizeof(VecD), MPI_BYTE, Ms, sizeof(VecD), MPI_BYTE, MPI_COMM_WORLD );
+        for ( int i = 0; i < combox.worldsize; ++i )
+            if ( Ms[i] != VecD(-8192) ) {
+                SPHERICAL_SCREEN_CENTER = Ms[i];
+                SPAWN_POS               = Ms[i];
+                break;
+            }
+        delete[] Ms;
+        tout << "Corrected SPAWN_POS to: " << SPAWN_POS << "\n";
+    }
+    const double nVacuum = 1.0;
+    const double nLense  = 1.33;
+    const double e    = nVacuum / nLense; /* < 1 */
+    const double & b  = ELLIPTIC_LENSE_SEMI_MINOR_AXIS;
+    const double & R  = SPHERICAL_SCREEN_RADIUS;
+    const double a    = b / sqrt( 1 - e*e );
+    const double & x  = curpos[0];
+    const double & y  = curpos[1];
+    const double & x0 = SPHERICAL_SCREEN_CENTER[0];
+    const double & y0 = SPHERICAL_SCREEN_CENTER[1];
+    const double r    = (curpos - SPHERICAL_SCREEN_CENTER).norm();
+    const double phi  = atan( (y-y0)/(x-x0) );
+    double xEllipseRight = x0 + e*a + a*sqrt( 1 - pow( (y-y0)/b ,2 ) ); /* can be nan, which is good */
+    double xEllipseLeft  = x0 + e*a - a*sqrt( 1 - pow( (y-y0)/b ,2 ) );
+    bool isLense      = r >= R and x <= xEllipseRight and x >= xEllipseLeft;
+    bool isSpawnGuard = r >= R and r <= R + ABSORBING_BORDER_THICKNESS
+                        and ( fabs(phi) > M_PI/6 or x < x0 );
+    /* comparison with NaN above will be always false! */
+    if ( isSpawnGuard ) {
+       itm->sigmaE  = ABSORBER_STRENGTH;
+       itm->sigmaM  = ABSORBER_STRENGTH / SPEED_OF_LIGHT * MUE0/EPS0;
+    }
+    if ( isLense ) {
+       itm->epsilon = EPS0 * nLense*nLense;
+    }
+}

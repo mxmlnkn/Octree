@@ -1,7 +1,7 @@
 #pragma once
 
 double t_spawn_func( double t_SI ) {
-	double T_SI  = 40e-9 /* m */ / SPEED_OF_LIGHT_SI;
+	double T_SI  = LAMBDA_SI /* m */ / SPEED_OF_LIGHT_SI;
 	double sigmaE = T_SI/2.;
 	double t0    = 40;
 	return sin( 2.*M_PI*t_SI / T_SI );

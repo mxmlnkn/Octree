@@ -242,11 +242,14 @@ int main( int argc, char **argv )
     MPI_Barrier(MPI_COMM_WORLD);
     double tStart = MPI_Wtime();
     double tLast  = tStart;
-	for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep ) {
+    for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep ) {
     for ( double internaltimestep = 0; internaltimestep < 1; internaltimestep +=
         1./pow( 2, combox.maxLevel - combox.minLevel ) )
     {
         double t = timestep + internaltimestep;
+        #if DEBUG_MAIN_YEE >= 90
+            tout << "t = " << t << ", " << std::flush;
+        #endif
 
         #include "UpdateWaveSpawn.cpp"
 
