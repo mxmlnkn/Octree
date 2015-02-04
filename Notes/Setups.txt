@@ -85,7 +85,7 @@ Elliptic Lense generating plane wave which hits a water droplet / spherical lens
 printf '#!/bin/bash
 srun hostname
 make MainYeeOctreeNoDebug
-srun -n 128 ./MainYeeOctreeNoDebug.exe -n 8192 4096 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m5 -t 20000 -p200
-' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=300M
+srun -n 128 ./MainYeeOctreeNoDebug.exe -n 4096 2048 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m5 -t 20000 -p200
+' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=1500M
 
 
