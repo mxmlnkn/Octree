@@ -30,6 +30,7 @@ CWFLAGS = -Weffc++ -pedantic  \
 # -Wpadded      # don't know what to do with those. Why do they matter anyway
 # -Wfloat-equal # these are wanted comparisons, because I know how float workgs!
 LIBS    = -lboost_system -lboost_filesystem
+# -L$(BOOST_LIB) may be needed
 CFLAGS  = $(INCLUDE) -m64 -std=c++11 -Wall $(CWFLAGS) -g -O0 -Wno-unused-variable $(LIBS)
 
 

@@ -18,9 +18,6 @@ const bool     FULL_N_SQUARED_FORCE    = false;    // if false, then force is ca
 const uint32_t RANDOM_SEED             = 43907340; // if 0, then time() is used
 const bool     STOPPING                = false;    // if some momentum ist lost every time step. Can be used to determine state of lowest energy
 
-
-typedef Vec<double,SIMDIM> VecD;
-
 //GasConfig.param
 const double GAS_DENSITY_SI            = 1.e30;    // 1/m^3
 
@@ -111,10 +108,10 @@ const double DELTA_T                   = DELTA_T_SI / UNIT_TIME;
 const double CELL_SIZE_X               = CELL_SIZE_X_SI / UNIT_LENGTH;
 const double CELL_SIZE_Y               = CELL_SIZE_Y_SI / UNIT_LENGTH;
 const double CELL_SIZE_Z               = CELL_SIZE_Z_SI / UNIT_LENGTH;
-VecD CELL_SIZE                         = VecD( CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z );
+Vec<double,SIMDIM> CELL_SIZE           = Vec<double,SIMDIM>( CELL_SIZE_X, CELL_SIZE_Y, CELL_SIZE_Z );
 const double CELL_SIZE_MIN             = std::min( CELL_SIZE_X, std::min( CELL_SIZE_Y, CELL_SIZE_Z ) );
 Vec<int,SIMDIM> NUMBER_OF_CELLS        = Vec<int,SIMDIM>( NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z );
-VecD SIM_SIZE                          = VecD( NUMBER_OF_CELLS ) * CELL_SIZE;
+Vec<double,SIMDIM> SIM_SIZE            = Vec<double,SIMDIM>( NUMBER_OF_CELLS ) * CELL_SIZE;
 
 //LASER:
 const double LAMBDA                    = LAMBDA_SI / UNIT_LENGTH;
@@ -127,23 +124,23 @@ std::list<int> WAVE_SPAWN_SETUP;
 int INITIAL_OCTREE_REFINEMENT          = 3; // yiels pow(INIT_..., [4,8]) octree cells minimum
 int MAX_OCTREE_REFINEMENT              = 4; // yiels pow(INIT_..., [4,8]) octree cells minimum
 
-VecD SPAWN_AREA_SIZE     = VecD( 3*CELL_SIZE_X, 3*LAMBDA );
-VecD SPAWN_POS           = SIM_SIZE / 2.0;
-VecD WAVE_GUIDE_SIZE     = 0;//VecD( 7*LAMBDA, 15.0 );
+Vec<double,SIMDIM> SPAWN_AREA_SIZE     = Vec<double,SIMDIM>( 3*CELL_SIZE_X, 3*LAMBDA );
+Vec<double,SIMDIM> SPAWN_POS           = SIM_SIZE / 2.0;
+Vec<double,SIMDIM> WAVE_GUIDE_SIZE     = 0;//Vec<double,SIMDIM>( 7*LAMBDA, 15.0 );
 
-Vec<bool,SIMDIM> ABSORBER_SIDE         = Vec<bool,SIMDIM>(0);
+Vec<bool,2*SIMDIM> ABSORBER_SIDE(0);
 double ABSORBING_BORDER_THICKNESS      = 20*CELL_SIZE_X + FLT_EPSILON;
 double ABSORBER_STRENGTH               = 2e4;
-VecD SPHERICAL_LENSE_CENTER            = VecD( 0.5*SIM_SIZE[0], 0.5*SIM_SIZE[1] );    // center of circle
+Vec<double,SIMDIM> SPHERICAL_LENSE_CENTER = Vec<double,SIMDIM>( 0.5*SIM_SIZE[0], 0.5*SIM_SIZE[1] );    // center of circle
 double SPHERICAL_LENSE_RADIUS          = 0.4*SIM_SIZE[1];
 double MIRROR_WIDTH                    = SIM_SIZE[1] - 2*ABSORBING_BORDER_THICKNESS;
 double MIRROR_LENGTH                   = SIM_SIZE[0]/8;
-VecD MIRROR_CENTER                     = VecD( 2*ABSORBING_BORDER_THICKNESS, 0.5*SIM_SIZE[1] );
+Vec<double,SIMDIM> MIRROR_CENTER       = Vec<double,SIMDIM>( 2*ABSORBING_BORDER_THICKNESS, 0.5*SIM_SIZE[1] );
 double FOCAL_LENGTH                    = pow(MIRROR_WIDTH/2, 2) / (4*MIRROR_LENGTH);
 
-VecD ELLIPTIC_LENSE_CENTER;
-VecD ELLIPTIC_LENSE_RADIUS;
+Vec<double,SIMDIM> ELLIPTIC_LENSE_CENTER;
+Vec<double,SIMDIM> ELLIPTIC_LENSE_RADIUS;
 double ELLIPTIC_LENSE_SEMI_MINOR_AXIS  = 8.0 * LAMBDA;
 double SPHERICAL_SCREEN_RADIUS         = ELLIPTIC_LENSE_SEMI_MINOR_AXIS / 4.0;
-VecD SPHERICAL_SCREEN_CENTER           = SPAWN_POS;
+Vec<double,SIMDIM> SPHERICAL_SCREEN_CENTER           = SPAWN_POS;
 

@@ -69,7 +69,7 @@
                  *             +------ front                                  */
                  {int tsimsetup = atoi(optarg);
                 if ( tsimsetup >= 101 and tsimsetup <= 163 ) {
-                    for ( int bit = 0; bit <= 5; ++bit ) {
+                    for ( int bit = 0; bit < 2*SIMDIM; ++bit ) {
                         if ( (tsimsetup-100) & (1 << bit) )
                             ABSORBER_SIDE[bit] = true;
                     }
