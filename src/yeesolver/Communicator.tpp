@@ -72,7 +72,7 @@ OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::OctreeCommunicator
   neighbors(NULL), sendrequests(NULL), recvrequests(NULL), timestepSent(-1)
 {
     /* Initialize MPI */
-    MPI_Init(NULL, NULL);
+    MPI_Init(argc, argv);
     MPI_Comm_size(MPI_COMM_WORLD, &worldsize);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Get_processor_name(processor_name, &processor_name_length);

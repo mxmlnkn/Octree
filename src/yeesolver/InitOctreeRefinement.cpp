@@ -93,7 +93,7 @@ if ( CONTAINS(OCTREE_SETUP,9) ) {
             int cellsoutside = 0;
             /* if the cell itself or one of it's neighbors is inside lense,   *
              * then refine the cell                                           */
-            for ( int i=0; i < pow(3,SIMDIM) - 1; ++i ) {
+            for ( int i=0; i < pow(3,SIMDIM); ++i ) {
                 VecI dir = getDirectionVector<SIMDIM>(i);
                 typename OctreeType::Node * neighbor = it->getNeighbor(dir,VecI(0));
                 if ( neighbor == NULL )

@@ -1,7 +1,8 @@
 ToDo:
+  - Do Png-Reduce inside program instead of post mortem ... takes hours post mortem -.-
   - implement worst distribution (vierfarbenlandkarte)
   - redo with equal weighting (in every octree cell e.g. 100x100 cells)
-
+  - command line arguments for which components to png
 
   - Benchmark Communication
     - different forms ( o and spiraling more and more to one point )

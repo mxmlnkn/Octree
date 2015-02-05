@@ -13,6 +13,9 @@ Done:
 
 */
 
+int argc;
+char ** argv;
+
 #include <iostream>
 #include <cmath>    // sin
 #include <cfloat>   // FLT_EPSILON
@@ -44,8 +47,10 @@ Done:
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
 
 
-int main( int argc, char **argv )
+int main( int pargc, char **pargv )
 {
+    argc = pargc;
+    argv = pargv;
     double tProgramStart = MPI_Wtime();
 
     const int X = 0;

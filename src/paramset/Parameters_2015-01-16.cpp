@@ -132,7 +132,7 @@ Vec<bool,2*SIMDIM> ABSORBER_SIDE(0);
 double ABSORBING_BORDER_THICKNESS      = 30*CELL_SIZE_X + FLT_EPSILON;
 double ABSORBER_STRENGTH               = 2e5;
 Vec<double,SIMDIM> SPHERICAL_LENSE_CENTER = Vec<double,SIMDIM>( 0.5*SIM_SIZE[0], 0.5*SIM_SIZE[1] );    // center of circle
-double SPHERICAL_LENSE_RADIUS          = 0.4*SIM_SIZE[1];
+double SPHERICAL_LENSE_RADIUS          = 0.25*SIM_SIZE[1];
 double MIRROR_WIDTH                    = SIM_SIZE[1] - 2*ABSORBING_BORDER_THICKNESS;
 double MIRROR_LENGTH                   = SIM_SIZE[0]/8;
 Vec<double,SIMDIM> MIRROR_CENTER       = Vec<double,SIMDIM>( 2*ABSORBING_BORDER_THICKNESS, 0.5*SIM_SIZE[1] );

@@ -1,3 +1,8 @@
+ToDo:
+  - make it optional to calculate all constants prior when setting up simulation or at every timestep (need #ifdef for that or else I won't save memory, except if I do havy allocating ifs)
+  - mpi broadcast of date string
+
+
 Doesn't work with NCELLSZ==1 because of GUARDSIZE problems!
 upper elft corner looks weird... maybe because we actually should only have one H less than E?
 

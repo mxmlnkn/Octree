@@ -53,11 +53,6 @@
  *             left  stay right                                           *
  **************************************************************************/
 
-/* These are the same access-specifiers like in SimulationBox.h -> merge? */
-const int X_AXIS = 0;
-const int Y_AXIS = 1;
-const int Z_AXIS = 2;
-
 /* This basically is a 3x3 Matrix => use getLinearIndex from              *
  * BaseMatrix to calculate these directions on the fly. It should anyway  *
  * not be necessary for N Dimensions to use LEFT,RIGHT,...                */
@@ -75,23 +70,16 @@ const int FRONT  = 9;
 template<int T_DIM>
 Vec<int,T_DIM> getDirectionVector( const int direction ) {
     Vec<int,T_DIM> vec(0);
-    assert( direction >= 1 and direction <= pow(3,T_DIM) );
+    assert( direction >= 0 and direction < pow(3,T_DIM) );
     /* This may not be needed for 2D, but it also doesn't make the        *
      * results wrong                                                      */
     int t_direction = direction;
-    switch( t_direction % 3 ) {
-        case 1: vec[X_AXIS] = +1; break;
-        case 2: vec[X_AXIS] = -1; break;
-    }
-    t_direction /= 3;
-    switch( t_direction % 3 ) {
-        case 1: vec[Y_AXIS] = +1; break;
-        case 2: vec[Y_AXIS] = -1; break;
-    }
-    t_direction /= 3;
-    switch( t_direction % 3 ) {
-        case 1: vec[Z_AXIS] = +1; break;
-        case 2: vec[Z_AXIS] = -1; break;
+    for ( int i = 0; i < T_DIM; i++ ) {
+        switch( t_direction % 3 ) {
+            case 1: vec[i] = +1; break;
+            case 2: vec[i] = -1; break;
+        }
+        t_direction /= 3;
     }
     return vec;
 }
