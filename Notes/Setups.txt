@@ -81,11 +81,34 @@ mpirun -n 8 ./MainYeeOctreeNoDebugScoreP.exe -n 1024 512 0 -w7 -s0 -o9 -i3 -m6 -
 
 
 Elliptic Lense generating plane wave which hits a water droplet / spherical lense:
-    make MainYeeOctreeNoDebug 2>&1 | grep "error"; mpirun -n 3 ./MainYeeOctreeNoDebug.exe -n 8192 4096 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m5 -t 100 -p20
+    make MainYeeOctreeNoDebug 2>&1 | grep "error"; mpirun -n 3 ./MainYeeOctreeNoDebug.exe -n 4096 2048 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m5 -t 100 -p20
 printf '#!/bin/bash
 srun hostname
 make MainYeeOctreeNoDebug
 srun -n 128 ./MainYeeOctreeNoDebug.exe -n 4096 2048 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m5 -t 20000 -p200
 ' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=1500M
 
+./joinpngs.sh output/2015-02-05_00-12-18/2015-02-05_00-12-18_Ez_00099
 
+
+Elliptic Lense generating plane wave which hits a water droplet / spherical lense without adaptive refinement:
+printf '#!/bin/bash
+srun hostname
+make MainYeeOctreeNoDebug
+srun -n 128 ./MainYeeOctreeNoDebug.exe -n 4096 2048 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m4 -t 20000 -p200
+' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=1500M
+
+salloc -n 8
+for (( i=0; i<=105; i++ )); do
+    ./joinpngs.sh "./output/2015-02-05_02-17-11/2015-02-05_02-17-11_Ez_$(printf '%05d' $i)" 8
+done
+for (( i=0; i<=105; i++ )); do
+    ./joinpngs.sh "./output/2015-02-05_00-12-18/2015-02-05_00-12-18_Ez_$(printf '%05d' $i)" 8
+done
+exit
+
+printf '#!/bin/bash
+srun hostname
+make MainYeeOctreeNoDebug
+srun -n 128 ./MainYeeOctreeNoDebug.exe -n 4096 2048 0 -s163 -s4 -s7 -w1 -o1 -o6 -o9 -i4 -m4 -t 10000 -p200
+' | sbatch --time=01:30:00 --ntasks 128 --mem-per-cpu=1500M

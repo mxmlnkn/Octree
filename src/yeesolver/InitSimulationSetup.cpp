@@ -92,7 +92,7 @@ if ( CONTAINS(SIMULATION_SETUP,7) ) {
     if ( firstCall ) {
         SPAWN_POS = VecD( ABSORBING_BORDER_THICKNESS + SPHERICAL_SCREEN_RADIUS,
                           ABSORBING_BORDER_THICKNESS + SPHERICAL_LENSE_CENTER[1] 
-                          + 0.7*SPHERICAL_LENSE_RADIUS );
+                          + 0.84*SPHERICAL_LENSE_RADIUS );
         firstCall = false;
         /* if found cell, then send new corrected position to all other      *
          * processes. Problem here is, that the other processes don't know   *
