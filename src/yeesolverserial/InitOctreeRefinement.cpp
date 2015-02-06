@@ -3,15 +3,17 @@
 /**************************************************************************/
 
 /********* refine all cells to initial homogenous min-Refinement **********/
-if ( OCTREE_SETUP == 7 or OCTREE_SETUP == 6 or OCTREE_SETUP == 9 ) {
+if ( CONTAINS(OCTREE_SETUP, 1) ) {
     for ( int lvl=0; lvl<INITIAL_OCTREE_REFINEMENT; lvl++) {
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it )
             if ( it->IsLeaf() and it->getLevel()==lvl ) it->GrowUp();
     }
 }
-/*********************** Refine certain boundaries ************************/
-if ( OCTREE_SETUP == 6 ) {
+/*********************** Refine sphere boundaries *************************/
+if ( CONTAINS(OCTREE_SETUP, 6) ) {
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
+    const VecD   & M = SPHERICAL_LENSE_CENTER;
+    const double & R = SPHERICAL_LENSE_RADIUS;
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
         /* Get all circle angles, where it intersects with a cell border */
         std::list<double> lphi;
@@ -65,12 +67,12 @@ if ( OCTREE_SETUP == 6 ) {
     }
 }
 /******* Just grow up one point in upper left area (minimal setup) ********/
-if ( OCTREE_SETUP == 7 ) {
+if ( CONTAINS(OCTREE_SETUP,7) ) {
     tree.root->GrowUp();
     tree.FindLeafContainingPos( 0.75*globSize )->GrowUp();
 }
 /******* Grow up Spawning Area ********/
-if ( (OCTREE_SETUP == 8 or OCTREE_SETUP == 6) and false ) {
+if ( (CONTAINS(OCTREE_SETUP, 6) or CONTAINS(OCTREE_SETUP, 8)) and false ) {
     double minCellSizeY = tree.size[1] / pow(2.,MAX_OCTREE_REFINEMENT);
     for ( VecD pos = SPAWN_POS; pos < SPAWN_POS + VecD(SPAWN_AREA_SIZE); pos[1] += minCellSizeY ) {
         OctreeType::Node * curNode = tree.FindLeafContainingPos(pos);
@@ -81,37 +83,37 @@ if ( (OCTREE_SETUP == 8 or OCTREE_SETUP == 6) and false ) {
     }
 }
 /**************************************************************************/
-if ( WAVE_SPAWN_SETUP == 7 ) {
+if ( CONTAINS(OCTREE_SETUP,9) ) {
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++)
         for ( OctreeType::iterator it=tree.begin(); it != tree.end(); ++it ) {
             if ( not it->IsLeaf() or it->getLevel() != lvl )
                 continue;
-            VecD curpos = tree.toGlobalCoords( it->center );
             int cellsinside  = 0;
             int cellsoutside = 0;
             /* if the cell itself or one of it's neighbors is inside lense,   *
              * then refine the cell                                           */
-            for ( int i=0; i < pow(3,SIMDIM) - 1; ++i ) {
+            for ( int i=0; i < pow(3,SIMDIM); ++i ) {
                 VecI dir = getDirectionVector<SIMDIM>(i);
                 typename OctreeType::Node * neighbor = it->getNeighbor(dir,VecI(0));
                 if ( neighbor == NULL )
                     continue;
-                VecD pos = tree.toGlobalCoords( neighbor->center );
+                VecD curpos = tree.toGlobalCoords( neighbor->center );
                 const double nVacuum = 1.0;
                 const double nLense  = 1.33;
-                const double e    = nVacuum / nLense;
-                const double & b  = 4*R;
+                const double e    = nVacuum / nLense; /* < 1 */
+                const double & b  = ELLIPTIC_LENSE_SEMI_MINOR_AXIS;
+                const double & R  = SPHERICAL_SCREEN_RADIUS;
                 const double a    = b / sqrt( 1 - e*e );
-                const double & x  = pos[0];
-                const double & y  = pos[1];
-                const double & x0 = M[0];
-                const double & y0 = M[1];
-                const double r    = (curpos-M).norm();
+                const double & x  = curpos[0];
+                const double & y  = curpos[1];
+                const double & x0 = SPHERICAL_SCREEN_CENTER[0];
+                const double & y0 = SPHERICAL_SCREEN_CENTER[1];
+                const double r    = (curpos - SPHERICAL_SCREEN_CENTER).norm();
                 const double phi  = atan( (y-y0)/(x-x0) );
-                double xRightCirc = fabs(y-y0) < R ? x0 + R*sqrt( 1 - pow( (y-y0)/R, 2 ) ) : x0;
-                double xEllipseRight = fabs(y-y0) < b ? x0 + e*a + a*sqrt( 1 - pow( (y-y0)/b ,2 ) ) : x0;
-                double xEllipseLeft  = fabs(y-y0) < b ? x0 + e*a - a*sqrt( 1 - pow( (y-y0)/b ,2 ) ) : x0;
+                double xRightCirc = fabs(y-y0) <= R ? x0 + R*sqrt( 1 - pow( (y-y0)/R, 2 ) ) : x0;
+                double xEllipseRight = fabs(y-y0) <= b ? x0 + e*a + a*sqrt( 1 - pow( (y-y0)/b ,2 ) ) : x0;
+                double xEllipseLeft  = fabs(y-y0) <= b ? x0 + e*a - a*sqrt( 1 - pow( (y-y0)/b ,2 ) ) : x0;
                 bool insideLense = x >= xRightCirc and x <= xEllipseRight and x >= xEllipseLeft;
 
                 if ( insideLense )

@@ -1,24 +1,10 @@
-if ( WAVE_SPAWN_SETUP == 1 or WAVE_SPAWN_SETUP == 2 or WAVE_SPAWN_SETUP == 7 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 1) ) {
     /* Function Generator on Cell in the Center */
-    #if 1 == 0
-    OctreeType::Node * node = tree.FindLeafContainingPos( SPAWN_POS );
-    if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == combox.rank ) {
-        OctCell & simbox = *((OctCell*)node->data[OctreeCommType::CELL_DATA_INDEX]);
-        #if DEBUG_MAIN_YEE >= 100
-            tout << "Find position " << SPAWN_POS << " in tree sized " << tree.size << " positioned at center " << tree.center << " returned OctreeCell at " << node->center << " => Searching for position in simbox of that node with abspos " << simbox.abspos << ", localcells " << simbox.localcells << " and cellsize " << simbox.cellsize << "\n";
-        #endif
-        VecI targetIndex = simbox.findCellContaining( SPAWN_POS );
-        simbox.t[0]->cells[targetIndex].E[Z] = 20*t_spawn_func( t * DELTA_T_SI );
-        #if DEBUG_MAIN_YEE >=100
-            tout << "Write to source in cell " << targetIndex << " in node at " << node->center << "\n";
-        #endif
-    }
-    #endif 
     YeeCell * cell = combox.findCell( SPAWN_POS );
     if ( cell != NULL )
-        cell->E[2] = 20*t_spawn_func( t * DELTA_T_SI );
+        cell->E[2] = 20*sin( 2.*M_PI*t*DELTA_T*SPEED_OF_LIGHT / LAMBDA );
 }
-if ( WAVE_SPAWN_SETUP == 2 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 2) ) {
     /* shield function generator in one direction */
     OctreeType::Node * node = tree.FindLeafContainingPos( SPAWN_POS );
     if ( ((OctreeCommType::CommData*)node->data[OctreeCommType::COMM_HEADER_INDEX])->rank == combox.rank ) {
@@ -44,7 +30,7 @@ if ( WAVE_SPAWN_SETUP == 2 ) {
         simbox.t[0]->cells[targetIndex + VecI(9,4)  ].E[Z] = 0;*/
     }
 }
-if ( WAVE_SPAWN_SETUP == 3 ) {
+if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
     /**********************************************************************
      * Sine plane Wave going to Direction alpha and beginning line going  *
      * through pos0  y                                                    *

@@ -13,15 +13,8 @@ Done:
 
 */
 
-namespace compileTime {
-
-/* Compile time power (also exact for integers) */
-template<typename T>
-inline constexpr T pow(const T base, unsigned const int exponent) {
-    return exponent == 0 ? 1 : base * pow<T>(base, exponent-1);
-}
-
-} // compileTime
+int argc;
+char ** argv;
 
 #include <iostream>
 #include <cmath>    // sin
@@ -30,7 +23,8 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #include "getopt.h"
 #include <pngwriter.h>
 #include <list>
-#include <mpi.h>
+#include <algorithm>
+#include "mpi.h"
 #include "math/TVector.h"
 #include "math/TVector.tpp"
 #include "math/TBaseMatrix.h"
@@ -53,17 +47,20 @@ inline constexpr T pow(const T base, unsigned const int exponent) {
 #define N_CELLS_Z NUMBER_OF_CELLS_Z
 
 
-int main( int argc, char **argv )
+int main( int pargc, char **pargv )
 {
+    argc = pargc;
+    argv = pargv;
     double tProgramStart = MPI_Wtime();
 
-    #include "InitArguments.cpp"
     const int X = 0;
     const int Y = 1;
     const int Z = 2;
 
     typedef Vec<double,SIMDIM> VecD;
     typedef Vec<int   ,SIMDIM> VecI;
+
+    #include "InitArguments.cpp"
 
     /* Create timestamp and basefolder for filenames */
     time_t tmp_time = time(0);
@@ -98,12 +95,6 @@ int main( int argc, char **argv )
     tout.Open( basefilename.str() + std::string("out.txt"), combox.rank );
     terr.Open( basefilename.str() + std::string("err.txt"), combox.rank );
 
-    /* Dynamically calcualte spawning-pos / center of ellipse */
-    if ( WAVE_SPAWN_SETUP == 7 ) {
-        R = 2*LAMBDA;
-        M = VecD(ABSORBING_BORDER_THICKNESS + R, SIM_SIZE[1]/2 );
-    }
-    
     /**************************** Print Parameters ****************************/
     srand(RANDOM_SEED);
 	const double S = SPEED_OF_LIGHT * DELTA_T * (1./( Vec<double, 2>(CELL_SIZE) ) ).norm();
@@ -139,6 +130,8 @@ int main( int argc, char **argv )
     tout << "SPAWN_POS                : " << SPAWN_POS                  << "\n";
     tout << "SPAWN_AREA_SIZE          : " << SPAWN_AREA_SIZE            << "\n";
     tout << "PNG_INTERVAL             : " << PNG_INTERVAL               << "\n";
+    tout << "combox.worldsize         : " << combox.worldsize           << "\n";
+    tout << "combox.rank              : " << combox.rank                << "\n";
     tout << "\n";
 
     #include "InitOctreeRefinement.cpp"
@@ -171,9 +164,9 @@ int main( int argc, char **argv )
     svgfilename << basefilename.str() << "Octree_worldsize-"
                 << combox.worldsize << "_rank-" << combox.rank << ".svg";
     Octree::OctreeToSvg<SIMDIM> svgoutput( tree, svgfilename.str() );
-    
+
     svgoutput.PrintGrid();
-    
+
     /* Graphical output of cell-rank-mapping */
     for ( typename OctreeType::iterator it = tree.begin(); it != it.end(); ++it)
     if ( it->IsLeaf() ) {
@@ -229,11 +222,11 @@ int main( int argc, char **argv )
         itm->sigmaE  = 0;
         itm->sigmaM  = 0;
 
-        VecD curPos = itm.getGlobalPosition();
+        VecD curpos = itm.getGlobalPosition();
 
         /* needs ( write as function ? ):                                 *
          *  - itm: must be deferencable to YeeCell                        *
-         *  - curPos: holds global position of center of cell (no         *
+         *  - curpos: holds global position of center of cell (no         *
          *            internal units)                                     *
          *  - tree: Octree, especially for size and other attributes      *
          *  - Parameters.cpp                                              */
@@ -253,11 +246,14 @@ int main( int argc, char **argv )
     /**************************************************************************/
     double tStart = MPI_Wtime();
     double tLast  = tStart;
-	for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep ) {
+    for ( int timestep=0; timestep < NUMBER_OF_STEPS; ++timestep ) {
     for ( double internaltimestep = 0; internaltimestep < 1; internaltimestep +=
         1./pow( 2, combox.maxLevel - combox.minLevel ) )
     {
         double t = timestep + internaltimestep;
+        #if DEBUG_MAIN_YEE >= 90
+            tout << "t = " << t << ", " << std::flush;
+        #endif
 
         #include "UpdateWaveSpawn.cpp"
 
@@ -364,6 +360,5 @@ int main( int argc, char **argv )
     }
 
     /* doesn't work in destructor, because it would be called too late */
-    MPI_Finalize();
     return 0;
 }
