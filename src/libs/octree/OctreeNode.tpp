@@ -61,23 +61,9 @@ Node<T_DIM>::Node(Node * const p_parent, VecD const p_center, VecD const p_size)
         this->children[i] = NULL;
 }
 
-template<int T_DIM>
-bool Node<T_DIM>::IsInside ( const VecD & pos ) const {
-    return (pos >= (this->center - 0.5*this->size)) and
-           (pos <  (this->center + 0.5*this->size));
-}
-
-/********************************** IsLeaf ************************************/
-template<int T_DIM>
-bool Node<T_DIM>::IsLeaf( void ) const {
-/* We assume the correctness of this class, i.e. all children are NULL or all *
- * children are not NULL                                                      */
-    return children[0] == NULL;
-}
-
 /************************* ConvertNumberToDirection ***************************/
 template<int T_DIM>
-typename Node<T_DIM>::VecI Node<T_DIM>::ConvertNumberToDirection( const int number ) const {
+inline typename Node<T_DIM>::VecI Node<T_DIM>::ConvertNumberToDirection( const int number ) const {
     VecI direction;
     int tmp = number;
     for (int i=0; i<T_DIM; ++i) {
@@ -88,7 +74,7 @@ typename Node<T_DIM>::VecI Node<T_DIM>::ConvertNumberToDirection( const int numb
 }
 
 template<int T_DIM>
-int Node<T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
+inline int Node<T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
     int tmp = 0;
     for (int i=T_DIM-1; i>=0; --i) {
         if ( direction[i]!=-1 and direction[i]!=+1 )
@@ -100,7 +86,7 @@ int Node<T_DIM>::ConvertDirectionToNumber( const VecI direction ) {
 
 /*************************** FindLeafContainingPos ****************************/
 template<int T_DIM>
-Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
+inline Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
     if ( not this->IsInside(pos) )
         return NULL;
 /* Prone to rounding errors :(, except if worldsize is e.g. 1 and center is   *
@@ -119,6 +105,65 @@ Node<T_DIM> * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) {
     return tmp;
 }
 
+template<int T_DIM>
+inline Node<T_DIM> const * Node<T_DIM>::FindLeafContainingPos( const VecD & pos ) const {
+    return const_cast<Node<T_DIM> const *>( const_cast<Node<T_DIM>*>(this)->FindLeafContainingPos( pos ) );
+}
+
+/*********************************** begin ************************************/
+template<int T_DIM>
+inline typename Node<T_DIM>::iterator Node<T_DIM>::begin( int ordering ) {
+    iterator it( this, ordering );
+    return it.begin();
+}
+
+template<int T_DIM>
+inline typename Node<T_DIM>::iterator Node<T_DIM>::end( void ) {
+    iterator it;
+    return it.end();
+}
+
+/******************************************************************************/
+
+template<int T_DIM>
+inline const typename Node<T_DIM>::Node * Node<T_DIM>::getChildPtr( const int i ) const
+{
+    if ( i < this->nchildren )
+        return children[i];
+    else
+        return NULL;
+}
+
+template<int T_DIM>
+inline typename Node<T_DIM>::VecD Node<T_DIM>::getSize( void ) const {
+    return this->size;
+}
+
+template<int T_DIM>
+inline bool Node<T_DIM>::IsInside ( const VecD & pos ) const {
+    return (pos >= (this->center - 0.5*this->size)) and
+           (pos <  (this->center + 0.5*this->size));
+}
+
+/********************************** IsLeaf ************************************/
+template<int T_DIM>
+inline bool Node<T_DIM>::IsLeaf( void ) const {
+/* We assume the correctness of this class, i.e. all children are NULL or all *
+ * children are not NULL                                                      */
+    return children[0] == NULL;
+}
+
+template<int T_DIM>
+inline int Node<T_DIM>::getLevel( void ) const {
+    Node * tmp = this->parent;
+    int level  = 0;
+    while (tmp != NULL) {
+        tmp = tmp->parent;
+        level++;
+    }
+    return level;
+}
+
 /*********************************** GrowUp ***********************************/
 template<int T_DIM>
 void Node<T_DIM>::GrowUp( void ) {
@@ -128,18 +173,6 @@ void Node<T_DIM>::GrowUp( void ) {
                             0.25*direction*size, 0.5*size );
     }
     assert( this->data.empty() );
-}
-
-template<int T_DIM>
-bool Node<T_DIM>::HasOnlyLeaves( void ) const {
-    if ( this->IsLeaf() )
-        return false;
-    else
-        for ( int i=0; i < this->nchildren; ++i )
-            if ( this->children[i] != NULL )
-                if ( not this->children[i]->IsLeaf() )
-                    return false;
-    return true;
 }
 
 template<int T_DIM>
@@ -176,6 +209,18 @@ bool Node<T_DIM>::Rejuvenate( void )
 }
 
 template<int T_DIM>
+inline bool Node<T_DIM>::HasOnlyLeaves( void ) const {
+    if ( this->IsLeaf() )
+        return false;
+    else
+        for ( int i=0; i < this->nchildren; ++i )
+            if ( this->children[i] != NULL )
+                if ( not this->children[i]->IsLeaf() )
+                    return false;
+    return true;
+}
+
+template<int T_DIM>
 void Node<T_DIM>::DeleteChildren( void )
 {
     for ( int i=0; i < nchildren; ++i )
@@ -185,34 +230,9 @@ void Node<T_DIM>::DeleteChildren( void )
         }
 }
 
-template<int T_DIM>
-const typename Node<T_DIM>::Node * Node<T_DIM>::getChildPtr( const int i ) const
-{
-    if ( i < this->nchildren )
-        return children[i];
-    else
-        return NULL;
-}
-
-template<int T_DIM>
-typename Node<T_DIM>::VecD Node<T_DIM>::getSize( void ) const {
-    return this->size;
-}
-
-template<int T_DIM>
-int Node<T_DIM>::getLevel( void ) const {
-    Node * tmp = this->parent;
-    int level  = 0;
-    while (tmp != NULL) {
-        tmp = tmp->parent;
-        level++;
-    }
-    return level;
-}
-
 /******************************** getMinLevel *********************************/
 template<int T_DIM>
-int Node<T_DIM>::getMinLevel( void ) {
+int Node<T_DIM>::getMinLevel( void ) const {
     int minLevel = 255;
     for ( iterator it = this->begin(); it != it.end(); ++it )
         if ( it->IsLeaf() ) {
@@ -239,10 +259,10 @@ int Node<T_DIM>::getMaxLevel( void ) {
 }
 
 template<int T_DIM>
-int Node<T_DIM>::countLeaves( void ) {
+inline int Node<T_DIM>::countLeaves( void ) {
     int sum = 0;
-    iterator it = this->begin();
-    while( it != this->end() ) {
+    iterator it( this, 0 );
+    while( it != it.end() ) {
         if ( (it++)->IsLeaf() )
             sum +=1;
     }
@@ -251,7 +271,7 @@ int Node<T_DIM>::countLeaves( void ) {
 
 /******************************** getNeighbor *********************************/
 template<int T_DIM>
-Node<T_DIM> * Node<T_DIM>::getNeighbor
+inline Node<T_DIM> * Node<T_DIM>::getNeighbor
 ( const VecI targetDir, const VecI periodic )
 {
     /* We want to find the neighbor of same size if possible, so go down as   *
@@ -307,7 +327,7 @@ Node<T_DIM> * Node<T_DIM>::getNeighbor
 
 /******************************** getNeighbors ********************************/
 template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::getNeighbors
+typename std::list<Node<T_DIM>*> Node<T_DIM>::getNeighbors
 ( const VecI targetDir, const VecI periodic )
 {
 /* Neighbors may be not leaves (e.g. right neighbor of 3 is is parent of 1).  *
@@ -318,27 +338,19 @@ typename Node<T_DIM>::iterator Node<T_DIM>::getNeighbors
  * returns the current node (it). Because this only works from    +-----+-+-+ *
  * small to big, also test the other way around. E.g. left of 4 is 5, but     *
  * right of 5 will yield parent of 4                                          */
-    iterator neighbors;
+    std::list<Node<T_DIM>*> neighbors;
     VecI opdir = getOppositeDirection<T_DIM>( targetDir );
-    for ( iterator it = this->getNeighbor(targetDir, periodic)->begin();
-          it != it.end(); ++it )
-        if ( it->getNeighbor( opdir, periodic ) == this or it->IsLeaf() )
-            neighbors.todo.push_back( *it );
+    Node* neighbor = this->getNeighbor(targetDir, periodic);
+    if ( neighbor != NULL )
+        for ( iterator it = neighbor->begin(); it != it.end(); ++it ) {
+            Node* revneighbor = it->getNeighbor( opdir, periodic );
+            assert( revneighbor != NULL );
+            if ( revneighbor->IsInside( this->center ) )
+                neighbors.push_back( &(*it) );
+        }
     return neighbors;
 }
 
-/*********************************** begin ************************************/
-template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::begin( int ordering ) {
-    iterator it( this, ordering );
-    return it;
-}
-
-template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::end( void ) {
-    iterator it;
-    return it;
-}
 
 } // namespace Octree
 

@@ -56,6 +56,14 @@ testOctree2 : examples/testOctree2.cpp TVector Octree
 	rm -f $@.exe
 	g++ $< -o $@.exe $(CFLAGS)
 
+testOctree2NoDebug : examples/testOctree2.cpp TVector Octree
+	rm -f $@.exe
+	g++ $< -o $@.exe $(INCLUDE) -DNDEBUG -std=c++11 -Wall -O3 -Wno-unused-variable $(LIBS)
+
+testOctree3DNoDebug : examples/testOctree2.cpp TVector Octree
+	rm -f $@.exe
+	g++ $< -o $@.exe $(INCLUDE) -DNDEBUG -std=c++11 -Wall -O3 -Wno-unused-variable $(LIBS)
+
 ShowSFCRefinemt : examples/ShowSFCRefinemt.cpp TVector Octree
 	rm -f $@.exe
 	g++ $< -o $@.exe $(CFLAGS)

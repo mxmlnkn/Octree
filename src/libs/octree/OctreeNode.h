@@ -13,16 +13,24 @@
 #include "teestream/TeeStream.h" // tout
 #include "CompileTime.h"
 
+namespace Octree {
+    template<int T_DIM>
+    class Node;
+}
+
+#include "OctreeIterator.h"
 
 namespace Octree {
 
 template<int T_DIM>
 class Node {
+friend class OctreeIterator<T_DIM>;
 public:
     typedef Vec<double,T_DIM> VecD;
     typedef Vec<int   ,T_DIM> VecI;
     const int dim = T_DIM;
     typedef std::vector<void*> Datalist;
+    typedef OctreeIterator<T_DIM> iterator;
 
 /* Saving parent makes traversing easiers. Also a Node can get it's neighbor  *
  * through its parent, e.g. to check whether coarsening can be done           */
@@ -58,13 +66,14 @@ private:
  * representation is essentially treated as an array of sign bits. With this  *
  * we can map 0...7 to all eight neighbors in an Octree or respectively 0...3 *
  * for a Quadtree or 0...2^N-1 for a tree in N dimensions                     */
-    VecI ConvertNumberToDirection( const int number ) const;
+    inline VecI ConvertNumberToDirection( const int number ) const;
 /* If the direction contains an entry which is not 1 or -1 then it's not the  *
  * format we expect => return -1                                              */
-    static int ConvertDirectionToNumber( const VecI );
+    inline static int ConvertDirectionToNumber( const VecI );
 /* Traverses the Octree non-recursively deeper and deeper if necessary to     *
  * find the octant lead which encompasses a given position                    */
-    Node * FindLeafContainingPos( const VecD & pos );
+    inline Node const * FindLeafContainingPos( const VecD & pos ) const;
+    inline Node * FindLeafContainingPos( const VecD & pos );
 
 public:
 /* Forbid empty constructor, because we always have to create a node with a   *
@@ -80,89 +89,50 @@ public:
  * if it has grown big enough, i.e. has exceeded OCTREE_MAX_OBJECTS_PER_LEAF  */
     Node(Node * const parent, VecD const cent, VecD const size);
 
-
-    class iterator {
-    private:
-        typedef struct{ int ichild; Node* node; int orientation; } tododata;
-        std::stack<tododata> todo;
-        std::list<Node*> done; /* for ordering method 3 (Rows) */
-        int curpos;
-    /* Ordering 0: Morton (Depth first traversal), 1: GrayCode, 2: Hilbert    */
-        int ordering;
-    /* [ordering method,see above][parentOrientiation][n-th child to traverse]*
-     * => child index like used to access children-array of a Node and        *
-     *  orientation for that child                                            *
-     * ToDo: Allocate and Calculate this dynamically on very first iterator   *
-     *       access. Also this only works for 2D !!!                          */
-        static struct orderingTableStruct {
-            struct {
-                int ordering   [ compileTime::pow(2,T_DIM-1) ][ compileTime::pow(2,T_DIM) ];
-                int orientation[ compileTime::pow(2,T_DIM-1) ][ compileTime::pow(2,T_DIM) ];
-            } GrayCode;
-            struct {
-                int ordering   [24][ compileTime::pow(2,T_DIM) ];
-                int orientation[24][ compileTime::pow(2,T_DIM) ];
-            } Hilbert;
-        } orderingTable;
-    public:
-        iterator(void);
-        iterator( Node *, int ordering = 0 );
-        ~iterator(void);
-        iterator(const iterator &);
-        iterator & operator= (const iterator &);
-
-        iterator& operator++(void);
-        iterator operator++( int unused );
-        bool operator==(const iterator &);
-        bool operator!=(const iterator &);
-        Node& operator*(void) const;
-        Node* operator->(void) const;
-        iterator end(void);
-    };
 /* returns iterator with only root-node in todo stack */
-    iterator begin(int ordering = 0);
+    inline iterator begin(int ordering = 0);
 /* returns iterator with empty stack */
-    iterator end(void);
+    inline iterator end(void);
 
 
 /* Some Functions granting read access to private variables                   */
-    const Node * getChildPtr( const int i ) const;
+    inline const Node * getChildPtr( const int i ) const;
 /* Because this Octree initially was intended to hold Particles with          *
  * attributes, it is possible to store MAX_OBJECTS_PER_LEAF void pointers     *
  * The parameter i specifies which one of those pointers we want.             *
  * This may become deprecated, as the Octree should be kept to its basic      *
  * functionality. The user can store a pointer to an array himself, if he     *
  * needs that                                                                 */
-    void* getDataPtr( const int i ) const;
-    VecD getSize( void ) const;
+    inline void* getDataPtr( const int i ) const;
+    inline VecD getSize( void ) const;
 
 /* Test if a point lies inside the space described by this node               */
-    bool IsInside ( const VecD & pos ) const;
+    inline bool IsInside ( const VecD & pos ) const;
+/* This is for example needed to decide whether we have reached an end in our *
+ * recursive search for some data                                             */
+    inline bool IsLeaf( void ) const;
 
 /* Give birth to eight new children with the correct coordinates and sizes.   *
  * It's private, so no reason to not give this a funny name :)                */
     void GrowUp(void);
 /* Tries to collapse all children into the parent                             */
     bool Rejuvenate(void);
-    bool HasOnlyLeaves(void) const;
+    inline bool HasOnlyLeaves(void) const;
     void DeleteChildren(void);
 
-/* This is for example needed to decide whether we have reached an end in our *
- * recursive search for some data                                             */
-    bool IsLeaf( void ) const;
 
 /* Returns the depth for this node. The root node returns 0. If the root leaf *
  * becomes a parent, then the children will return 1. This being calculated   *
  * with the parents member                                                    */
-    int getLevel( void ) const;
+    inline int getLevel( void ) const;
 /* Returns level at which first leaf can be found */
-    int getMinLevel( void );
+    int getMinLevel( void ) const;
 /* Returns maximum depth of tree */
     int getMaxLevel( void );
-    
+
 /* Returns total amount of leaves, including those contained by childnodes if *
  * existing                                                                   */
-    int countLeaves( void );
+    inline int countLeaves( void );
 /* returns neighboring cell in direction. Works with diagonal directions and  *
  * also with VecI(0), returning the leaf itself then.                         *
  * If the neighbor cell in that direction is larger and has no                *
@@ -171,12 +141,12 @@ public:
  * returned. The format of direction is a movement vector, which will just be *
  * added to the position of this node. BEWARE!!! Returns NULL if not periodic *
  * and on border, meaning there is no neighbor                                */
-    Node * getNeighbor( const VecI direction, const VecI periodic );
+    inline Node * getNeighbor( const VecI direction, const VecI periodic );
 /* returns all neighbors of that cell as an iterator with a prefilled todo-   *
  * stack of leaf nodes. Because they are leaf nodes the iterator++ will just  *
  * pop one after another until it's empty. This just expands the neighbor     *
  * if it is not a leaf node, because it has smaller children than the source  */
-    iterator getNeighbors( const VecI direction, const VecI periodic );
+    std::list<Node<T_DIM>*> getNeighbors( const VecI direction, const VecI periodic );
 
 
 /* <> would also suffice after operator<< instead of <T_DIM>, but one *

@@ -317,6 +317,8 @@ Vec<double,2> OctreeToSvg<T_DIM>::convertToImageCoordinates
 ( Vec<double,T_DIM> pos )
 {
     pos   += 0.5; // shift internal coordinate from [-0.5,0.5) to [0,1) in every(!) axis
+    if ( SIMDIM == 3 )
+        pos[2] = 1 - pos[2];  // flip along z-axis
 
     Matrix pmvp(2,3);
     pmvp(0,0) = 1; pmvp(0,1) = 0; pmvp(0,2) = -1.0/sqrt(2);// pmvp(0,3) = 0;

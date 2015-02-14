@@ -9,25 +9,11 @@ make testOctree && ./testOctree.exe
 #include <cmath>    // sin
 #include <cstdlib>  // malloc
 #include <random>   // normal_distribution
-
-namespace compileTime {
-
-/* Compile time power (also exact for integers) */
-template<typename T>
-inline constexpr T pow(const T base, unsigned const exponent) {
-    return exponent == 0 ? 1 : base * pow<T>(base, exponent-1);
-}
-
-} // compileTime
-
-#include "Vector.h"
-#include "Octree.h"
-#include "OctreeToSvg.h"
-#include "TeeStream.h"
-
-#include "Vector.tpp"
-#include "Octree.tpp"
-#include "OctreeToSvg.tpp"
+#include "CompileTime.h"
+#include "math/TVector.h"
+#include "octree/Octree.h"
+#include "octree/OctreeToSvg.h"
+#include "teestream/TeeStream.h"
 
 #define SIMDIM 2
 typedef Vec<double,SIMDIM> VecD;

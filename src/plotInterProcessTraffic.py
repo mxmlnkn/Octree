@@ -1,7 +1,8 @@
-from numpy import *
+﻿from numpy import *
 from matplotlib.pyplot import *
+import os.path
 
-orderings = [ "Morton", "GrayCode", "Hilbert" ] #, "Rows"
+orderings = [ "Morton", "GrayCode", "Hilbert", "Rows" ]
 """basestrings = [ "./output/2015-01-27_04-28/Octree-Setup-6_Initial-4_Max-Refinement-6_",
                 "./output/2015-01-27_04-21/Octree-Setup-6_Initial-3_Max-Refinement-4_",
                 "./output/2015-01-27_04-26/Octree-Setup-4_Initial-3_Max-Refinement-4_",
@@ -17,43 +18,39 @@ setupnames = [ "Circle Shape Refinement",
 setupnames = [ "3D Sphere Refinement, less cells",
                "3D Refinement at only one point",
                "3D Uniform randomly refined mesh" ]"""
-basestrings = [ "./output/2015-02-01_05-59/Octree-Setup-6_Initial-6_Max-Refinement-10_",
-                "./output/2015-02-01_05-59/Quadtree-Setup-6_Initial-8_Max-Refinement-12_" ]
-setupnames = [ "Sphere Refinement 278272 Cells",
-               "Circle Refinement 93184 Cells"  ]
+"""basestrings = [ "./output/2015-02-01_05-59_Octree_Benchmark_3D_and_2D/Octree-Setup-6_Initial-6_Max-Refinement-10_",
+                "./output/2015-02-01_05-59_Octree_Benchmark_3D_and_2D/Quadtree-Setup-6_Initial-8_Max-Refinement-12_" ]
+setupnames = [ u"Sphäre, 278272 Zellen",
+               "Kreis, 93184 Zellen"  ]"""
+basestrings = [ "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Quadtree-Setup-5_Initial-8_Max-Refinement-6_" ,
+                "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Quadtree-Setup-6_Initial-7_Max-Refinement-12_",
+                "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Octree-Setup-5_Initial-5_Max-Refinement-6_"   ,
+                "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Octree-Setup-6_Initial-5_Max-Refinement-10_"  ]
+setupnames = [ u"Zufällig verfeinert 2D, 65536 Zellen",
+               u"Kreis 2D, 44956 Zellen"  ,
+               u"Zufällig verfeinert 3D, 32768 Zellen",
+               u"Sphäre 3D, 49428 Zellen"  ]
 
-fig = figure( figsize=(10,8) );
 for isetup in range(len(basestrings)):
-    subplot( 2,1,isetup )
+    fig = figure( figsize=(8,5.5) );
     title( setupnames[isetup] )
     for i in range(len(orderings)):
-        data = genfromtxt( basestrings[isetup] + orderings[i] + "_Ordering.dat", comments='#' )
-        plot( data[:,0], data[:,2]/1024., '-o', label = orderings[i] )
-    plot( data[:,0], data[:,1]/1024., '-o', label = "Maximum" )
-    xlim( ( min(data[:,0])-0.5, max(data[:,0])+0.5 ) )
+        fname = basestrings[isetup] + orderings[i] + "_Ordering.dat"
+        if os.path.isfile( fname ):
+            data = genfromtxt( fname, comments='#' )
+            plot( data[20:,0], data[20:,2]/1000., 'o', label = orderings[i] )
+        else:
+            print "Can't find ", fname
+    plot( data[20:,0], data[20:,1]/1000., 'b-', lw=2, label = "Maximum" )
     xscale('log')
-    ylim( ( 0, max(data[:,1]/1024.)*1.1 ) )
+    yscale('log')
+    ylim( ( 0, max(data[:,1]/1000.)*1.1 ) )
     if ( isetup == 1 ):
         legend( loc='lower right' )
-    xlabel( 'Processors / #' )
-    ylabel( 'Communication Data / kiB' );
-tight_layout()
-fig.savefig( 'Octree-SFC-Benchmarks.pdf', format='PDF' )
-"""
-for isetup in range(len(basestrings)):
-    fig = figure( figsize=(6,5) );
-    title( setupnames[isetup] )
-    for i in range(len(orderings)):
-        data = genfromtxt( basestrings[isetup] + orderings[i] + "_Ordering.dat", comments='#' )
-        plot( data[:,0], data[:,2]/1024., '-o', label = orderings[i] )
-    plot( data[:,0], data[:,1]/1024., '-o', label = "Maximum" )
-    xlim( ( min(data[:,0])-0.5, max(data[:,0])+0.5 ) )
-    ylim( ( 0, max(data[:,1]/1024.)*1.1 ) )
-    #xscale('log')
-    legend( loc='best' )
-    xlabel( 'Processors / #' )
-    ylabel( 'Communication Data / kiB' );
+    xlabel( 'Prozesse' )
+    ylabel( 'Zu sendende Daten / kB' );
+    legend(loc='best')
     tight_layout()
-    fig.savefig( 'Octree-SFC-Benchmark_'+str(isetup)+'.pdf', format='PDF' )
-"""
+    fig.savefig( basestrings[isetup] + 'Plot.pdf', format='PDF' )
+
 show()

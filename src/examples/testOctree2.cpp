@@ -14,17 +14,7 @@ make testOctree && ./testOctree.exe
 #include <ctime>
 #include <boost/filesystem.hpp>
 //#include <omp.h> // not needed for pragmas
-
-namespace compileTime {
-
-/* Compile time power (also exact for integers) */
-template<typename T>
-inline constexpr T pow(const T base, unsigned const exponent) {
-    return exponent == 0 ? 1 : base * pow<T>(base, exponent-1);
-}
-
-} // compileTime
-
+#include "CompileTime.h"
 #include "paramset/Parameters_2015-01-26_testOctree.cpp"
 #include "math/TVector.h"
 #include "octree/Octree.h"
@@ -96,7 +86,7 @@ int main( int argc, char **argv )
                 ORDERING = atoi(optarg);
                 break;
             case 'n':
-                if ( strstr( argv[optind-2], "--number-of-worldsizes\0" ) != NULL )
+                //if ( strstr( argv[optind-2], "--number-of-worldsizes\0" ) != NULL )
                     NUMBER_OF_WORLDSIZES = atoi(optarg);
                 break;
             case 's':
@@ -117,6 +107,7 @@ int main( int argc, char **argv )
     tout << "INITIAL_OCTREE_REFINEMENT: " << INITIAL_OCTREE_REFINEMENT << "\n";
     tout << "MAX_OCTREE_REFINEMENT: " << MAX_OCTREE_REFINEMENT << "\n";
     tout << "PRINT_SVG: " << PRINT_SVG << "\n";
+    tout << "NUMBER_OF_WORLDSIZES: " << NUMBER_OF_WORLDSIZES << "\n";
 
 /* Run this Programm for several Ordering Methods ! */
 
@@ -131,7 +122,7 @@ int main( int argc, char **argv )
         case 3: sOrdering << "Rows" ; break;
         case 4: sOrdering << "Four-Color-Theorem" ; break;
     }
-    filename << basefolder.str() << (SIMDIM == 2 ? "Quadtree" : "Octree")
+    filename << basefolder.str() << "/" << (SIMDIM == 2 ? "Quadtree" : "Octree")
              << "-Setup-" << OCTREE_SETUP
              << "_Initial-" << INITIAL_OCTREE_REFINEMENT << "_Max-Refinement-"
              << MAX_OCTREE_REFINEMENT << "_" << sOrdering.str()
@@ -270,7 +261,9 @@ int main( int argc, char **argv )
     int NValues = tree.root->countLeaves();
     tout << "Tree-Integrity  : " << tree.CheckIntegrity() << "\n";
     tout << "Number of Leaves: " << NValues               << "\n";
-
+    clock_t bufferstart = clock();
+    Octree::Octree<SIMDIM>::iterator itordering = tree.begin( ORDERING );
+    tout << "Buffering traversal took " << (double) (clock() - bufferstart) / CLOCKS_PER_SEC << "s\n";
 
     /* allocate data (which stores assigned ranks) to which pointers will be  *
      * given to octree. And default it to the last rank                       */
@@ -315,7 +308,7 @@ int main( int argc, char **argv )
         traversalOrder[ curLeaf++ ] = &(*it);
         tout << "curLeaf: " << curLeaf << "\n";
     }*/
-    
+
 int LINUPTO = 16;
 if ( LINUPTO > NUMBER_OF_WORLDSIZES )
     LINUPTO = NUMBER_OF_WORLDSIZES;
@@ -351,11 +344,13 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
     std::stringstream sWorldsize;
     sWorldsize << filename.str();
     if (PRINT_SVG)
-        sWorldsize << "_worldsize-" << worldsize;
+        sWorldsize << "_worldsize-" << worldsize << ".svg";
     Octree::OctreeToSvg<SIMDIM> svgoutput( tree, sWorldsize.str(), false );
     if (PRINT_SVG) {
-        tout << "Open: " << sWorldsize.str() << ".svg\n";
-        //svgoutput.PrintGrid();
+        tout << "Open: " << sWorldsize.str() << "\n";
+        if ( SIMDIM == 2 ) {
+            svgoutput.PrintGrid();
+        }
     }
 
     /* Assign cells to all the processes */
@@ -374,7 +369,7 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
     /* Using optimalCosts, assign cells to processes */
     Octree::Octree<SIMDIM>::iterator it0 = tree.begin();
     Octree::Octree<SIMDIM>::iterator it1 = tree.begin();
-    for ( Octree::Octree<SIMDIM>::iterator it = tree.begin( ORDERING );
+    for ( Octree::Octree<SIMDIM>::iterator it = itordering.begin();
           it != tree.end(); ++it ) if ( it->IsLeaf() )
     {
         curRank = int( cumulativeCosts / optimalCosts );
@@ -399,10 +394,24 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
                   << " x2=\"" << r1[0] << "px\" y2=\"" << r1[1] << "px\""  "\n"
                   << " style=\"stroke:none;stroke-width:3px\""             "\n"
                   << "/>"                                                  "\n";
-                int ncolor = int( floor( 7.999 * curCell / double(NValues) ) );
-                int r  = Colors::getRed  ( Colors::BuPu[ncolor] );
-                int g  = Colors::getGreen( Colors::BuPu[ncolor] );
-                int b  = Colors::getBlue ( Colors::BuPu[ncolor] );
+
+                int ivalue = 4 * curCell;
+                int ncolor = int( floor( ivalue / double(NValues) ) );
+                assert( size_t(ncolor) < Colors::Own1Length );
+                /*ncolor = int( floor( ivalue / double(NValues) ) );
+                uint32_t rgb0 = Colors::BuPu[ncolor];
+                uint32_t rgb1 = Colors::BuPu[ncolor+1];
+                uint32_t rgb  = rgb0 + ( (rgb1 - rgb0) * (ivalue % NValues)) / NValues; //Colors::BuPu[ncolor];
+                int r  = Colors::getRed  ( rgb );
+                int g  = Colors::getGreen( rgb );
+                int b  = Colors::getBlue ( rgb );*/
+                Vec<double,3> rgb0 = Colors::getColorVector( Colors::Own1[ncolor+0] );
+                Vec<double,3> rgb1 = Colors::getColorVector( Colors::Own1[ncolor+1] );
+                Vec<double,3> rgb  = rgb0 + (rgb1 - rgb0) * (ivalue % NValues) / NValues;
+                int r  = (int) rgb[0];
+                int g  = (int) rgb[1];
+                int b  = (int) rgb[2];
+
                 /* Animate line element to become visible after some time */
                 svgoutput.out
                   << "<set"                                            "\n"
@@ -414,23 +423,26 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
                   << "/>"                                              "\n";
                 currentTime += rankDelay;
             }
-
-            /* Graphical output of and cell-rank-mapping */
-            /*int id = svgoutput.boxesDrawn.find( it->center )->second.id;
-            int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
-            int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
-            int b  = Colors::getBlue ( Colors::BuPu[8 - curRank % 9] );
-            svgoutput.out
-                << "<set"                                                "\n"
-                << " xlink:href=\"#" << id << "\""                       "\n"
-                << " attributeName=\"fill\""                             "\n"
-                << " begin=\"" << currentTime << "s\""     "\n"
-                << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
-                << "/>"                                                  "\n";*/
+            if ( SIMDIM == 2 ) {
+                /* Graphical output of and cell-rank-mapping */
+                int id = svgoutput.boxesDrawn.find( it->center )->second.id;
+                int r  = Colors::getRed  ( Colors::BuPu[8 - curRank % 9] );
+                int g  = Colors::getGreen( Colors::BuPu[8 - curRank % 9] );
+                int b  = Colors::getBlue ( Colors::BuPu[8 - curRank % 9] );
+                svgoutput.out
+                  << "<set"                                                "\n"
+                  << " xlink:href=\"#" << id << "\""                       "\n"
+                  << " attributeName=\"fill\""                             "\n"
+                  << " begin=\"" << currentTime << "s\""     "\n"
+                  << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+                  << "/>"                                                  "\n";
+            }
         }
         curCell++;
     }
     svgoutput.close();
+
+    tout << "Printing SVG took " << double(clock()-twstart)/CLOCKS_PER_SEC << "s\n";
 
     /* Count Neighbors intra- and interprocessdata to transmit */
     double * costs = new double[worldsize];
@@ -441,40 +453,35 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
     double totalTraffic = 0;
     const int bytesPerCell = 1;//(6+4)*8;
 
-    /* Count foreign and overall neighbors of cells */
-    for ( Octree::Octree<SIMDIM>::iterator it = tree.begin( ORDERING );
-          it!=tree.end(); ++it ) if ( it->IsLeaf() )
+    /* Count foreign and overall neighbors of cells, also count/distribute costs */
+    for ( Octree::Octree<SIMDIM>::iterator it = itordering.begin();
+          it != it.end(); ++it ) if ( it->IsLeaf() )
     {
         costs[ *((int*)it->data[0]) ] += weightfunc(*it);
         int nNeighbors = 0;
         int nLeavesOnOtherNodes = 0;
         int thisRank = *((int*)it->data[0]);
 
-        int lindirs[4] = {RIGHT,LEFT,TOP,BOTTOM};
-        VecI dir[4];
-        dir[0][0]=+1; dir[0][1]= 0;
-        dir[1][0]=-1; dir[1][1]= 0;
-        dir[2][0]= 0; dir[2][1]=+1;
-        dir[3][0]= 0; dir[3][1]=-1;
-
-        for ( int lindir = 0; lindir < 4; lindir++ ) {
-            assert( getDirectionVector<SIMDIM>(lindirs[lindir]) == dir[lindir]);
-            Octree::Node<SIMDIM> * neighbor = it->getNeighbor( dir[lindir], VecI(0) );
-            if ( neighbor == NULL )
+        for ( int lindir = 0; lindir < pow(3,SIMDIM); lindir++ )  {
+            VecI dir = getDirectionVector<SIMDIM>(lindir);
+            /* Only count direct neighbors, no diagonal ones. Also exclude    *
+             * lindir == 0, because that is the Node itself !                 */
+            if ( dir.abs().sum() != 1 )
                 continue;
+            std::list<OctreeType::Node*> neighbors = it->getNeighbors( dir, VecI(0) );
 
-            nNeighbors += neighbor->countLeaves();
-
-            Octree::Octree<SIMDIM>::iterator itn = neighbor->begin();
-            while ( itn != neighbor->end() ) {
-                if ( itn->IsLeaf() ) {
-                    int neighborRank = *((int*)itn->data[0]);
-                    if ( thisRank != neighborRank )
-                        nLeavesOnOtherNodes++;
-                }
-                ++itn;
+            for ( std::list<OctreeType::Node*>::iterator itn = neighbors.begin();
+                  itn != neighbors.end(); ++itn ) if ( (*itn)->IsLeaf() )
+            {
+                nNeighbors += 1;
+                assert( (*itn)->data[0] != NULL );
+                int neighborRank = *( (int*) (*itn)->data[0] );
+                if ( thisRank != neighborRank )
+                    nLeavesOnOtherNodes++;
             }
         }
+        //tout << "Node at " << it->center << " has " << nNeighbors
+        //     << " neighbors of which " << nLeavesOnOtherNodes << " are on other nodes\n";
 
         totalTraffic += bytesPerCell * nNeighbors;
         interTraffic += bytesPerCell * nLeavesOnOtherNodes;

@@ -6,12 +6,12 @@
 namespace Octree {
 
 template<int T_DIM>
-typename Node<T_DIM>::iterator::orderingTableStruct
-    Node<T_DIM>::iterator::orderingTable;
+typename OctreeIterator<T_DIM>::orderingTableStruct
+    OctreeIterator<T_DIM>::orderingTable;
 
 template<>
-typename Node<2>::iterator::orderingTableStruct
-    Node<2>::iterator::orderingTable =
+typename OctreeIterator<2>::orderingTableStruct
+    OctreeIterator<2>::orderingTable =
           {
             /* Gray-Code ordering */
             { /* ordering Table */
@@ -46,8 +46,8 @@ typename Node<2>::iterator::orderingTableStruct
           };
 
 template<>
-typename Node<3>::iterator::orderingTableStruct
-    Node<3>::iterator::orderingTable =
+typename OctreeIterator<3>::orderingTableStruct
+    OctreeIterator<3>::orderingTable =
           {
             /* Gray-Code ordering */
             { /* ordering Table */
@@ -127,66 +127,54 @@ typename Node<3>::iterator::orderingTableStruct
 
 /* used by begin() */
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( void )
- : todo(), done(), curpos(-1), ordering(-1) {}
+inline OctreeIterator<T_DIM>::OctreeIterator( void )
+ : root(NULL), todo(), done(), curpos(-1), ordering(-1), traversallist() {}
 
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( Node * root, int p_ordering )
- : todo(), done(), curpos(-1), ordering(p_ordering)
+OctreeIterator<T_DIM>::OctreeIterator( Node * proot, int p_ordering )
+ : root(proot), todo(),done(), curpos(-1), ordering(p_ordering), traversallist()
 {
     if ( ordering == Ordering::Rows ) {
         this->curpos = 0;
-        int maxdepth = root->getMaxLevel()-root->getLevel();
+        int maxdepth = root->getMaxLevel() - root->getLevel();
         VecD index = 0.5;
         VecD t_pos = root->center - root->size/2 + index*root->size/pow(2,maxdepth);
-        done.push_back( root );
-        done.push_back( root->FindLeafContainingPos( t_pos ) );
     } else {
-        tododata toBeStored = { /* child index */ 0, root, /* orientation of root */ 0 };
+        ToDoData toBeStored = { /* child index */ 0, proot, /* orientation of root */ 0 };
         todo.push( toBeStored );
     }
 }
 
 template<int T_DIM>
-Node<T_DIM>::iterator::~iterator( void ) {}
+inline OctreeIterator<T_DIM>::~OctreeIterator( void ) {}
 
 /****************************** Copy Constructor ******************************/
 template<int T_DIM>
-Node<T_DIM>::iterator::iterator( const iterator & src )
-: todo(src.todo), done(src.done), curpos(src.curpos), ordering(src.ordering)
+inline OctreeIterator<T_DIM>::OctreeIterator( const OctreeIterator & src )
+: root(src.root), todo(src.todo), done(src.done), curpos(src.curpos),
+  ordering(src.ordering), traversallist(src.traversallist)
 {}
 
 /**************************** Assignment Operator *****************************/
 template<int T_DIM>
-typename Node<T_DIM>::iterator & Node<T_DIM>::iterator::operator=
-( const iterator & src ) {
-    this->todo     = src.todo;
-    this->done     = src.done;
-    this->curpos   = src.curpos;
-    this->ordering = src.ordering;
+inline OctreeIterator<T_DIM> & OctreeIterator<T_DIM>::operator=
+( const OctreeIterator & src ) {
+    this->root          = src.root;
+    this->todo          = src.todo;
+    this->done          = src.done;
+    this->curpos        = src.curpos;
+    this->ordering      = src.ordering;
+    this->traversallist = src.traversallist;
     return *this;
 }
 
 /***************************** Increment Operator *****************************/
 template<int T_DIM>
-typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
+OctreeIterator<T_DIM>& OctreeIterator<T_DIM>::operator++( void ) {
     if ( this->ordering == Ordering::Rows ) {
-        Node * root  = done.front();
-        int maxdepth = root->getMaxLevel() - root->getLevel();
-        VecI t_size  = int(pow(2,maxdepth));
-        int i = this->curpos + 1;
-        /* set to end(), if nothing valid found it won't be changed back */
-        this->curpos = -1;
-        for ( ; i < t_size.product(); i++ ) {
-            VecD index = VecD(ConvertLinearToVectorIndex<T_DIM>(i,t_size)) + 0.5;
-            Node * found = root->FindLeafContainingPos( root->center -
-                           root->size/2 + index*root->size/pow(2,maxdepth) );
-            if ( std::find( done.begin(), done.end(), found) == done.end() ) {
-                done.push_back(found);
-                this->curpos = i;
-                break;
-            }
-        }
+        this->curpos++;
+        if ( this->curpos >= int(traversallist.size()) )
+            this->curpos = -1;
         return *this;
     }
 /* The iterator position is defined by what is currently at the top of the    *
@@ -232,7 +220,7 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
             const Node * childPtr = currentNode->getChildPtr( childIndex );
             assert( childPtr != NULL );
             /* child index we currently are at is first to begin with: 0 */
-            tododata toBeStored = { 0, const_cast<Node*>( childPtr ),
+            ToDoData toBeStored = { 0, const_cast<Node*>( childPtr ),
                                     childOrientation                 };
             todo.top().ichild++;
             todo.push(toBeStored);
@@ -244,14 +232,14 @@ typename Node<T_DIM>::iterator& Node<T_DIM>::iterator::operator++( void ) {
 }
 
 template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::iterator::operator++( int ) {
-    iterator tmp( *this );
+inline OctreeIterator<T_DIM> OctreeIterator<T_DIM>::operator++( int ) {
+    OctreeIterator tmp( *this );
 	++(*this);
 	return tmp;
 }
 
 template<int T_DIM>
-bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
+inline bool OctreeIterator<T_DIM>::operator==( const OctreeIterator & src ) {
     /* bool allequal = true;
     allequal = allequal and ( this->todo     == src.todo     );
     allequal = allequal and ( this->done     == src.done     );
@@ -262,7 +250,7 @@ bool Node<T_DIM>::iterator::operator==( const iterator & src ) {
 }
 
 template<int T_DIM>
-bool Node<T_DIM>::iterator::operator!=( const iterator & src ) {
+inline bool OctreeIterator<T_DIM>::operator!=( const OctreeIterator & src ) {
     if (ordering == Ordering::Rows)
         return this->curpos != src.curpos;
     return this->todo.size() != src.todo.size() or
@@ -270,25 +258,72 @@ bool Node<T_DIM>::iterator::operator!=( const iterator & src ) {
 }
 
 template<int T_DIM>
-typename Node<T_DIM>::Node & Node<T_DIM>::iterator::operator*( void ) const {
-    if ( this->ordering == Ordering::Rows )
-        return *(this->done.back());
-    else
+inline typename OctreeIterator<T_DIM>::Node & OctreeIterator<T_DIM>::operator*( void ) const {
+    if ( this->ordering == Ordering::Rows ) {
+        return *(traversallist[curpos]);
+    } else
         return *(this->todo.top().node);
 }
 
 template<int T_DIM>
-typename Node<T_DIM>::Node * Node<T_DIM>::iterator::operator->( void ) const {
-    if ( this->ordering == Ordering::Rows )
-        return this->done.back();
-    else
+inline typename OctreeIterator<T_DIM>::Node * OctreeIterator<T_DIM>::operator->( void ) const {
+    if ( this->ordering == Ordering::Rows ) {
+        #ifndef NDEBUG
+            bool toassert = curpos < int(traversallist.size());
+            if ( !toassert )
+                tout << "curpos=" << curpos << " >= " << traversallist.size()
+                     << "=traversallist.size()\n";
+            assert( curpos < int(traversallist.size()) );
+        #endif
+        assert( curpos < int(traversallist.size()) );
+        return traversallist[curpos];
+    } else
         return this->todo.top().node;
 }
 
 /* return iterator with empty stack */
 template<int T_DIM>
-typename Node<T_DIM>::iterator Node<T_DIM>::iterator::end( void ) {
-    iterator it;
+inline OctreeIterator<T_DIM> OctreeIterator<T_DIM>::begin( void )
+{
+    OctreeIterator<T_DIM> tmp = *this;
+    if ( tmp.traversallist.size() == 0 and tmp.ordering == Ordering::Rows ) {
+        int maxdepth   = tmp.root->getMaxLevel() - tmp.root->getLevel();
+        VecI t_size    = int(pow(2,maxdepth));
+        int nleaves    = tmp.root->countLeaves();
+        int ileave    = 0;
+        clock_t tstart = clock();
+        clock_t ttmp   = clock();
+
+        for ( int i=0; i < t_size.product(); i++ ) {
+            VecD index = VecD(ConvertLinearToVectorIndex<T_DIM>(i,t_size)) + 0.5;
+            Node * found = tmp.root->FindLeafContainingPos( tmp.root->center -
+                tmp.root->size/2 + index * tmp.root->size/pow(2,maxdepth) );
+            /* Search in list to avoid traversing one node two times */
+            if ( std::find( tmp.done.begin(), tmp.done.end(), found) == tmp.done.end() ) {
+                tmp.done.push_back(found);
+                tmp.traversallist.push_back(found);
+                tmp.curpos = i;
+                if ( found->IsLeaf() )
+                        ileave++;
+            }
+            if ( clock() - ttmp > CLOCKS_PER_SEC ) {
+                ttmp = clock();
+                tout << "[" << (double) 100.0 * ileave / nleaves
+                     << "%] Currently at node at " << tmp.done.back()->center << "\n";
+            }
+        }
+    }
+    if ( tmp.traversallist.size() > 0 )
+        tmp.curpos = 0;
+    else
+        tmp.curpos = -1;
+    return tmp;
+}
+
+/* return iterator with empty stack */
+template<int T_DIM>
+inline OctreeIterator<T_DIM> OctreeIterator<T_DIM>::end( void ) const {
+    OctreeIterator it;
     return it;
 }
 

@@ -14,76 +14,83 @@ public:
     const int & size = dim;
     T_DTYPE data[T_DIM];
     
-    Vec(void);
-    Vec(const Vec & v);
-    ~Vec(void);
-    Vec& operator=(const Vec & v);
+    inline Vec(void);
+    inline Vec(const Vec & v);
+    inline ~Vec(void);
+    inline Vec& operator=(const Vec & v);
 
-    template<typename T_ETYPE> Vec(const T_ETYPE v[T_DIM]);
-    template<typename T_ETYPE> Vec(const T_ETYPE a0, const T_ETYPE a1);
-    template<typename T_ETYPE> Vec(const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2);
-    template<typename T_ETYPE> Vec(const Vec<T_ETYPE,T_DIM> & v);
-    Vec(const T_DTYPE a);
+    template<typename T_ETYPE> inline Vec(const T_ETYPE v[T_DIM]);
+    template<typename T_ETYPE> inline Vec(const T_ETYPE a0, const T_ETYPE a1);
+    template<typename T_ETYPE> inline Vec(const T_ETYPE a0, const T_ETYPE a1, const T_ETYPE a2);
+    template<typename T_ETYPE> inline Vec(const Vec<T_ETYPE,T_DIM> & v);
+    inline Vec(const T_DTYPE a);
 
-    T_DTYPE operator[] (const int i) const;
-    T_DTYPE & operator[] (const int i);
+    inline T_DTYPE operator[] (const int i) const;
+    inline T_DTYPE & operator[] (const int i);
 
-    operator const T_DTYPE*() const;
+    inline operator const T_DTYPE*() const;
 
-    Vec& operator= (const T_DTYPE a);
-    Vec& operator+=(const Vec & v);
-    Vec& operator*=(const Vec & v);
-    Vec& operator/=(const Vec & v);
-    Vec  operator/ (const Vec & v) const;
+    inline Vec& operator= (const T_DTYPE a);
+    inline Vec& operator+=(const Vec & v);
+    inline Vec& operator*=(const Vec & v);
+    inline Vec& operator/=(const Vec & v);
+    inline Vec  operator/ (const Vec & v) const;
 
-    bool operator==(const Vec & v) const;
-    bool operator< (const Vec & v) const;
-    bool operator> (const Vec & v) const;
-    bool operator<=(const Vec & v) const;
-    bool operator>=(const Vec & v) const;
-    Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
-    Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
-    Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
+    inline bool operator==(const Vec & v) const;
+    inline bool operator< (const Vec & v) const;
+    inline bool operator> (const Vec & v) const;
+    inline bool operator<=(const Vec & v) const;
+    inline bool operator>=(const Vec & v) const;
+    inline Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
+    inline Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
+    inline Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
     
-    T_DTYPE scp(const Vec & v) const;
-    Vec abs(void) const;
-    double norm2( void ) const;
-    T_DTYPE product( void ) const;
-    T_DTYPE sum( void ) const;
-    T_DTYPE min( void ) const;
-    T_DTYPE max( void ) const;
-    T_DTYPE mean( void ) const;
-    Vec cross(const Vec & b) const;
+    inline T_DTYPE scp(const Vec & v) const;
+    inline Vec abs(void) const;
+    inline double norm2( void ) const;
+    inline T_DTYPE product( void ) const;
+    inline T_DTYPE sum( void ) const;
+    inline T_DTYPE min( void ) const;
+    inline T_DTYPE max( void ) const;
+    inline T_DTYPE mean( void ) const;
+    inline Vec cross(const Vec & b) const;
 
-    Vec  operator+ (const Vec & v) const;
-    Vec& operator-=(const Vec & v);
-    Vec  operator- (const Vec & v) const;
-    Vec  operator* (const Vec & v) const;
+    inline Vec  operator+ (const Vec & v) const;
+    inline Vec& operator-=(const Vec & v);
+    inline Vec  operator- (const Vec & v) const;
+    inline Vec  operator* (const Vec & v) const;
     
-    Vec& operator+=(const T_DTYPE a);
-    Vec& operator-=(const T_DTYPE a);
-    Vec& operator*=(const T_DTYPE a);
-    Vec& operator/=(const T_DTYPE a);
-    Vec  operator+ (const T_DTYPE a) const;
-    Vec  operator- (const T_DTYPE a) const;
-    Vec  operator* (const T_DTYPE a) const;
-    Vec  operator/ (const T_DTYPE a) const;
+    inline Vec& operator+=(const T_DTYPE a);
+    inline Vec& operator-=(const T_DTYPE a);
+    inline Vec& operator*=(const T_DTYPE a);
+    inline Vec& operator/=(const T_DTYPE a);
+    inline Vec  operator+ (const T_DTYPE a) const;
+    inline Vec  operator- (const T_DTYPE a) const;
+    inline Vec  operator* (const T_DTYPE a) const;
+    inline Vec  operator/ (const T_DTYPE a) const;
 
-    bool operator!= (const Vec & v) const;
-    double norm() const;
+    inline bool operator!= (const Vec & v) const;
+    inline double norm() const;
 };
 
 
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+inline Vec<T_DTYPE,T_DIM> operator+
+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator-( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+inline Vec<T_DTYPE,T_DIM> operator-
+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator*( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+inline Vec<T_DTYPE,T_DIM> operator*
+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+
 template<typename T, typename T_DTYPE, int T_DIM>
-Vec<T_DTYPE,T_DIM> operator/( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
+inline Vec<T_DTYPE,T_DIM> operator/
+( const T scalar, const Vec<T_DTYPE,T_DIM> & righthandside );
 
 template<typename T_DTYPE, int T_DIM>
-std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM> v );
+inline std::ostream& operator<<( std::ostream& out, const Vec<T_DTYPE,T_DIM> v );
 
 #include "TVector.tpp"

@@ -169,14 +169,14 @@ bool Octree<T_DIM>::CheckIntegrity( void ) const {
 template<int T_DIM>
 typename Octree<T_DIM>::Node::iterator Octree<T_DIM>::begin( int ordering ) const {
     typename Node::iterator it( this->root, ordering );
-    return it;
+    return it.begin();
 }
 
 /************************************ end *************************************/
 template<int T_DIM>
 typename Octree<T_DIM>::Node::iterator Octree<T_DIM>::end( void ) const {
     typename Node::iterator it;
-    return it;
+    return it.end();
 }
 
 template<int T_DIM>
