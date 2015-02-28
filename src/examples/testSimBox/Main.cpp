@@ -125,7 +125,7 @@ int main( int argc, char **argv )
     tout.Open( string("out"), comBox.rank );
     terr.Open( string("err"), comBox.rank );
     srand( clock() * comBox.rank );
-    
+
     VecD abspos;
     abspos[0] = comBox.coords[0];
     abspos[1] = comBox.coords[1];
@@ -187,7 +187,7 @@ int main( int argc, char **argv )
         int size[SIMDIM] = {3,4};
         int  pos[SIMDIM] = {0,3};
         SimMatrix mat = simBox.t[0]->cells.getPartialMatrix( VecI(pos), VecI(size) );
-        tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size) 
+        tout << "PartialMatrix at " << VecI(pos) << " of size " << VecI(size)
              << " [(row,col)] in matrix of rank 0: " << endl;
         for (int i=0; i<size[0]; i++) {
             for (int j=0; j<size[1]; j++) {
@@ -269,8 +269,8 @@ int main( int argc, char **argv )
     }
     tout << "PrintValues\n";
     simBox.PrintValues();
-    
-    
+
+
     tout << "==========================" << endl
          << "Set Border,Core and Guard!" << endl
          << "==========================" << endl << flush;

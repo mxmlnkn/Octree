@@ -22,20 +22,20 @@ typedef Vec<double,SIMDIM> VecD;
 int main( int argc, char **argv )
 {
     tout.Open("out");
-    
-    
+
+
     const int NValues = 100;
     int * data = (int*) malloc( sizeof(int)*NValues );
     for (int i=0; i<NValues; ++i)
         data[i] = i;
-    
+
     VecD size(2), center(0);
     Octree::Octree<int,SIMDIM> tree( center, size );
-    
+
     std::default_random_engine rng( 7542168 );
     std::normal_distribution<double> x_distribution(  0.2, 0.5 );
     std::normal_distribution<double> y_distribution( -0.3, 0.2 );
-    
+
     for (int i=0; i<NValues; i++) {
         VecD position;
         position[0] = x_distribution(rng);
@@ -46,7 +46,7 @@ int main( int argc, char **argv )
         if ( position[1] < -0.5*size[1] ) position[1] = -0.5*size[1];
         tree.InsertData( position, &(data[i]) );
     }
-    
+
     tout << tree;
     Octree::OctreeToSvg<int,SIMDIM> svgoutput( tree, std::string("octree") );
     svgoutput.PrintGrid();
@@ -67,7 +67,7 @@ int main( int argc, char **argv )
     tree2.MoveData( pos, &(data[PID]), pos+diffvec );
     std::cout << tree2;
     svgoutput.AnimateUpdated( tree2 ); */
-    
+
 
     std::normal_distribution<double> dist( 0, 0.5 );
     for (int t=0; t<20; t++) {
@@ -78,18 +78,18 @@ int main( int argc, char **argv )
             diffvec[1] = dist(rng);
             VecD newpos = pos+diffvec;
             if ( newpos[0] > +0.5*size[0] )
-                newpos[0] = fmod( ( 0.5*size[0] + newpos[0] ) , 
+                newpos[0] = fmod( ( 0.5*size[0] + newpos[0] ) ,
                                   ( size[0]-1e-6 ) ) - 0.5*size[0];
             if ( newpos[0] < -0.5*size[0] )
                 newpos[0] = fmod( ( 0.5*size[0] + -newpos[0] ) ,
                                   ( size[0]-1e-6 ) ) - 0.5*size[0];
-            if ( newpos[1] > +0.5*size[1] ) newpos[1] = 
+            if ( newpos[1] > +0.5*size[1] ) newpos[1] =
                 fmod( ( 0.5*size[1] + newpos[1] ) ,
                       ( size[1]-1e-6 ) ) - 0.5*size[1];
-            if ( newpos[1] < -0.5*size[1] ) newpos[1] = 
-                fmod( ( 0.5*size[1] + -newpos[1] ) , 
+            if ( newpos[1] < -0.5*size[1] ) newpos[1] =
+                fmod( ( 0.5*size[1] + -newpos[1] ) ,
                       ( size[1]-1e-6 ) ) - 0.5*size[1];
-            
+
             tree.MoveData( pos, &(data[i]), newpos );
             if ( !tree.CheckIntegrity() ) {
                 std::cout << "DIE HOELLE IST LOS!!!\n";
@@ -100,6 +100,6 @@ int main( int argc, char **argv )
         //tout << tree;
         svgoutput.AnimateUpdated( tree );
     }
-    
+
     free(data);
 }

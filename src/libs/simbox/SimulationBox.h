@@ -46,7 +46,7 @@ namespace SimulationBox {
  * localcells are B and C, but not G                                      *
  **************************************************************************/
 template<int T_DIM>
-bool InArea( const Vec<int,T_DIM> & pos, const int & area, 
+bool InArea( const Vec<int,T_DIM> & pos, const int & area,
              const Vec<int,T_DIM> & localcells, int guardsize );
 
 template<int T_DIM, typename T_CELLDATA>

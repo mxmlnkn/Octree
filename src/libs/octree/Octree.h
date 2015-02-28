@@ -75,7 +75,7 @@ public:
     Octree(const Octree &);
     ~Octree(void);
     Octree& operator=(const Octree &);
-    
+
     VecD FindData( void * const object ) const;
     /* Returns Pointer of Node with its center equaling exactly the given one */
     const Node * GetNodePtr( const VecD center ) const;
@@ -83,7 +83,7 @@ public:
     /* Returns false if datum not found */
     bool RemoveData( const VecD pos, const int index );
     Node * FindLeafContainingPos( const VecD & pos );
-    
+
     /* Returns level at which first leaf can be found */
     int getMinLevel( void );
     /* Returns maximum depth of tree */

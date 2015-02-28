@@ -5,7 +5,7 @@ bool bottomabsorber = curpos[Y] - 0 < ABSORBING_BORDER_THICKNESS;
 bool topabsorber    = tree.center[Y] + tree.size[Y]/2 - curpos[Y] < ABSORBING_BORDER_THICKNESS;
 
 /** Result 009: absorbing Material on right side included ********/
-if ( ( ABSORBER_SIDE[0] and leftabsorber ) 
+if ( ( ABSORBER_SIDE[0] and leftabsorber )
 or ( ( ABSORBER_SIDE[1] or /* Legacy */ CONTAINS(SIMULATION_SETUP,1) ) and rightabsorber )
 or ( ABSORBER_SIDE[2] and bottomabsorber )
 or ( ABSORBER_SIDE[3] and topabsorber ) ) {
@@ -91,7 +91,7 @@ if ( CONTAINS(SIMULATION_SETUP,7) ) {
     static bool firstCall = true;
     if ( firstCall ) {
         SPAWN_POS = VecD( ABSORBING_BORDER_THICKNESS + SPHERICAL_SCREEN_RADIUS,
-                          ABSORBING_BORDER_THICKNESS + SPHERICAL_LENSE_CENTER[1] 
+                          ABSORBING_BORDER_THICKNESS + SPHERICAL_LENSE_CENTER[1]
                           + 0.84*SPHERICAL_LENSE_RADIUS );
         firstCall = false;
         /* if found cell, then send new corrected position to all other      *

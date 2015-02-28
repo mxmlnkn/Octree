@@ -42,7 +42,7 @@ int main( int argc, char **argv )
         }
 
         Octree::Octree<SIMDIM> tree( 0, 1 );
-        Octree::OctreeToSvg<SIMDIM> svgoutput( tree, timestamp.str() + 
+        Octree::OctreeToSvg<SIMDIM> svgoutput( tree, timestamp.str() +
                             sOrdering.str() + std::string(".svg"), false );
 
         int MAX_OCTREE_REFINEMENT = 5;
@@ -55,7 +55,7 @@ int main( int argc, char **argv )
                     ++it;
         //svgoutput.PrintGrid();
         tree.root->DeleteChildren();
-    
+
         for( int curlvl = 1; curlvl <= MAX_OCTREE_REFINEMENT; curlvl++ ) {
             /* refine all cells to some value */
             for ( int i=0; i < curlvl; i++)

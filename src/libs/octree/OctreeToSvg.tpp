@@ -123,7 +123,7 @@ void OctreeToSvg<T_DIM>::PrintTraversal
 {
     /* Update internal copy of the tree, before printing */
     this->tree = *(this->treesrc);
-    
+
     static int ncalled = 0;
     ncalled++;
 

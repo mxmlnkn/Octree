@@ -47,7 +47,7 @@ void CalcH( OctCell & simbox, int tnext, int tcur, int area, double dt ) {
                 tout << "!!!! E[" << ynext << "]=" << (itcur+ynext)->E << " != E[" << pos << "]=" << itcur->E << "\n";
         #endif
 
-        itnext->H[X] = Da * itnext->H[X] + 
+        itnext->H[X] = Da * itnext->H[X] +
              Dbz*( (itnext+znext)->E[Y] - itnext->E[Y] )
             -Dby*( (itnext+ynext)->E[Z] - itnext->E[Z] )
             ;
@@ -89,7 +89,7 @@ void CalcE( OctCell & simbox, int tnext, int tcur, int area, double dt ) {
         double Cby = dt / ( itnext->epsilon * cellsize[1] ) / nom;
         double Cbz = dt / ( itnext->epsilon * cellsize[2] ) / nom;
 
-        itnext->E[X] = Ca * itnext->E[X] + 
+        itnext->E[X] = Ca * itnext->E[X] +
              Cby*( itnext->H[Z] - (itnext+yprev)->H[Z] )
             -Cbz*( itnext->H[Y] - (itnext+zprev)->H[Y] )
             ;

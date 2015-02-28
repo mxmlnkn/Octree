@@ -13,7 +13,7 @@ public:
     const int dim = T_DIM;
     const int & size = dim;
     T_DTYPE data[T_DIM];
-    
+
     inline Vec(void);
     inline Vec(const Vec & v);
     inline ~Vec(void);
@@ -44,7 +44,7 @@ public:
     inline Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
     inline Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
     inline Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
-    
+
     inline T_DTYPE scp(const Vec & v) const;
     inline Vec abs(void) const;
     inline double norm2( void ) const;
@@ -59,7 +59,7 @@ public:
     inline Vec& operator-=(const Vec & v);
     inline Vec  operator- (const Vec & v) const;
     inline Vec  operator* (const Vec & v) const;
-    
+
     inline Vec& operator+=(const T_DTYPE a);
     inline Vec& operator-=(const T_DTYPE a);
     inline Vec& operator*=(const T_DTYPE a);

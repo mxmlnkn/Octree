@@ -151,7 +151,7 @@ bool Octree<T_DIM>::CheckIntegrity( void ) const {
                 }
             }
         }
-            
+
         if (nchilds > 0 and it->IsLeaf()) {
             foundError = true;
             std::cerr << "Node at " << this->size * it->center << " sized " << this->size * it->size << " contains childs even though it is a leaf node !\n";

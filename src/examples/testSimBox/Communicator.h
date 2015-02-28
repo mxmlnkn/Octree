@@ -202,7 +202,7 @@ public:
     CommTopo(void) {
         std::cerr << "Communicator needs to be given a simbox handle when constructed!\n";
     }
-    
+
     CommTopo( SimBox & simbox ) : simbox(simbox) {
         for (int i=0; i<T_DIM; i++) {
             this->periodic[i] = true;
@@ -213,7 +213,7 @@ public:
             nneighbors *= 3;
         nneighbors--;
         terr << "Number of Neighbors: " << nneighbors;
-        
+
         this->nneighbors = nneighbors;
         this->neighbors    = new int[nneighbors+1];
         this->recvrequests = new MPI_Request[nneighbors+1];

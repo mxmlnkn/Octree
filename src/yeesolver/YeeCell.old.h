@@ -19,8 +19,8 @@ public:
 	double mu;       // magnetic permeability in this cell
 	double sigmaE;    // electric resistivity in this cell
 	double sigmaM; // magnetic resistivity in this cell
-	
-	YeeCell(void) 
+
+	YeeCell(void)
 	: epsilon(1), mu(1), sigmaE(0), sigmaM(0)
 	{}
 	~YeeCell(void) {}

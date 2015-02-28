@@ -34,8 +34,8 @@ struct CameraData {
       *     /     |                                                   *
       *    z                                                          */
      /* Is the scaling of Up relevant ??? */
-    CameraData( VecD pEye, VecD pCenter, VecD pUp = VecD(0,1,0) ) 
-    : Eye(pEye), Center(pCenter), Up(pUp), Phi(0), 
+    CameraData( VecD pEye, VecD pCenter, VecD pUp = VecD(0,1,0) )
+    : Eye(pEye), Center(pCenter), Up(pUp), Phi(0),
       Theta( atan( (Center[1]-Eye[1]) / fabs(Center[2]-Eye[2]) )), Psi(0)
     {}
 };
@@ -44,9 +44,9 @@ Matrix CalcProjection(double fovy, double aspect, double zNear, double zFar);
 
 Matrix CreateRotationMat4f(const float ux, const float uy, const float uz, const float theta, float** m);
 Matrix CalcView(const CameraData & Camera);
-Matrix CalcModelMatrix( const Vec<double,3> translationvector, 
+Matrix CalcModelMatrix( const Vec<double,3> translationvector,
     const double w_transl, const double obj_scale, const double obj_rot );
 
 std::ostream& operator<<( std::ostream& out, const Matrix mat );
-    
+
 #include "3D-Projection.cpp"

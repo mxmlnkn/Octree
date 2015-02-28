@@ -14,7 +14,7 @@ class Matrix {
         double **data;
         void Setup(int m, int n);                   //Allocates Memory for Matrix.data and stores m,n
         void Clear(void);
-    
+
     public:
         Matrix(const Matrix &mat);                  //Copy method/Constructor
         Matrix(int m, int n);                       //Create new 2d-array with (m,n) being the dimension/Constructor
@@ -22,7 +22,7 @@ class Matrix {
         Matrix(char* filename);                     //Automatically read from file
         template<int T_DIM> Matrix(const Vec<double,T_DIM> v);
         ~Matrix(void);                              //delete matrix from heap
-        
+
         template<int T_DIM> operator Vec<double,T_DIM>() const;
 
         Matrix& operator=(const Matrix &mat);
@@ -39,7 +39,7 @@ class Matrix {
         bool operator==(const Matrix &mat);
 
         Matrix operator* (const double a) const;
-        
+
         double Minor(int row, int col) const;       //Counting from 1
         double Det(void) const;
         Matrix Invert(void) const;
@@ -48,7 +48,7 @@ class Matrix {
         /* Returns Norm of Matrix if it is a Vector, else error (returns -1) */
         double Norm(void) const;
         /* Returns matrix with only positive elements (aij -> |aij|) */
-        Matrix Abs(void) const;     
+        Matrix Abs(void) const;
         int Rank(void) const;
         double Trace(void) const;
         Matrix RowEchelon(void) const;
@@ -61,7 +61,7 @@ class Matrix {
         void SetDiagonal(double val=1);
         void SetDiagonal(double val[]);
         void SetAll(double val);
-        
+
         void DelRow(int row, int amount=1);         //Deletes i-th Row counting from 1
         void DelCol(int col, int amount=1);
         Matrix Augment(const Matrix &mat) const;    //conjoines object with mat (if number of rows is equivalent)

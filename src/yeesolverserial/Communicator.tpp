@@ -521,7 +521,7 @@ template<typename T_FUNC>
 void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::PrintPNG
 ( int timestep, const std::string pname, T_FUNC colorFunctor )
 { PrintPNG( timestep, pname.c_str(), colorFunctor ); }
-    
+
 template<int T_DIM, typename T_OCTREE, typename T_CELLTYPE>
 T_CELLTYPE * OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::findCell
 ( VecD ppos, VecD * pfoundpos ) {
@@ -529,7 +529,7 @@ T_CELLTYPE * OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::findCell
     if ( node == NULL )
         return NULL;
     CommData * commdata = (CommData*) node->data[COMM_HEADER_INDEX];
-    if ( commdata->rank != this->rank ) 
+    if ( commdata->rank != this->rank )
         return NULL;
     OctCell * simbox = (OctCell*) node->data[CELL_DATA_INDEX];
     // tout << "Try to find " << ppos << " in node at " << node->center << " sized " << node->size << "\n";

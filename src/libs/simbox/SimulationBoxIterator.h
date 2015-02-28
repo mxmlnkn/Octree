@@ -24,7 +24,7 @@ private:
 
 public:
     CellMatrix * srcmat;
-    
+
     /* Only public for convenience, shouldn't be tempered with !!! */
     VecI icell;  // stores current cell index. This is where we are
     VecI ncells; // dimension of cellmatrix this iterator works on with Guard

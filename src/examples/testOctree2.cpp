@@ -429,7 +429,7 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
         int thisRank            = *((int*)it->data[0]);
         int tmpinterTraffic     = interTraffic;
         int tmptotalTraffic     = totalTraffic;
-        
+
         /* Iterate over all directions and get neighbors there */
         for ( int lindir = 0; lindir < pow(3,SIMDIM); lindir++ )  {
             VecI dir = getDirectionVector<SIMDIM>(lindir);
@@ -447,7 +447,7 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
                 nNeighbors += 1;
                 const int lvldiff = abs( (*itn)->getLevel() - it->getLevel() );
                 totalTraffic += bytesPerCell / int(pow( 2, lvldiff ));
-                
+
                 const int neighborRank = *( (int*) (*itn)->data[0] );
                 if ( thisRank != neighborRank ) {
                     nLeavesOnOtherNodes++;

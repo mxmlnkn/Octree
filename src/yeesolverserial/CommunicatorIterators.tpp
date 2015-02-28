@@ -29,7 +29,7 @@ struct CellIterator {
         if ( res.it == res.it.end() ) {
             res.itm = res.itm.end();
         }
-        
+
         return res;
     }
     /* return VecI(-1) which is a end marker. Will have to set it to that *

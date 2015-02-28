@@ -39,7 +39,7 @@ template<int T_DIM, typename T_CELLDATA>
 SimulationBox<T_DIM,T_CELLDATA>::SimulationBox
 ( VecD pabspos, VecI plocalcells, VecD pcellsize, int pguardsize,
   int bufferpages )
- : ntimesteps(bufferpages), t( new TimeData*[ntimesteps] ), abspos(pabspos), 
+ : ntimesteps(bufferpages), t( new TimeData*[ntimesteps] ), abspos(pabspos),
    localcells(plocalcells), cellsize(pcellsize), guardsize(pguardsize)
 {
     for (int i=0; i < this->ntimesteps; i++) {
@@ -113,7 +113,7 @@ typename SimulationBox<T_DIM,T_CELLDATA>::VecI SimulationBox<T_DIM,T_CELLDATA>::
 
 /****************************** getGlobalPosition *****************************/
 template<int T_DIM, typename T_CELLDATA>
-typename SimulationBox<T_DIM,T_CELLDATA>::VecD 
+typename SimulationBox<T_DIM,T_CELLDATA>::VecD
 SimulationBox<T_DIM,T_CELLDATA>::getGlobalPosition
 ( const VecI index ) const
 {

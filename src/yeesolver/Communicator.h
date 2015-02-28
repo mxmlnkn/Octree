@@ -154,7 +154,7 @@ public:
     template<typename T_FUNC>
     void PrintPNG( int timestep, const std::string pname, T_FUNC function );
     T_CELLTYPE * findCell( VecD ppos, VecD * pfoundpos = NULL );
-    
+
     /****************************** Iterators *********************************/
     typedef typename T_OCTREE::Node::iterator NodeIterator;
     struct LeafIterator : public NodeIterator {
@@ -175,7 +175,7 @@ public:
         typename OctCell::IteratorType itm;
         const OctreeCommunicator & combox;
         int timestep, area, ordering;
-        
+
         /* implicit operator=, constructor, destructor and copy constructor */
         CellIterator( const OctreeCommunicator & pcombox, int area, int timestep, int pordering );
         CellIterator begin( void ) const;
@@ -189,8 +189,8 @@ public:
     };
     #endif
     #include "CommunicatorIterators.tpp"
-    
-    CellIterator getCellIterator( int parea = SimulationBox::CORE + 
+
+    CellIterator getCellIterator( int parea = SimulationBox::CORE +
         SimulationBox::BORDER + SimulationBox::GUARD, int ptimestep = 0,
         int pordering = Octree::Ordering::Morton )
     {

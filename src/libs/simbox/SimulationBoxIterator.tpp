@@ -7,15 +7,15 @@ namespace SimulationBox {
 /******************************** Constructor *********************************/
 template<int T_DIM, typename T_CELLDATA>
 Iterator<T_DIM,T_CELLDATA>::Iterator
-( const int p_area, const VecI p_ncells, const int p_guardsize, 
+( const int p_area, const VecI p_ncells, const int p_guardsize,
   CellMatrix & p_srcmat )
-: area(p_area), core(p_area & CORE), border(p_area & BORDER), guard (p_area & 
+: area(p_area), core(p_area & CORE), border(p_area & BORDER), guard (p_area &
   GUARD), srcmat(&p_srcmat), icell(0), ncells(p_ncells), guardsize(p_guardsize)
 {
     assert( area != 0 ); // would be trivial iterator
     assert( area <= CORE+BORDER+GUARD );
     /* more difficult to implement, and makes no sense */
-    assert( area != CORE+GUARD ); 
+    assert( area != CORE+GUARD );
 }
 
 template<int T_DIM, typename T_CELLDATA> Iterator<T_DIM,T_CELLDATA>::Iterator( void )
@@ -29,8 +29,8 @@ Iterator<T_DIM,T_CELLDATA>::~Iterator( void )
 
 /****************************** Copy Constructor ******************************/
 template<int T_DIM, typename T_CELLDATA>
-Iterator<T_DIM,T_CELLDATA>::Iterator( const Iterator & src ) 
- : area(src.area), core(src.core), border(src.border), guard(src.guard), 
+Iterator<T_DIM,T_CELLDATA>::Iterator( const Iterator & src )
+ : area(src.area), core(src.core), border(src.border), guard(src.guard),
    srcmat(src.srcmat), icell(src.icell), ncells(src.ncells), guardsize(src.guardsize)
 {}
 

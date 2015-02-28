@@ -51,7 +51,7 @@ if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
     double width   = SPAWN_AREA_SIZE[1];
     VecD pos       = SPAWN_POS;// + SPAWN_AREA_SIZE - 1;
     assert( SPAWN_POS[1]+SPAWN_AREA_SIZE[1] < tree.center[1] + tree.size[1] );
-    
+
     VecD mincellsize = CELL_SIZE / pow( 2.0, combox.maxLevel - combox.minLevel );
     for (double x = SPAWN_POS[0]; x < SPAWN_POS[0] + SPAWN_AREA_SIZE[0]; x += mincellsize[0] )
     for (double y = SPAWN_POS[1]; y < SPAWN_POS[1] + SPAWN_AREA_SIZE[1]; y += mincellsize[1] ) {
@@ -61,7 +61,7 @@ if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
         if ( cell == NULL )
             continue;
         cell->E[2] = TIME_SPAWN_FUNCTIONS::sinewave2d( T0x, t * DELTA_T, kx,
-                        pos[0] - (SPAWN_POS[0] + SPAWN_AREA_SIZE[0] - 
+                        pos[0] - (SPAWN_POS[0] + SPAWN_AREA_SIZE[0] -
                         CELL_SIZE[0]), ky, pos[1]-SPAWN_POS[1] );
     }
 }

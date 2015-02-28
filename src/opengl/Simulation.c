@@ -8,7 +8,7 @@
 
 #include <windows.h>        // https://stackoverflow.com/questions/20441581/getting-errors-when-compiling-glew-sdl-program
 #include <GL/glew.h>		// Loads OpenGL2.0+ functionality for us
-#include <GL/glut.h>		// Windows FreeGlut equivalent 
+#include <GL/glut.h>		// Windows FreeGlut equivalent
 #include <GL/freeglut_ext.h>
 
 #include "Simulation.h"
@@ -27,7 +27,7 @@
 /******************************************************************
  *************************** Definitions **************************
  ******************************************************************/
- 
+
 void MultiplicateMat(const float* a, const float* b, unsigned int a_rows, unsigned int a_cols, unsigned int b_rows, unsigned int b_cols, float** c) {
 	if(a_cols != b_rows) {
 		*c = 0;
@@ -49,7 +49,7 @@ void MultiplicateMat(const float* a, const float* b, unsigned int a_rows, unsign
 	}
 	return;
 }
-/* With the following you can do: a=b or a=a+b or a=a-b or a=l*a and many more which would be extra functions normally ... 
+/* With the following you can do: a=b or a=a+b or a=a-b or a=l*a and many more which would be extra functions normally ...
  * You can even use this for b=I with axpby(1,NULL,0,&mat,...), because axpby will use Identity if nothing is specified for the first matrix */
 void axpby(const float sc_a, const float* x, const float sc_b, float* y, const unsigned int rows, const unsigned int cols) {
 	if (y == 0) return;
@@ -197,7 +197,7 @@ int CollisionSphereObject(const float* Eye, const float Radius, const Object3D* 
 			 *  line or rather the plane perpendicular to the    *
 			 *  triangle and containing CB                       *
 			 * For the other two we can use AEye                 *
-			 
+
 			 *****************************************************/
 			#define COLLISION_MARGIN 0.5
 			float *distance=0;
@@ -304,14 +304,14 @@ void ProcessAsciiKeys(unsigned char key, int x, int y) {
 		case 'r': LastKey=key; break;
 		case 'W': LastKey=key; break;
 		case 'S': LastKey=key; break;
-		case '+': 
+		case '+':
 			if (LastKey == 'r') {
 				obj_rot += 5;
 			} else if (transl_coord!=0)
 				(*transl_coord)+=0.1;
 			fprintf(stderr,"Translating: X:%f, Y:%f, Z:%f, W:%f, R:%f, S:%f\n",x_transl,y_transl,z_transl,w_transl,obj_rot,obj_scale);
 			break;
-		case '-': 
+		case '-':
 			if (LastKey == 'r') {
 				obj_rot -= 5;
 			} else if (transl_coord!=0)
@@ -361,11 +361,11 @@ void ProcessAsciiKeys(unsigned char key, int x, int y) {
 			MovVec3f(&CenterSAV[0],&Camera.Center[0]);
 			MovVec3f(&EyeSAV[0],&Camera.Eye[0]);
 		//tv2 = <(Center-Eye) x Up,(1,0,1)> (projects onto x,z-plane because we are human and only can move horizontally)
-			float tv1[3],tv2[3]; 
+			float tv1[3],tv2[3];
 			memcpy(&tv1[0],Camera.Center,3*sizeof(float));
 			axpby(-1,Camera.Eye,1,&tv1[0],3,1);
 			CrossProduct(&tv1[0], Camera.Up, &tv2[0]);
-			tv2[1] = 0;	
+			tv2[1] = 0;
 		//Camera = Camera+dist*tv2 (Move along tv2 (temp vector 2))
 			float norm = 0;
 			if (VectorNorm(&tv2[0],3)!=0)
@@ -407,7 +407,7 @@ void ProcessSpecialKeys(int key, int x, int y) {
     GLUT_KEY_INSERT - Insert key*/
 	switch(key) {
 		case GLUT_KEY_F9: fprintf(stderr, "Toggle Fullscreen\n"); glutFullScreenToggle(); break;
-		case GLUT_KEY_LEFT: 
+		case GLUT_KEY_LEFT:
 			fprintf(stderr, "LEFT_KEY pressed.\n");
 			Camera.Phi -= 5.0f*M_PI/180.0f;	//head rotation (around z-axis)
 #if 1==0
@@ -436,16 +436,16 @@ void ProcessSpecialKeys(int key, int x, int y) {
 			free(vec_ec); free(rot_mat); free(tmp_vec);
 #endif
 			break;
-		case GLUT_KEY_RIGHT: 
+		case GLUT_KEY_RIGHT:
 			fprintf(stderr, "RIGHT_KEY pressed.\n");
 			Camera.Phi += 5.0f*M_PI/180.0f;			//head rotation (around z-axis)
 			break;
-		case GLUT_KEY_DOWN: 
+		case GLUT_KEY_DOWN:
 			fprintf(stderr, "RIGHT_DOWN pressed.\n");
 			if (Camera.Theta > -40.0f)
-				Camera.Theta -= 5.0f*M_PI/180.0f;			//head "nodding" 
+				Camera.Theta -= 5.0f*M_PI/180.0f;			//head "nodding"
 			break;
-		case GLUT_KEY_UP: 
+		case GLUT_KEY_UP:
 			fprintf(stderr, "RIGHT_UP pressed.\n");
 			if (Camera.Theta < 40.0f)
 				Camera.Theta += 5.0f*M_PI/180.0f;
@@ -474,7 +474,7 @@ void MouseWhileKeyPressed(int x, int y) {
 	return;
 }
 void MouseWhileNoKeyPressed(int x, int y) {
-	//GLUT LEFT BUTTON, GLUT MIDDLE BUTTON or GLUT RIGHT BUTTON. state is GLUT UP xor GLUT DOWN 
+	//GLUT LEFT BUTTON, GLUT MIDDLE BUTTON or GLUT RIGHT BUTTON. state is GLUT UP xor GLUT DOWN
 	static int lastX=0xFFFF, lastY=0xFFFF;
 	int deltaX=0, deltaY=0;
 	if (lastX!=0xFFFF) {
@@ -550,7 +550,7 @@ OBJData LoadOBJFile(const char* filename) {
 	 *********************************************************/
 	FILE* obj_file = fopen(filename, "rb");
 	OBJData OutputData;
-	
+
 	#ifdef DEBUG_SIM
 		fprintf(stderr, "Counting Numbers of Objects and Vertices...");
 	#endif
@@ -576,8 +576,8 @@ OBJData LoadOBJFile(const char* filename) {
 	#ifdef DEBUG_SIM
 		fprintf(stderr, "OK\nObjects: %u, Vertices: %u\nCounting Number of Faces per Object:\n", OutputData.ObjectCount, OutputData.VertexCount);
 	#endif
-	
-	
+
+
 	//count f to allocate memory (completely fill in Object3D (not arrays, but pointers to arrays))
 	signed int cur_object_index=-1, cur_vertex_index=-1;
 	Object3D *cur_object = 0;	//there should be no 'v' or 'f' statements without a prior 'o' statement :S
@@ -642,8 +642,8 @@ OBJData LoadOBJFile(const char* filename) {
 			fprintf(stderr, "\t%s: %u Triangles and %u Quads\n", OutputData.Objects[cur_object_index].Name, OutputData.Objects[cur_object_index].TriangleCount,OutputData.Objects[cur_object_index].QuadCount);
 		}
 	#endif
-	
-	
+
+
 	unsigned int cur_triangle_index=-1;
 	cur_object_index = -1;
 	//Load data into allocated arrays
@@ -692,7 +692,7 @@ OBJData LoadOBJFile(const char* filename) {
 						break;
 				}
 				if (numbers==3) {
-					cur_triangle_index++;		
+					cur_triangle_index++;
 					sscanf(&tmp_sr[0], "%u %u %u%*[^\n]",
 						&(cur_object->Triangles[3*cur_triangle_index]),
 						&(cur_object->Triangles[3*cur_triangle_index+1]),
@@ -702,7 +702,7 @@ OBJData LoadOBJFile(const char* filename) {
 					cur_object->Triangles[3*cur_triangle_index]--;
 					cur_object->Triangles[3*cur_triangle_index+1]--;
 					cur_object->Triangles[3*cur_triangle_index+2]--;
-				} else if (numbers==4) {			
+				} else if (numbers==4) {
 					cur_triangle_index++;
 					sscanf(&tmp_sr[0], "%u %u %u %u%*[^\n]",
 						&(cur_object->Triangles[3*cur_triangle_index]),
@@ -802,7 +802,7 @@ GLuint LoadShader(const char* filename, GLenum type) {
 	fprintf(stderr,"Freed Source Char Array.\n");
 	free(source);
 	fprintf(stderr,"Now Compiling Shader.\n");
-	
+
 	glCompileShader(shaderID);
 #ifdef DEBUG_SIM
 	#ifdef GL_ES_VERSION_2_0
@@ -859,7 +859,7 @@ Returns 1 when all is ok, 0 with a displayed error */
 int init_resources(void) {
 	//Initialize Camera:
 	/*Camera.Eye[0]=0; Camera.Eye[1]=0; Camera.Eye[2]=0;
-	Camera.Center[0]=0; Camera.Center[1]=0; Camera.Center[2]=-1; 
+	Camera.Center[0]=0; Camera.Center[1]=0; Camera.Center[2]=-1;
 	Camera.Up[0]=0; Camera.Up[1]=1; Camera.Up[2]=0; */
 	//Initialize Matrices
 	projection_matrix = malloc(16*sizeof(float));
@@ -878,7 +878,7 @@ int init_resources(void) {
 	glDepthFunc(GL_LEQUAL);			// The Type Of Depth Test To Do
 	//glEnable(GL_DEBUG_OUTPUT);	//only availbale für OpenGL 4.3+
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
+
 	//Compile Shaders
 	GLuint vs = LoadShader("VertShader.c",GL_VERTEX_SHADER);	//Vertex Shader will be called for every vertex
 	GLuint fs = LoadShader("FragShader.c",GL_FRAGMENT_SHADER);	//Fragment Shader will be called for every Pixel
@@ -889,7 +889,7 @@ int init_resources(void) {
 	glAttachShader(program, fs);
 	glLinkProgram(program);
 #ifdef DEBUG_SIM
-	{		
+	{
 		GLint infologlength;
 		glGetProgramiv(program,GL_INFO_LOG_LENGTH,&infologlength);
 		char* infolog = malloc( sizeof(char)*infologlength );
@@ -902,7 +902,7 @@ int init_resources(void) {
 		fprintf(stderr, "glLinkProgram: not successfull");
 		return 0;
 	}
-	
+
 	/********************************************************
 	 * Bind Input Variables used in Shaders                 *
 	 ********************************************************/
@@ -948,7 +948,7 @@ int init_resources(void) {
 		fprintf(stderr, "glGetError after BufferData NormalLines: %i\n", glGetError());
 	#endif
 	glBindBuffer(GL_ARRAY_BUFFER,0);
-	
+
 	//Load random colors for every fucking vertex for every fucking face (20*3 rgb values for the icosaeder)
 	float* triangle_colors = malloc(sizeof(float)*3*Scene.VertexCount);
 	int i;
@@ -964,10 +964,10 @@ int init_resources(void) {
 	#endif
 	glBindBuffer(GL_ARRAY_BUFFER, 0);		//we are finished setting the options of vbo_triangle_colors. Shouldn't doing this one time be enough?
 	free(triangle_colors);
-	
+
 	return 1;
 }
-	
+
 void CalcProjection(float fovy, float aspect, float zNear, float zFar, float* view_m) {	//zNear and zFar always positive! aspect=w/h
 	//Note: OpenGL normally views orthogonal from infinity and only shows -w<[x,y,z]<+w but depth buffer from 0 to 1 oO?
 	#ifdef DEBUG_SIM
@@ -1027,8 +1027,8 @@ void CalcProjection(float fovy, float aspect, float zNear, float zFar, float* vi
 	return;
 }
 ///////////////////////////////////////////////////////////////////////////////
-// Window has changed size, or has just been created. In either case, we need 
-// to use the window dimensions to set the viewport and the projection matrix. 
+// Window has changed size, or has just been created. In either case, we need
+// to use the window dimensions to set the viewport and the projection matrix.
 void ChangeSize(int w, int h) {
 	glViewport(0, 0, w, h);
 	Screen.Width = w;
@@ -1122,7 +1122,7 @@ void RenderScene(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	//Installs a program object as part of current rendering state(Nothing is rendered here)
 	glUseProgram(program);
-	
+
 	/***********************************
 	 * mvp = projection * view * model *
 	 ***********************************/
@@ -1133,7 +1133,7 @@ void RenderScene(void) {
 	tmp_m2[1*4+3] = y_transl;			// y-translation
 	tmp_m2[2*4+3] = z_transl;			// z-translation
 	tmp_m2[3*4+3] = w_transl;			// 1/Scale
-	
+
 	CalcView(&Camera, view_matrix);
 	CreateRotationMat4f(0,0,1, obj_rot, &tmp_m1);
 	MultiplicateMat(tmp_m2,tmp_m1,4,4,4,4,&model_matrix);	//model = tmp_m2(transl)*tmp_m1(rotation)
@@ -1141,12 +1141,12 @@ void RenderScene(void) {
 	tmp_m1[3*4+3] = 1;										//except w
 	MultiplicateMat(model_matrix,tmp_m1,4,4,4,4,&tmp_m2);	//tmp_m2 = model_matrix*tmp_m1
 	memcpy(model_matrix,tmp_m2,16*sizeof(float));			//model_matrix = tmp_m2
-	
+
 	MultiplicateMat(projection_matrix,view_matrix,4,4,4,4,&tmp_m1);	// projection * view *
 	MultiplicateMat(tmp_m1,model_matrix,4,4,4,4,&mvp);				// * model = mvp;
 	glUniformMatrix4fv(uniform_mvp, 1, 1, mvp);
 	free(tmp_m1); free(tmp_m2);
-	
+
 	/******************
 	 * Draw Triangles *
 	 ******************/
@@ -1162,10 +1162,10 @@ void RenderScene(void) {
 		0,                 // no extra data between each position
 		0                  // offset of first element
 	);
-	
+
 	glEnableVertexAttribArray(attribute_coord3d);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_vertices);
-	glVertexAttribPointer(	// Describe our vertices array to OpenGL (it can't guess its format automatically) 
+	glVertexAttribPointer(	// Describe our vertices array to OpenGL (it can't guess its format automatically)
 		attribute_coord3d,	// attribute
 		3,					// number of elements per vertex, here (x,y,z)
 		GL_FLOAT,			// the type of each element
@@ -1179,18 +1179,18 @@ void RenderScene(void) {
 
 	glDisableVertexAttribArray(attribute_coord3d);
 	glDisableVertexAttribArray(attribute_v_color);
-	
+
 	/****************
 	 * Draw Normals *
 	 ****************/
-	glUniform4f(uniform_fixed_color, 1,0,0,1);		//alpha!=0 => use fixed_color	
+	glUniform4f(uniform_fixed_color, 1,0,0,1);		//alpha!=0 => use fixed_color
 	glEnableVertexAttribArray(attribute_coord3d);	//if enabled we also need to initialize it or else unpredictable errors will happen
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_normal_pts);	//vbo initialized in init_ressources
 	glVertexAttribPointer(attribute_coord3d,3,GL_FLOAT,GL_FALSE,0,0);
 	int normal_size; glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &normal_size);
 	glDrawArrays(GL_LINES,0,normal_size/(3*sizeof(GLfloat)));
 	glDisableVertexAttribArray(attribute_coord3d);
-	
+
 	/* Display the result */
 	glutSwapBuffers();
 	#ifdef DEBUG_SIM
@@ -1212,20 +1212,20 @@ void free_resources() {
 	glDeleteBuffers(1,&ibo_triangles);
 	glDeleteBuffers(1,&vbo_triangle_colors);
 	fprintf(stderr, "Deleted Programm and Buffers\n");
-	
+
 	GLint logged_msg, max_length, max_logged_msg;
 	glGetIntegerv(GL_DEBUG_LOGGED_MESSAGES, &logged_msg);
 	glGetIntegerv(GL_MAX_DEBUG_MESSAGE_LENGTH, &max_length);
 	glGetIntegerv(GL_MAX_DEBUG_LOGGED_MESSAGES, &max_logged_msg);
 	fprintf(stderr, "Logged Debug Messages: %i, Max Debug Msg Length: %i, Max Logged Messages: %i\n",logged_msg,max_length,max_logged_msg);
-	
+
 	free(projection_matrix);
 	free(view_matrix);
 	free(model_matrix);
 	free(mvp);
 }
 
-int main(int argc, char* argv[]) { 
+int main(int argc, char* argv[]) {
 	//Prepare Log File (append - created if it doesn't exist)
 	freopen("Simulation.log","a", stderr);	//returns zero if not successfull, else it returns argument file ptr
 	setvbuf(stderr,0,_IONBF,0);	//with no buffer the programm can crash without executing fclose() and we still will be able to read the logs
@@ -1251,11 +1251,11 @@ int main(int argc, char* argv[]) {
 	return 1;*/
 
 	//gltSetWorkingDirectory(argv[0]);
-	glutInit(&argc, argv); 
-	glutInitDisplayMode(GLUT_RGBA|GLUT_ALPHA|GLUT_DOUBLE|GLUT_DEPTH|GLUT_STENCIL); 
-	glutInitWindowSize(800, 600); 
-	glutCreateWindow("Simulation"); 
-	glutReshapeFunc(&ChangeSize); 
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGBA|GLUT_ALPHA|GLUT_DOUBLE|GLUT_DEPTH|GLUT_STENCIL);
+	glutInitWindowSize(800, 600);
+	glutCreateWindow("Simulation");
+	glutReshapeFunc(&ChangeSize);
 	glutDisplayFunc(&RenderScene);
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 	glutSpecialFunc(&ProcessSpecialKeys);
@@ -1265,7 +1265,7 @@ int main(int argc, char* argv[]) {
 	glutMotionFunc(&MouseWhileKeyPressed);
 	glutMouseFunc(&ProcessMouseButtons);
 	glutPassiveMotionFunc(&MouseWhileNoKeyPressed);
-	
+
 	//Just a short feel for the things GLEW will do for us :3
 	fprintf(stderr, "OpenGL-Version: %s\n", glGetString(GL_VERSION));
 	fprintf(stderr, "Extensions: ");
@@ -1274,19 +1274,19 @@ int main(int argc, char* argv[]) {
 	if (wglGetExtString)
 		supported = ((char*(__stdcall*)(HDC))wglGetExtString)(wglGetCurrentDC());
 	fprintf(stderr,"%s\n",supported);
-	
-	GLenum glew_status = glewInit(); 
+
+	GLenum glew_status = glewInit();
 	if (glew_status!=GLEW_OK) {
 		fprintf(stderr, "Glew Error: %s\n", glewGetErrorString(glew_status));
-		return 1; 
+		return 1;
 	}
-	
+
 	/* When all init functions runs without errors, the program can initialise the resources */
 	if (init_resources() == 1) {
 		fprintf(stderr,"Entered Glut Main Loop\n");
 		glutMainLoop();	//doesn't return :S
 	}
-	
+
 	free_resources();
-	return 0; 
+	return 0;
 }

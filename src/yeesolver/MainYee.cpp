@@ -126,7 +126,7 @@ int main( void )
 		data[i].sigmaE  = 0;
 		data[i].sigmaM  = 0;
     }
-    
+
     /* Result: 014 - broken total reflexion (two glass plates with small      *
      *               vacuum/air slit inbetween                                */
 	/*for ( int i = 0; i < data.getSize().product(); i++ ) {

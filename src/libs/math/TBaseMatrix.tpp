@@ -145,7 +145,7 @@ T_DTYPE InterpolateWithLagrange( const std::vector<Vec<double,T_DIM> > & x0,
 {
     assert( x0.size() == y0.size() );
     int n = x0.size();
-    
+
     T_DTYPE value(0);
     for ( int i=0; i<n; i++ ) {
         T_DTYPE summand(y0[i]);
@@ -165,7 +165,7 @@ void BaseMatrix<T_DTYPE,T_DIM>::LagrangianResizeTo( BaseMatrix & target, double 
 
     for ( int i=0; i<target.size.product(); i++ ) {
         /* Find values we want to use to interpolate current target cell */
-        VecD pos = ( VecD(0.5) + VecD(target.getVectorIndex(i)) ) / 
+        VecD pos = ( VecD(0.5) + VecD(target.getVectorIndex(i)) ) /
                    VecD(target.size) * VecD(this->size);
         /* Cycle through all cells of source matrix ... maybe something better? */
         std::vector<Vec<double,T_DIM> > positions;
@@ -186,7 +186,7 @@ void BaseMatrix<T_DTYPE,T_DIM>::NearestResizeTo( BaseMatrix & target ) const {
     assert( target.size.product() != 0);
     for ( int i=0; i<target.size.product(); i++ ) {
         /* Find values we want to use to interpolate current target cell */
-        VecD pos = ( VecD(0.5) + VecD(target.getVectorIndex(i)) ) / 
+        VecD pos = ( VecD(0.5) + VecD(target.getVectorIndex(i)) ) /
                    VecD(target.size) * VecD(this->size);
         /* Cycle through all cells of source matrix ... maybe something better? */
         int lastInd = -1;
