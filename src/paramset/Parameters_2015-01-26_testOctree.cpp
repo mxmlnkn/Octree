@@ -8,7 +8,7 @@
 #include "math/TVector.h"
 
 //componentsConfig.param
-const uint16_t SIMDIM                  = 3;
+const uint16_t SIMDIM                  = 2;
 const bool     PERIODIC_FORCE          = false;     // if false CONSIDERATION_RATIO still has effect, except if it is higher than the largest possible distance in one cell
 const double   CONSIDERATION_RATIO     = 100.;       // Force between particles will be calculated if distance between those two is smaller than CONSIDERATION_RATIO * CELL_SIZE. If 0 then force is not calculated periodically
       int      NUMBER_OF_STEPS         = 1e6;

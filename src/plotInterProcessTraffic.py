@@ -1,8 +1,9 @@
 ﻿from numpy import *
 from matplotlib.pyplot import *
 import os.path
+from scipy.optimize import curve_fit
 
-orderings = [ "Morton", "GrayCode", "Hilbert", "Rows" ]
+orderings = [ "GrayCode", "Morton", "Hilbert", "Rows" ]
 """basestrings = [ "./output/2015-01-27_04-28/Octree-Setup-6_Initial-4_Max-Refinement-6_",
                 "./output/2015-01-27_04-21/Octree-Setup-6_Initial-3_Max-Refinement-4_",
                 "./output/2015-01-27_04-26/Octree-Setup-4_Initial-3_Max-Refinement-4_",
@@ -22,34 +23,60 @@ setupnames = [ "3D Sphere Refinement, less cells",
                 "./output/2015-02-01_05-59_Octree_Benchmark_3D_and_2D/Quadtree-Setup-6_Initial-8_Max-Refinement-12_" ]
 setupnames = [ u"Sphäre, 278272 Zellen",
                "Kreis, 93184 Zellen"  ]"""
-basestrings = [ "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Quadtree-Setup-5_Initial-8_Max-Refinement-6_" ,
+"""basestrings = [ "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Quadtree-Setup-5_Initial-8_Max-Refinement-6_" ,
                 "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Quadtree-Setup-6_Initial-7_Max-Refinement-12_",
                 "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Octree-Setup-5_Initial-5_Max-Refinement-6_"   ,
-                "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Octree-Setup-6_Initial-5_Max-Refinement-10_"  ]
+                "./output/2015-02-14_01-44-53_Octree_Benchmark_3D_and_2D_multiple_Setups/Octree-Setup-6_Initial-3_Max-Refinement-7_"   ]"""
+basestrings = [ "./output/2015-02-14_21-46-31_Octree_Benchmark_3D_and_2D_preinterpolated/Quadtree-Setup-5_Initial-8_Max-Refinement-6_" ,
+                "./output/2015-02-14_21-46-31_Octree_Benchmark_3D_and_2D_preinterpolated/Quadtree-Setup-6_Initial-7_Max-Refinement-12_",
+                "./output/2015-02-14_21-46-31_Octree_Benchmark_3D_and_2D_preinterpolated/Octree-Setup-5_Initial-5_Max-Refinement-6_"   ,
+                "./output/2015-02-14_21-46-31_Octree_Benchmark_3D_and_2D_preinterpolated/Octree-Setup-6_Initial-3_Max-Refinement-7_"   ]
 setupnames = [ u"Zufällig verfeinert 2D, 65536 Zellen",
                u"Kreis 2D, 44956 Zellen"  ,
                u"Zufällig verfeinert 3D, 32768 Zellen",
-               u"Sphäre 3D, 49428 Zellen"  ]
+               u"Sphäre 3D, 48952 Zellen"]
+
+def powerfit(x,b,c):
+     return b*x**(1./c)
 
 for isetup in range(len(basestrings)):
-    fig = figure( figsize=(8,5.5) );
+    fig = figure( figsize=(6,4) );
     title( setupnames[isetup] )
     for i in range(len(orderings)):
         fname = basestrings[isetup] + orderings[i] + "_Ordering.dat"
         if os.path.isfile( fname ):
             data = genfromtxt( fname, comments='#' )
-            plot( data[20:,0], data[20:,2]/1000., 'o', label = orderings[i] )
+            if orderings[i] == "Rows":
+                labelname = "Spaltenweise"
+            elif orderings[i] == "Morton":
+                labelname = "Z-Kurve"
+            else:
+                labelname = orderings[i]
+            plot( data[20:,0], data[20:,2], 'o', ms=5, label=labelname )
+            # Plot scaling
+            if i == 2:
+                x = data[20:-20,0]
+                poptg, pcovg = curve_fit(powerfit, x, data[20:-20,2],  p0=[1,1.0] ) # sigma=yerr/y * y[0]/y,
+                print poptg, sqrt(diag(pcovg))
+                #if abs( poptg[1] - 0.5 ) < abs( poptg[1] - 1./3. ):
+                #    poptg[1] = 0.5
+                #else:
+                #    poptg[1] = 1./3.
+                #poptg[0] = 0
+                #poptg[1] /= 2.
+                #plot( x, powerfit(x , *poptg ) , 'k-' )
         else:
             print "Can't find ", fname
-    plot( data[20:,0], data[20:,1]/1000., 'b-', lw=2, label = "Maximum" )
+    plot( data[20:,0], data[20:,1], 'b-', lw=2, label = "Maximum" )
+
     xscale('log')
     yscale('log')
-    ylim( ( 0, max(data[:,1]/1000.)*1.1 ) )
+    ylim( ( 0, max(data[:,1])*1.1 ) )
     if ( isetup == 1 ):
         legend( loc='lower right' )
     xlabel( 'Prozesse' )
-    ylabel( 'Zu sendende Daten / kB' );
-    legend(loc='best')
+    ylabel( 'Zu sendende Daten / Byte' );
+    legend(loc='lower right')
     tight_layout()
     fig.savefig( basestrings[isetup] + 'Plot.pdf', format='PDF' )
 

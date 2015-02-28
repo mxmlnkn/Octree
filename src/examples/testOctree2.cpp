@@ -136,7 +136,7 @@ int main( int argc, char **argv )
     Octree::Octree<SIMDIM> tree( globCenter, globSize );
 
     /* refine all cells to some value */
-    if ( OCTREE_SETUP == 1 ) {
+    if ( OCTREE_SETUP == 1 or OCTREE_SETUP == 6 or OCTREE_SETUP == 7 ) {
         for ( int i=0; i < INITIAL_OCTREE_REFINEMENT; i++)
             for ( Octree::Octree<SIMDIM>::iterator it = tree.begin();
             it != it.end(); )
@@ -190,73 +190,39 @@ int main( int argc, char **argv )
             currentCells += int(pow(2,SIMDIM))-1;
         }
     }
-    if ( OCTREE_SETUP == 6 ) {
+    if ( OCTREE_SETUP == 6 or OCTREE_SETUP == 7 ) {
     /**************************************************************************/
     /* (1) Setup Octree Refinement ********************************************/
     /**************************************************************************/
 
-    /********* refine all cells to initial homogenous min-Refinement **********/
-    for ( int lvl=0; lvl < INITIAL_OCTREE_REFINEMENT; lvl++) {
-        for ( OctreeType::iterator it=tree.begin(); it != tree.end(); )
-            if ( it->IsLeaf() and it->getLevel()==lvl )
-                (it++)->GrowUp();
-            else
-                ++it;
-    }
-    /*********************** Refine certain boundaries ************************/
+    /********************** Refine spherical boundaries ***********************/
     assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
-        /* Get all circle angles, where it intersects with a cell border */
-        std::list<double> lphi;
-        std::list<double>::iterator it;
-        VecD cellsize = globSize / pow(2,lvl);
-        double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
-        double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
-        for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
-            /* acos in [0,2*pi] */
-            double phi = acos( (linex-M[0])/R );
-            lphi.push_back( phi );
-            /* also add value mirrored at y-axis to stack */
-            lphi.push_back( 2*M_PI-phi );
-        }
-        double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
-        double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
-        for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
-            /* asin in [-pi,pi] */
-            double phi = asin( (liney-M[1])/R );
-            lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
-            /* also add value mirrored at x-axis to stack */
-            lphi.push_back( M_PI-phi );
-        }
-        lphi.sort();
-
-        /* Echo all found angles */
-        #if DEBUG_MAIN_YEE >= 100
-            tout << "Angle list contains:";
-            for (it=lphi.begin(); it!=lphi.end(); ++it)
-                tout << ' ' << *it;
-            tout << '\n';
-        #endif
-
-        /* Grow up all cells, with which the circle intersects. Find them by  *
-         * using an angle between to successive circle intersection angles    */
-        for (it=lphi.begin(); it!=lphi.end(); ++it) {
-            VecD pos(0);
-            std::list<double>::iterator itnext = it;
-            double phi;
-            if ( ++itnext == lphi.end() ) {
-                itnext = lphi.begin();
-                phi = 0.5 * (2*M_PI + *itnext + *it);
-            } else
-                phi = 0.5 * (*itnext + *it);
-            pos[0] = M[0] + R*cos(phi);
-            pos[1] = M[1] + R*sin(phi);
-            OctreeType::Node * node = tree.FindLeafContainingPos(pos);
-            if ( node->getLevel() == lvl )
-                node->GrowUp();
+        std::stack<OctreeType::Node*> torefine;
+        for ( OctreeType::iterator it = tree.begin(); it != tree.end(); ++it )
+            if ( it->IsLeaf() and ( M - it->center*tree.size ).norm() <= R ) {
+                bool oneneighboroutside = false;
+                for ( int i = 0; i < pow(3,SIMDIM); ++i ) {
+                    OctreeType::Node * neighbor =
+                        it->getNeighbor( getDirectionVector<SIMDIM>(i), VecI(0) );
+                    if ( neighbor == NULL ) {
+                        oneneighboroutside = true;
+                        continue;
+                    }
+                    if ( ( M - neighbor->center*tree.size ).norm() > R ) {
+                        oneneighboroutside = true;
+                        break;
+                    }
+                }
+                if ( oneneighboroutside )
+                    torefine.push( &(*it) );
+            }
+        while ( not torefine.empty() ) {
+            torefine.top()->GrowUp();
+            torefine.pop();
         }
     }
-    }
+    } // OCTREE_SETUP == 6
 
     int NValues = tree.root->countLeaves();
     tout << "Tree-Integrity  : " << tree.CheckIntegrity() << "\n";
@@ -418,8 +384,8 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
                   << " xlink:href=\"#path" << id << "\""               "\n"
                   << " attributeName=\"stroke\""                       "\n"
                   << " begin=\"" << currentTime << "s\"" "\n"
-                  //<< " to   =\"#008000\""                              "\n"
-                  << " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
+                  << " to   =\"#008000\""                              "\n"
+                  //<< " to   =\"rgb(" << r << "," << g << "," << b << ")\"" "\n"
                   << "/>"                                              "\n";
                 currentTime += rankDelay;
             }
@@ -449,19 +415,22 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
     for (int i=0; i<worldsize; ++i)
         costs[i] = 0;
 
-    double interTraffic = 0;
-    double totalTraffic = 0;
-    const int bytesPerCell = 1;//(6+4)*8;
+    int interTraffic    = 0;
+    int totalTraffic    = 0;
+    const int bytesPerCell = 256;//(6+4)*8;
 
     /* Count foreign and overall neighbors of cells, also count/distribute costs */
     for ( Octree::Octree<SIMDIM>::iterator it = itordering.begin();
           it != it.end(); ++it ) if ( it->IsLeaf() )
     {
         costs[ *((int*)it->data[0]) ] += weightfunc(*it);
-        int nNeighbors = 0;
+        int nNeighbors          = 0;
         int nLeavesOnOtherNodes = 0;
-        int thisRank = *((int*)it->data[0]);
-
+        int thisRank            = *((int*)it->data[0]);
+        int tmpinterTraffic     = interTraffic;
+        int tmptotalTraffic     = totalTraffic;
+        
+        /* Iterate over all directions and get neighbors there */
         for ( int lindir = 0; lindir < pow(3,SIMDIM); lindir++ )  {
             VecI dir = getDirectionVector<SIMDIM>(lindir);
             /* Only count direct neighbors, no diagonal ones. Also exclude    *
@@ -470,33 +439,23 @@ for ( int iw = NUMBER_OF_WORLDSIZES-1; iw >= 0; worldsize = wsizes[--iw] ) {
                 continue;
             std::list<OctreeType::Node*> neighbors = it->getNeighbors( dir, VecI(0) );
 
+            /* Iterate over all neighbors in a given direction */
             for ( std::list<OctreeType::Node*>::iterator itn = neighbors.begin();
                   itn != neighbors.end(); ++itn ) if ( (*itn)->IsLeaf() )
             {
-                nNeighbors += 1;
                 assert( (*itn)->data[0] != NULL );
-                int neighborRank = *( (int*) (*itn)->data[0] );
-                if ( thisRank != neighborRank )
+                nNeighbors += 1;
+                const int lvldiff = abs( (*itn)->getLevel() - it->getLevel() );
+                totalTraffic += bytesPerCell / int(pow( 2, lvldiff ));
+                
+                const int neighborRank = *( (int*) (*itn)->data[0] );
+                if ( thisRank != neighborRank ) {
                     nLeavesOnOtherNodes++;
+                    interTraffic += bytesPerCell / int(pow( 2, lvldiff ));
+                }
             }
         }
-        //tout << "Node at " << it->center << " has " << nNeighbors
-        //     << " neighbors of which " << nLeavesOnOtherNodes << " are on other nodes\n";
-
-        totalTraffic += bytesPerCell * nNeighbors;
-        interTraffic += bytesPerCell * nLeavesOnOtherNodes;
-
-        //tout << it->center << " needs data from "
-        //     << nNeighbors << " neighbors. " << nLeavesOnOtherNodes << " of those are not on this process\n";
     }
-
-    /*tout << "Number of Cells : " << tree.root->countLeaves() << "\n";
-    for (int i=0; i<worldsize; i++) {
-        tout << "Cost assigned to rank " << i << " is " << costs[i] << "\n";
-    }
-    tout << "Total data to be read from neighbors : " << totalTraffic << "\n";
-    tout << "Data which needs to be communicated  : " << interTraffic << "\n";*/
-
     resultsFile << worldsize << " " << totalTraffic << " " << interTraffic << "\n" << std::flush;
 
     delete[] costs;

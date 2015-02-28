@@ -11,58 +11,32 @@ if ( CONTAINS(OCTREE_SETUP, 1) ) {
 }
 /*********************** Refine sphere boundaries *************************/
 if ( CONTAINS(OCTREE_SETUP, 6) ) {
-    assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     const VecD   & M = SPHERICAL_LENSE_CENTER;
     const double & R = SPHERICAL_LENSE_RADIUS;
+    assert( MAX_OCTREE_REFINEMENT >= INITIAL_OCTREE_REFINEMENT );
     for ( int lvl=INITIAL_OCTREE_REFINEMENT; lvl<MAX_OCTREE_REFINEMENT; lvl++) {
-        /* Get all circle angles, where it intersects with a cell border */
-        std::list<double> lphi;
-        std::list<double>::iterator it;
-        VecD cellsize = globSize / pow(2,lvl);
-        double linexmin = ceil ( (M[0]-R)/cellsize[0] ) * cellsize[0];
-        double linexmax = floor( (M[0]+R)/cellsize[0] ) * cellsize[0];
-        for ( double linex=linexmin; linex<=linexmax; linex += cellsize[0] ) {
-            /* acos in [0,2*pi] */
-            double phi = acos( (linex-M[0])/R );
-            lphi.push_back( phi );
-            /* also add value mirrored at y-axis to stack */
-            lphi.push_back( 2*M_PI-phi );
-        }
-        double lineymin = ceil ( (M[1]-R)/cellsize[1] ) * cellsize[1];
-        double lineymax = floor( (M[1]+R)/cellsize[1] ) * cellsize[1];
-        for ( double liney=lineymin; liney<=lineymax; liney += cellsize[1] ) {
-            /* asin in [-pi,pi] */
-            double phi = asin( (liney-M[1])/R );
-            lphi.push_back( phi < 0 ? 2*M_PI+phi : phi );
-            /* also add value mirrored at x-axis to stack */
-            lphi.push_back( M_PI-phi );
-        }
-        lphi.sort();
-
-        /* Echo all found angles */
-        #if DEBUG_MAIN_YEE >= 100
-            tout << "Angle list contains:";
-            for (it=lphi.begin(); it!=lphi.end(); ++it)
-                tout << ' ' << *it;
-            tout << '\n';
-        #endif
-
-        /* Grow up all cells, with which the circle intersects. Find them by  *
-         * using an angle between to successive circle intersection angles    */
-        for (it=lphi.begin(); it!=lphi.end(); ++it) {
-            VecD pos(0);
-            std::list<double>::iterator itnext = it;
-            double phi;
-            if ( ++itnext == lphi.end() ) {
-                itnext = lphi.begin();
-                phi = 0.5 * (2*M_PI + *itnext + *it);
-            } else
-                phi = 0.5 * (*itnext + *it);
-            pos[0] = M[0] + R*cos(phi);
-            pos[1] = M[1] + R*sin(phi);
-            OctreeType::Node * node = tree.FindLeafContainingPos(pos);
-            if ( node->getLevel() == lvl )
-                node->GrowUp();
+        std::stack<OctreeType::Node*> torefine;
+        for ( OctreeType::iterator it = tree.begin(); it != tree.end(); ++it )
+            if ( it->IsLeaf() and ( M - it->center*tree.size ).norm() <= R ) {
+                bool oneneighboroutside = false;
+                for ( int i = 0; i < pow(3,SIMDIM); ++i ) {
+                    OctreeType::Node * neighbor =
+                        it->getNeighbor( getDirectionVector<SIMDIM>(i), VecI(0) );
+                    if ( neighbor == NULL ) {
+                        oneneighboroutside = true;
+                        continue;
+                    }
+                    if ( ( M - neighbor->center*tree.size ).norm() > R ) {
+                        oneneighboroutside = true;
+                        break;
+                    }
+                }
+                if ( oneneighboroutside )
+                    torefine.push( &(*it) );
+            }
+        while ( not torefine.empty() ) {
+            torefine.top()->GrowUp();
+            torefine.pop();
         }
     }
 }
