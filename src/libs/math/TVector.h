@@ -44,6 +44,8 @@ public:
     inline Vec<bool,T_DIM> GreaterThan(const Vec & v) const;
     inline Vec<bool,T_DIM> GreaterOrEqualThan(const Vec & v) const;
     inline Vec<bool,T_DIM> SmallerThan(const Vec & v) const;
+    inline Vec min(const Vec & v) const;
+    inline Vec max(const Vec & v) const;
 
     inline T_DTYPE scp(const Vec & v) const;
     inline Vec abs(void) const;

@@ -200,6 +200,22 @@ inline Vec<bool,T_DIM> Vec<T_DTYPE,T_DIM>::SmallerThan( const Vec & v ) const {
     return res;
 }
 
+template<typename T_DTYPE, int T_DIM>
+inline Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::min( const Vec & v ) const {
+    Vec<T_DTYPE,T_DIM> res;
+    for (int i=0; i<T_DIM; i++)
+        res[i] = this->data[i] < v[i] ? this->data[i] : v[i];
+    return res;
+}
+
+template<typename T_DTYPE, int T_DIM>
+inline Vec<T_DTYPE,T_DIM> Vec<T_DTYPE,T_DIM>::max( const Vec & v ) const {
+    Vec<T_DTYPE,T_DIM> res;
+    for (int i=0; i<T_DIM; i++)
+        res[i] = this->data[i] > v[i] ? this->data[i] : v[i];
+    return res;
+}
+
 
 /********************** Horizontal Vector Operations **********************/
 

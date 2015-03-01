@@ -51,22 +51,23 @@ public:
 	/* should only be used in conjunction with following copy constructor,    *
 	 * because this initializes a matrix of size 0 with no way to adjust the  *
 	 * the size thereafter                                                    */
-    BaseMatrix( void );
-    BaseMatrix( const BaseMatrix & m );
+    BaseMatrix ( void );
+    BaseMatrix ( const BaseMatrix & m );
     ~BaseMatrix( void );
-    BaseMatrix& operator= (const BaseMatrix & m);
 
     /* Beware, because the type is templated the matrix data won't be         *
      * initialized (but it calls the constructor of the type, still won't     *
      * do anything if type is double or int                                   */
     BaseMatrix( VecI size );
-    BaseMatrix& operator= (const T_DTYPE a);
-    int getLinearIndex( const VecI & pos ) const;
-    VecI getVectorIndex( const int & linindex ) const;
-    T_DTYPE operator[] ( const int i ) const;
-    T_DTYPE & operator[] ( const int i );
-    T_DTYPE operator[] ( const VecI pos ) const;
-    T_DTYPE & operator[] ( const VecI pos );
+    template<typename T_ETYPE> BaseMatrix & operator=(const T_ETYPE a);
+    BaseMatrix & operator=(const BaseMatrix m);
+
+    int  getLinearIndex ( const VecI & pos ) const;
+    VecI getVectorIndex ( const int & linindex ) const;
+    T_DTYPE   operator[]( const int i ) const;
+    T_DTYPE & operator[]( const int i );
+    T_DTYPE   operator[]( const VecI pos ) const;
+    T_DTYPE & operator[]( const VecI pos );
     VecI getSize( void ) const;
     BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const;
     void insertMatrix( const VecI & pos, const BaseMatrix & m );
@@ -89,5 +90,8 @@ public:
     void NearestResizeTo( BaseMatrix & target ) const;
     /* TODO: use Fouriertransformation to resize !!! */
 };
+
+template<typename T_DTYPE, int T_DIM>
+std::ostream& operator<<(std::ostream& out, const BaseMatrix<T_DTYPE,T_DIM>& m);
 
 #include "TBaseMatrix.tpp"

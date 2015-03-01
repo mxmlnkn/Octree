@@ -32,6 +32,11 @@ template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( void ) : size(0), data(NULL)
 {}
 
+template<typename T_DTYPE, int T_DIM>
+BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI sizeIn ) : size(sizeIn), data(NULL) {
+    this->data = new T_DTYPE[this->size.product()];
+}
+
 /****************************** Copy Constructor ******************************/
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( const BaseMatrix & m ) : size(m.size), data(NULL) {
@@ -48,7 +53,21 @@ BaseMatrix<T_DTYPE,T_DIM>::~BaseMatrix( void ) {
 
 /***************************** Assignment Operator ****************************/
 template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatrix & m)
+template<typename T_ETYPE>
+BaseMatrix<T_DTYPE,T_DIM> & BaseMatrix<T_DTYPE,T_DIM>::operator=
+(const T_ETYPE a)
+{
+    for (int i=0; i < size.product(); i++)
+        this->data[i] = a;
+    /* it's possible, this is called recursively, if the elements of          *
+     * BaseMatrix are again BaseMatrix, but the recursion will stop if        *
+     * T_DTYPE is reached. e.g. BaseMatrix< BaseMatrix< double,3 >, 3 >       */
+    return *this;
+}
+
+template<typename T_DTYPE, int T_DIM>
+BaseMatrix<T_DTYPE,T_DIM> & BaseMatrix<T_DTYPE,T_DIM>::operator=
+(const BaseMatrix m)
 {
     this->size = m.size;
     if ( this->data != NULL )
@@ -56,20 +75,6 @@ BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const BaseMatri
     this->data = new T_DTYPE[m.size.product()];
 
     memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
-    return *this;
-}
-
-/***************************** Other Constructors *****************************/
-template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI sizeIn ) : size(sizeIn), data(NULL) {
-    this->data = new T_DTYPE[this->size.product()];
-}
-
-/**************************** Assignment Operators ****************************/
-template<typename T_DTYPE, int T_DIM>
-BaseMatrix<T_DTYPE,T_DIM>& BaseMatrix<T_DTYPE,T_DIM>::operator= (const T_DTYPE a) {
-    for (int i=0; i < size.product(); i++)
-        this->data[i] = a;
     return *this;
 }
 
