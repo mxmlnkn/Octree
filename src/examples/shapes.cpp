@@ -207,14 +207,18 @@ MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(const MathMatrix &mat) const
     assert( this->size[1] == mat.size[0] );
     MathMatrix res( VecI( this->size[0], mat.size[1] ) );
     for ( int j = 0; j < res.size[1]; j++ ) {       // go down every column
+        std::cout << "j:" << j << ",";
         for ( int i = 0; i < res.size[0]; i++ ) {   // go down every line
             T_DTYPE sum = (*this)(i,j); // copy (*this)(i,j), to to copy the dimension, this also works, if T_DTYPE is a double!
             sum = 0;
+            std::cout << "i:" << i << ",";
             if ( i==0 and j==0 ) {
                 std::cout << "sum:" << sum << "\n";
             }
-            for ( int k = 0; k < this->size[1]; k++ ) // dot product
+            for ( int k = 0; k < this->size[1]; k++ ) { // dot product
+               std::cout << "k:" << k << ",";
 	           sum += (*this)[VecI(i,k)] * mat[VecI(k,j)];
+            }
             res[VecI(i,j)] = sum;
         }
     }
@@ -551,8 +555,8 @@ int main( void ) {
     std::cout << "md: " << md << " size: " << md.getSize() << "\n";
 
     std::cout << "md+mx: " << (md+mx) << "\n";
-    std::cout << "md+mx: " << (md+mx) << "\n";
-
+    std::cout << "md+mx*xdspace: " << (md+mx)*xdspace << "\n";
+    std::cout << "Mat Mul complete!\n";
 
     for ( int i = 0; i < nestedlevels; ++i )
         std::cout << " " << spacevarnames[i] << "_{";
