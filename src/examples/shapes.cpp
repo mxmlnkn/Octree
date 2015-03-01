@@ -3,321 +3,15 @@
 */
 
 #include <iostream>
-#include <cstdlib>  // malloc
-
-#include "math/TVector.h"
-#include "math/TBaseMatrix.h"
+#include <algorithm> // count
+#include <string>
+#include <sstream>
 #include "CompileTime.h"
+#include "math/Matrix.h"
 
 using namespace std;
 
 //typedef BaseMatrix<int,2> Matrix;
-
-template<typename T_DTYPE>
-class MathMatrix : public BaseMatrix<T_DTYPE,2> {
-public:
-    typedef Vec<int,2> VecI;
-
-    MathMatrix( void );
-    MathMatrix( VecI psize );
-    MathMatrix( int m, int n );
-    MathMatrix( const MathMatrix & m );
-    ~MathMatrix( void );
-    MathMatrix & operator=(const MathMatrix m); // if I make this a call by reference, then it won't be recognized as a specialization of the next assignment and thereby breaking everything, but copy-arguments could be memory intensive
-    template<typename T_ETYPE> MathMatrix & operator=(T_ETYPE a); // broadcast value to all elements
-
-    /* Conversion Operators */
-    //template<int T_DIM> operator Vec<double,T_DIM>() const;
-    //template<int T_DIM> Matrix& operator=(const Vec<double,T_DIM> val);
-
-    MathMatrix & operator+=(const MathMatrix &mat);    // Add up to matrices
-    MathMatrix & operator*=(const MathMatrix &mat);    // Matrix Multiplication
-    MathMatrix & operator-=(const MathMatrix &mat);    // Subtraction
-    inline MathMatrix & operator/=(double a);          // scalar Division based on Multiplication
-    MathMatrix & operator*=(double a);                 // scalar Multiplication
-
-    MathMatrix operator+(const MathMatrix &mat) const; // Add up to matrices
-    MathMatrix operator*(const MathMatrix &mat) const; // Matrix Multiplication
-    MathMatrix operator-(const MathMatrix &mat) const; // Subtraction
-    inline MathMatrix operator/(double a) const;       // scalar Division based on Multiplication
-    MathMatrix operator*(double a) const;              // scalar Multiplication
-    bool operator==(const MathMatrix &mat) const;
-
-    double (minor)(int row, int col) const;       // Counting from 1. clash with minor-macro -.-
-    double det(void) const;
-    MathMatrix invert(void) const;
-    MathMatrix adjugate(void) const;
-    MathMatrix transpose(void) const;
-    /* Returns Norm of Matrix if it is a Vector, else error (returns -1) */
-    double norm(void) const;
-    /* Returns matrix with only positive elements (aij -> |aij|) */
-    MathMatrix abs(void) const;
-    int rank(void) const;
-    double trace(void) const;
-    MathMatrix rowEchelon(void) const;
-    inline bool isSquare(void) const;
-    inline bool isVector(void) const;
-
-    T_DTYPE & operator()( int i, int j );     // Get reference to element
-    T_DTYPE   operator()( int i, int j ) const;     // Just read element
-    VecI getSize(void) const;
-    void setSize(int m, int n) const;
-
-    int getVectorDim(void) const;
-    int getSquareDim(void) const;
-
-    void setDiagonal(T_DTYPE a=1, int k = 0);
-    void setDiagonal(T_DTYPE a[], int k = 0);
-    template<typename T_ETYPE> void setAll(T_DTYPE a);
-
-    void delRow(int row, int amount=1);         // Deletes i-th Row counting from 1
-    void delCol(int col, int amount=1);
-    MathMatrix augment(const MathMatrix &mat) const;    //conjoines object with mat (if number of rows is equivalent)
-
-    //explicit operator Vec();
-};
-
-/******************************** Constructors ********************************/
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE>::MathMatrix( void )
- : BaseMatrix<T_DTYPE,2>()
-{ };
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE>::MathMatrix( int m, int n )
- : BaseMatrix<T_DTYPE,2>( VecI(m,n) )
-{ }
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE>::MathMatrix( VecI psize )
- : BaseMatrix<T_DTYPE,2>( VecI( psize[0], psize[1] ) )
-{ }
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE>::MathMatrix( const MathMatrix & m )
- : BaseMatrix<T_DTYPE,2>( m )
-{ }
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE>::~MathMatrix( void )
-/* no explicit call for parent class destructor needed */
-{ }
-
-/**************************** Assignment operators ****************************/
-// broadcast value to all elements
-template<typename T_DTYPE>
-template<typename T_ETYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator= ( T_ETYPE a )
-{
-    BaseMatrix<T_DTYPE,2>::operator=(a);
-    return *this;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator= (const MathMatrix m)
-{
-    /* Can't call copy assignment from base-class, because it expects a
-     * BaseMatrix argument instead of MathMatrix. We would have to convert it
-     * first */
-    BaseMatrix<T_DTYPE,2>::operator=( (BaseMatrix<T_DTYPE,2>) m );
-    return *this;
-}
-
-template<typename T_DTYPE>
-void MathMatrix<T_DTYPE>::setSize( int m, int n ) const {
-    VecI psize(m,n);
-    MathMatrix mnew(psize);
-
-    /* copy values if possible into new matrix */
-    VecI tocopy = psize.min( this->size );
-    for ( int i = 0; i < mnew.size.product(); ++i ) {
-        VecI vind = ConvertLinearToVectorIndex<2>(i, mnew.size);
-        if ( vind < this->size )
-            mnew[vind] = (*this)[vind];
-    }
-
-    (*this) = mnew;
-}
-
-/************************ Binary Arithmetic Operators *************************/
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator+=(const MathMatrix &mat)
-{
-    assert( this->size == mat.size );
-    for ( int i = 0; i < this->size.product(); ++i )
-        (*this)[i] += mat[i];
-    return *this;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator-=(const MathMatrix &mat)
-{
-    assert( this->size == mat.size );
-    for ( int i = 0; i < this->size.product(); ++i )
-        (*this)[i] -= mat[i];
-    return *this;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator*=(const MathMatrix &mat)
-{
-    *this = (*this) * mat;
-    return *this;
-}
-
-template<typename T_DTYPE>
-inline MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator/=(double a)
-{
-    for ( int i = 0; i < this->size.product(); ++i )
-        (*this)[i] /= a;
-    return *this;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator*=(double a)
-{
-    for ( int i = 0; i < this->size.product(); ++i )
-        (*this)[i] *= a;
-    return *this;
-}
-
-/**************************** Arithmetic Operators ****************************/
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator+(const MathMatrix &mat) const
-{
-    MathMatrix<T_DTYPE> res( *this );
-    res += mat;
-    return res;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator-(const MathMatrix &mat) const
-{
-    MathMatrix<T_DTYPE> res( *this );
-    res += mat;
-    return res;
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(const MathMatrix &mat) const
-{
-    assert( this->size[1] == mat.size[0] );
-    MathMatrix res( VecI( this->size[0], mat.size[1] ) );
-    for ( int j = 0; j < res.size[1]; j++ ) {       // go down every column
-        std::cout << "j:" << j << ",";
-        for ( int i = 0; i < res.size[0]; i++ ) {   // go down every line
-            T_DTYPE sum = (*this)(i,j); // copy (*this)(i,j), to to copy the dimension, this also works, if T_DTYPE is a double!
-            sum = 0;
-            std::cout << "i:" << i << ",";
-            if ( i==0 and j==0 ) {
-                std::cout << "sum:" << sum << "\n";
-            }
-            for ( int k = 0; k < this->size[1]; k++ ) { // dot product
-               std::cout << "k:" << k << ",";
-	           sum += (*this)[VecI(i,k)] * mat[VecI(k,j)];
-            }
-            res[VecI(i,j)] = sum;
-        }
-    }
-    return res;
-}
-
-template<typename T_DTYPE>
-inline MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator/(double divisor) const
-{
-    return (*this) * ( 1.0 / divisor );
-}
-
-template<typename T_DTYPE>
-MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(double a) const
-{
-    MathMatrix<T_DTYPE> res( this->size );
-    for ( int i = 0; i < this->size.product(); ++i )
-        res[i] = (*this)[i] * a;
-    return res;
-}
-
-template<typename T_DTYPE>
-bool MathMatrix<T_DTYPE>::operator==(const MathMatrix &mat) const
-{
-    if ( this->size != mat.size ) {
-        return false;
-    } else {
-        for ( int i = 0; i < this.size.product(); ++i )
-            if ( (*this)[i] != mat[i] )
-                return false;
-    }
-    return true;
-}
-
-/******************************** Test methods ********************************/
-
-template<typename T_DTYPE>
-inline bool MathMatrix<T_DTYPE>::isSquare( void ) const
-{
-    return this->size[0] == this->size[1];
-}
-
-template<typename T_DTYPE>
-inline bool MathMatrix<T_DTYPE>::isVector( void ) const
-{
-    return ( this->size[0] == 1 || this->size[1] == 1 );
-}
-
-/****************************** Modifying methods *****************************/
-
-/* k=0 is main diagonal, k>0 is above main diagonal, k<0 is below */
-template<typename T_DTYPE>
-void MathMatrix<T_DTYPE>::setDiagonal( T_DTYPE a, int k )
-{
-    if ( k >= 0 ) {
-        assert( k < this->size[0] );
-        for ( int i = 0; i < this->size[1] - k; ++i )
-            (*this)( i,i+k ) = a;
-    } else {
-        assert( -k < this->size[1] );
-        for ( int i = 0; i < this->size[0] + k; ++i )
-            (*this)( i-k,i ) = a;
-    }
-    return;
-}
-
-template<typename T_DTYPE>
-void MathMatrix<T_DTYPE>::setDiagonal( T_DTYPE a[], int k )
-{
-    if ( k >= 0 ) {
-        assert( k < this->size[0] );
-        for ( int i = 0; i < this->size[1] - k; ++i )
-            (*this)( i,i+k ) = a[i];
-    } else {
-        assert( -k < this->size[1] );
-        for ( int i = 0; i < this->size[0] + k; ++i )
-            (*this)( i-k,i ) = a[i];
-    }
-    return;
-}
-
-/******************************* Reading methods*******************************/
-template<typename T_DTYPE>
-typename MathMatrix<T_DTYPE>::VecI MathMatrix<T_DTYPE>::getSize(void) const
-{
-    return this->size;
-}
-
-template<typename T_DTYPE>
-T_DTYPE & MathMatrix<T_DTYPE>::operator()( int i, int j )
-{
-    return (*this)[ VecI(i,j) ];
-}
-
-template<typename T_DTYPE>
-T_DTYPE MathMatrix<T_DTYPE>::operator()( int i, int j ) const
-{
-    return (*this)[ VecI(i,j) ];
-}
 
 /******************************************************************************
  * n  ... specifies the order of the shape:                                   *
@@ -427,7 +121,73 @@ void printSpaceMathMatrix( T mat, Vec<int,T_LEVELS> index )
 }
 #endif
 
+/* Print in another way */
+
+template<typename T>
+std::string toPolynomial( T v, int n0, int maxlevel, int level = 0)
+{
+    /* first output doesn't have to have a plus sign */
+    std::stringstream out;
+    out << std::showpos << v << std::noshowpos;
+    return out.str();
+}
+
+template<typename T>
+std::string toPolynomial( MathMatrix<T> v, int n0, int maxlevel, int level = 0)
+{
+    const char varnames[4][10] = { "d", "x", "x1" };
+    std::stringstream out;
+
+    bool firstprinted = false;
+    for ( int i = 0; i < v.size[0]; ++i )
+    {
+        /* don't print summands whose coefficients are 0 */
+        if ( v[i] == v[i]*0 )
+            continue;
+
+        std::string tmp = toPolynomial( v[i], n0, maxlevel, level+1 );
+        /* count coefficients by counting + and - */
+        int ncoeffs = 0;
+        ncoeffs += std::count( tmp.begin(), tmp.end(), '+' );
+        ncoeffs += std::count( tmp.begin(), tmp.end(), '-' );
+
+        /* only print a sign, if needed i.e. if tmp does not begin with one   *
+         * and if this is not the very first string to be printed             */
+        if ( tmp[0] != '+' and tmp[0] != '-' and firstprinted )
+            out << "+";
+        firstprinted = true;
+
+        /* if i-n0 > 0 and return of toPolynomial == "1", then don't print it*/
+        if ( not ( (tmp.compare( std::string("+1") ) == 0) and (i-n0 > 0) ) )
+            if ( ncoeffs > 1 ) {
+                out << "(" << tmp << ")";
+            } else {
+                out << tmp;
+            }
+
+        /* print variable name: x**(n) if not x**0 */
+        if ( i-n0 != 0 )
+        {
+            /* print negative powers as fractions */
+            if ( i-n0 < 0 )
+                out << "/";
+            out << varnames[level];
+            /* output power only if necessary */
+            if ( i-n0 < 0 )
+                out << "**" << -(i-n0);
+            else if ( i-n0 != 1 )
+                out << "**" << i-n0;
+        }
+    }
+
+    return out.str();
+}
+
 int main( void ) {
+    /* the main idea is like this: 1+x = \begin{pmatrix} 0 \\ 1 \\ 2 \\ 0 \\ 0 \end{pmatrix} \cdot \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix}\\
+(1+x)\cdot \hat{=} \begin{pmatrix} 1 & 0 &0 & 0 &0 \\ 0 & 1 &0 & 0 &0 \\ 0 & 0 &1 & 0 &0 \\ 0 & 0 &0 & 1 &0 \\0 & 0 &0 & 0 &1 \\ \end{pmatrix} + \begin{pmatrix} 0 & 0 &0 & 0 &0 \\ 2 & 0 &0 & 0 &0 \\ 0 & 2 &0 & 0 &0 \\ 0 & 0 &2 & 0 &0 \\0 & 0 &0 & 2 &0 \\ \end{pmatrix}\\
+\Rightarrow (1+x)\cdot(1+x) = \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix} \begin{pmatrix} 1 & 0 &0 & 0 &0 \\ 2 & 1 &0 & 0 &0 \\ 0 & 2 &1 & 0 &0 \\ 0 & 0 &2 & 1 &0 \\0 & 0 &0 & 2 &1 \end{pmatrix}\begin{pmatrix} 0 \\ 1 \\ 2 \\ 0 \\ 0 \end{pmatrix} = \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix} \begin{pmatrix} 0 \\ 1 \\ 4 \\ 4 \\ 0 \end{pmatrix} = 4x^2+4x^1+1 */
+
     /* ( d**2 - (x1-x2)**2 ) / ( x1*x2 ) =
          ( d**2*x1**(-1) - x1) * x2**(-1)
          +                   2 * x2**( 0)
@@ -442,8 +202,8 @@ int main( void ) {
     int np = 5;
     int n0 = 1;
     MathMatrix<double> spaced(np,1); spaced = 0;
-
-/*    MathMatrix<double> spacedconst(np,1); spacedconst = 0;
+/*
+    MathMatrix<double> spacedconst(np,1); spacedconst = 0;
     MathMatrix<MathMatrix<double> > spacex1(np,1); spacex1 = spaced;
     MathMatrix<MathMatrix<MathMatrix<double> > > spacex2(np,1); spacex2 = spacex1;
 
@@ -521,78 +281,78 @@ int main( void ) {
 
     std::cout << "\n";
 
-/****************************** Expand (d-2x)**2 ******************************/
+/****************************** Expand (d-3x)**2 ******************************/
+
+    /* initialize polynomial: d-2x */
     MathMatrix<int> dspace(np,1);
-    dspace = 0;
-    MathMatrix<MathMatrix<int> > xdspace(np,1);
-    xdspace = dspace;
-     dspace[2] =  1;
-    xdspace[1] =  dspace;
-     dspace[2] =  0;
-     dspace[3] = -2;
-    xdspace[2] =  dspace;
+        dspace = 0;
+    MathMatrix<MathMatrix<int> > vxd(np,1);
+        vxd = dspace;
+    dspace[2] =  1;
+    vxd[1]    =  dspace;
+    dspace[1] = -3;
+    dspace[2] =  0;
+    vxd[2]    =  dspace;
 
-    const char spacevarnames[3][10] = { "x1", "d" };
-    const int nestedlevels = 2;
-    Vec<int,nestedlevels> size;
-    size[0] = xdspace.getSize()[0];
-    size[1] = xdspace[0].getSize()[0];
-
-    MathMatrix<int> mzero(np,np); mzero = 0;
-    MathMatrix<int> munit(np,np); munit.setDiagonal(1);
-    MathMatrix<int> mmul (np,np); mmul.setDiagonal(1,-1);
-    std::cout << "mzero: " << mzero << "\n";
-    std::cout << "munit: " << munit << "\n";
-    std::cout << "mmul : " << mmul  << "\n";
+    /* set up multiplier manually: (d-3x)* */
+    MathMatrix<int> mzero(np,np);
+    mzero = 0;
+    MathMatrix<int> munit(np,np);
+    munit = 0;
+    munit.setDiagonal(1);
+    MathMatrix<int> mmul (np,np);
+    mmul  = 0;
+    mmul.setDiagonal(1,-1);
 
     MathMatrix<MathMatrix<int> > mx(np,np);
     mx = mzero;
-    mx.setDiagonal(munit,-1);
+    mx.setDiagonal( -3 * munit,-1);
     MathMatrix<MathMatrix<int> > md(np,np);
     md = mzero;
     md.setDiagonal(mmul,0);
-    std::cout << "mx: " << mx << " size: " << mx.getSize() << "\n";
-    std::cout << "md: " << md << " size: " << md.getSize() << "\n";
 
-    std::cout << "md+mx: " << (md+mx) << "\n";
-    std::cout << "md+mx*xdspace: " << (md+mx)*xdspace << "\n";
-    std::cout << "Mat Mul complete!\n";
+    /* convert vector to multiplication operator i.e. matrix */
+    MathMatrix<MathMatrix<int> > mxd(np,np);
+    for ( int i = 0; i< mxd.getSize().product(); ++i )
+       mxd[i].setSize(np,np);
+    mxd = 0;
 
-    for ( int i = 0; i < nestedlevels; ++i )
-        std::cout << " " << spacevarnames[i] << "_{";
+    for ( int i = 0; i < vxd.getSize()[0]; ++i ) {
+        /* recursive convert inner vectors to multipliers */
+        MathMatrix<int> md(np,np);
+        md = vxd[0][0] * 0;
+        for ( int j = 0; j < vxd[i].getSize()[0]; ++j )
+            md.setDiagonal( vxd[i][j], n0-j );
 
-    BaseMatrix<int,1> index(nestedlevels);
-    index = 0;
-    for ( int i = 0; i < size.product(); ++i )
-    {
-        /* recursively unpack xdspace which is Mathmatrix<Mathmatrix<...>...> *
-         * using a local function i.e. struct lambda ...                      */
-
-        std::cout << xdspace[index[0]][index[1]];
-
-        /* increment vector index */
-        int closedBrackets = 0;
-        index[nestedlevels-1] += 1;
-        for ( int j = nestedlevels-1; j >= 0; --j ) {
-            if ( index[j] >= size[j] ) {
-                if ( j > 0 ) {
-                    index[j] = 0;
-                    index[j-1] += 1;
-                } else
-                    assert( i == size.product()-1 );
-                closedBrackets++;
-                std::cout << "}_" << spacevarnames[nestedlevels - closedBrackets]
-                          << " ";
-            }
-        }
-        if ( i != size.product()-1 ) {
-            std::cout << ",";
-            for ( int j = 0; j < closedBrackets; ++j )
-                std::cout << " " << spacevarnames[nestedlevels - closedBrackets]
-                          << "_{";
-        }
+        mxd.setDiagonal( md, n0-i );
+        // for division set upper diagonal, for multiplication set lower diagonal
     }
-    /**************************************************************************/
+    /*********************************************************/
+
+    auto sum = md+mx;
+    std::cout << "md+mx: " << sum << "\n\n";
+    std::cout << "mxd: " << mxd << "\n\n";
+    std::cout << "md+mx == mxd: " << (mxd == sum) << "\n\n";
+
+    std::cout << vxd << "\n";
+    std::cout << "(md+mx)*vxd:\n";
+    std::cout << "    [" << toPolynomial( vxd, n0, 1 );
+    std::cout << "]**2\n  = " << toPolynomial( sum*vxd, n0, 1 );
+
+    /************************* Integrate Coulomb Force ************************/
+    /* Integrate[ x2**2
+         Integrate[ x1**2 * ( d*d-(x1-x2)**2 )/( 4 x1 x2 ), {x1,0,1} ]
+       , {x2,0,1} ]
+       => we are working 3(!) different spaces: x1,x2,d
+          After inserting the limits for x1, we leave that space!
+          Then we leave the polynomial space for x2!
+          At last we need to output the coefficients for d
+       => the limits for x1 is a d-coeff-vector of x2-coeff-vectors of
+          x1-coeff-vectors. If d and x2 don't appear in the limits, then
+          the two outer vectors are only non-zero on their diagonals
+     */
+    typedef MathMatrix<MathMatrix<MathMatrix<int>>> SX1;
+    /* Todo: try to convert ShapesV6.nb into this C++ scheme, maybe even with sed or awk! */
 
     return 0;
 }

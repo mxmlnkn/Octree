@@ -62,13 +62,16 @@ public:
     template<typename T_ETYPE> BaseMatrix & operator=(const T_ETYPE a);
     BaseMatrix & operator=(const BaseMatrix m);
 
-    int  getLinearIndex ( const VecI & pos ) const;
-    VecI getVectorIndex ( const int & linindex ) const;
-    T_DTYPE   operator[]( const int i ) const;
-    T_DTYPE & operator[]( const int i );
+    int  getLinearIndex ( VecI pos       ) const;
+    VecI getVectorIndex ( int linindex   ) const;
+    T_DTYPE   operator[]( const int i    ) const;
+    T_DTYPE & operator[]( const int i    );
     T_DTYPE   operator[]( const VecI pos ) const;
     T_DTYPE & operator[]( const VecI pos );
-    VecI getSize( void ) const;
+
+    VecI getSize(void) const;
+    void setSize(VecI psize);
+
     BaseMatrix getPartialMatrix( const VecI & pos, const VecI & size ) const;
     void insertMatrix( const VecI & pos, const BaseMatrix & m );
     /* - Values are assumed to lie in the center of the matrix cells:         *

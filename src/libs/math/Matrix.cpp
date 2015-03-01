@@ -1,4 +1,380 @@
+#pragma once
 
+
+/******************************** Constructors ********************************/
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE>::MathMatrix( void )
+ : BaseMatrix<T_DTYPE,2>()
+{ };
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE>::MathMatrix( int m, int n )
+ : BaseMatrix<T_DTYPE,2>( VecI(m,n) )
+{ }
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE>::MathMatrix( VecI psize )
+ : BaseMatrix<T_DTYPE,2>( VecI( psize[0], psize[1] ) )
+{ }
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE>::MathMatrix( const MathMatrix & m )
+ : BaseMatrix<T_DTYPE,2>( m )
+{ }
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE>::~MathMatrix( void )
+/* no explicit call for parent class destructor needed */
+{ }
+
+/**************************** Assignment operators ****************************/
+// broadcast value to all elements
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator= ( T_ETYPE a )
+{
+    BaseMatrix<T_DTYPE,2>::operator=(a);
+    return *this;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator= (const MathMatrix m)
+{
+    /* Can't call copy assignment from base-class, because it expects a
+     * BaseMatrix argument instead of MathMatrix. We would have to convert it
+     * first */
+    BaseMatrix<T_DTYPE,2>::operator=( (BaseMatrix<T_DTYPE,2>) m );
+    return *this;
+}
+
+/************************ Binary Arithmetic Operators *************************/
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator+=(const MathMatrix &mat)
+{
+    assert( this->size == mat.size );
+    for ( int i = 0; i < this->size.product(); ++i )
+        (*this)[i] += mat[i];
+    return *this;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator-=(const MathMatrix &mat)
+{
+    assert( this->size == mat.size );
+    for ( int i = 0; i < this->size.product(); ++i )
+        (*this)[i] -= mat[i];
+    return *this;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator*=(const MathMatrix &mat)
+{
+    *this = (*this) * mat;
+    return *this;
+}
+
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+inline MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator/=(T_ETYPE a)
+{
+    for ( int i = 0; i < this->size.product(); ++i )
+        (*this)[i] /= a;
+    return *this;
+}
+
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::operator*=(T_ETYPE a)
+{
+    for ( int i = 0; i < this->size.product(); ++i )
+        (*this)[i] *= a;
+    return *this;
+}
+
+/**************************** Arithmetic Operators ****************************/
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator+(const MathMatrix &mat) const
+{
+    MathMatrix<T_DTYPE> res( *this );
+    res += mat;
+    return res;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator-(const MathMatrix &mat) const
+{
+    MathMatrix<T_DTYPE> res( *this );
+    res += mat;
+    return res;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(const MathMatrix &mat) const
+{
+    assert( this->size[1] == mat.size[0] );
+    int m = this->size[0];
+    int n = mat.size[1];
+    MathMatrix res(m,n);
+    /* copy example element from mat to all elements in res, thereby applying *
+     * dimensions, if T_DTYPE is a matrix and not double                      */
+    res = mat(0,0)*0; /* implicit broadcast */
+
+    for ( int j = 0; j < res.size[1]; j++ ) {       // go down every column
+        for ( int i = 0; i < res.size[0]; i++ ) {   // go down every line
+            T_DTYPE sum = res(i,j)*0; // copy res(i,j), to to copy the dimension, this also works, if T_DTYPE is a double!
+            for ( int k = 0; k < this->size[1]; k++ ) { // dot product
+	           sum += (*this)(i,k) * mat(k,j);
+            }
+            res(i,j) = sum;
+        }
+    }
+    return res;
+}
+
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+inline MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator/(T_ETYPE divisor) const
+{
+    return (*this) * ( 1.0 / divisor );
+}
+
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(T_ETYPE a) const
+{
+    MathMatrix<T_DTYPE> res( this->size );
+    for ( int i = 0; i < this->size.product(); ++i )
+        res[i] = (*this)[i] * a;
+    return res;
+}
+
+template<typename T_DTYPE>
+bool MathMatrix<T_DTYPE>::operator==(const MathMatrix &mat) const
+{
+    if ( this->size != mat.size ) {
+        return false;
+    } else {
+        for ( int i = 0; i < this->size.product(); ++i )
+            if ( (*this)[i] != mat[i] )
+                return false;
+    }
+    return true;
+}
+
+template<typename T_DTYPE>
+inline bool MathMatrix<T_DTYPE>::operator!=(const MathMatrix &mat) const
+{
+    return not ( (*this) == mat );
+}
+
+/******************************** Test methods ********************************/
+
+template<typename T_DTYPE>
+inline bool MathMatrix<T_DTYPE>::isSquare( void ) const
+{
+    return this->size[0] == this->size[1];
+}
+
+template<typename T_DTYPE>
+inline bool MathMatrix<T_DTYPE>::isVector( void ) const
+{
+    return ( this->size[0] == 1 || this->size[1] == 1 );
+}
+
+/****************************** Modifying methods *****************************/
+
+/* k=0 is main diagonal, k>0 is above main diagonal, k<0 is below */
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setDiagonal( T_DTYPE a, int k )
+{
+    if ( k >= 0 ) {
+        assert( k < this->size[0] );
+        for ( int i = 0; i < this->size[1] - k; ++i )
+            (*this)( i,i+k ) = a;
+    } else {
+        assert( -k < this->size[1] );
+        for ( int i = 0; i < this->size[0] + k; ++i )
+            (*this)( i-k,i ) = a;
+    }
+    return *this;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setDiagonal( T_DTYPE a[], int k )
+{
+    if ( k >= 0 ) {
+        assert( k < this->size[0] );
+        for ( int i = 0; i < this->size[1] - k; ++i )
+            (*this)( i,i+k ) = a[i];
+    } else {
+        assert( -k < this->size[1] );
+        for ( int i = 0; i < this->size[0] + k; ++i )
+            (*this)( i-k,i ) = a[i];
+    }
+    return *this;
+}
+
+template<typename T_DTYPE>
+template<typename T_ETYPE>
+inline MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setAll( T_DTYPE a ) {
+    (*this) = a;
+    return *this;
+}
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setSize( int m, int n )
+{
+    BaseMatrix<T_DTYPE,2>::setSize( VecI(m,n) );
+    return *this;
+}
+
+/******************************* Reading methods*******************************/
+
+template<typename T_DTYPE>
+T_DTYPE & MathMatrix<T_DTYPE>::operator()( int i, int j )
+{
+    return (*this)[ VecI(i,j) ];
+}
+
+template<typename T_DTYPE>
+T_DTYPE MathMatrix<T_DTYPE>::operator()( int i, int j ) const
+{
+    return (*this)[ VecI(i,j) ];
+}
+
+template<typename T_DTYPE>
+inline int MathMatrix<T_DTYPE>::getVectorDim(void) const {
+    if ( this->size[1] == 1 )
+        return this->size[0];
+    else if ( this->size[0] == 1 )
+        return this->size[1];
+    else {
+        assert(false);
+        return -1;
+    }
+}
+
+/* -1 errorcode and clearly not the dimension of Matrix */
+template<typename T_DTYPE>
+inline int MathMatrix<T_DTYPE>::getSquareDim(void) const {
+    if ( isSquare() )
+        return this->size[0];
+    else {
+        assert(false);
+        return -1;
+    }
+}
+
+/************************** Simple Matrix Arithmetics *************************/
+
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::transpose( void ) const
+{
+    /* could try to do this by setting a flag... but that could be error prone*/
+    MathMatrix trans( this->size[0], this->size[1] );
+    for ( int i=0; i < this->size[0]; i++ )
+        for (int j = 0; j < this->size[1]; j++ )
+            trans(j,i) = (*this)(i,j);
+    return trans;
+}
+
+template<typename T_DTYPE>
+T_DTYPE MathMatrix<T_DTYPE>::trace( void ) const
+{
+    if ( not isSquare() ) {
+        assert(false);
+        return -1;
+    }
+
+    /*copy from this(0,0), in order to be correct if T_DTYPE is a larger class*/
+    T_DTYPE sum = (*this)(0,0)*0;
+    for ( int i = 0; i < this->size[0]; ++i )
+        sum += (*this)(i,i);
+    return sum;
+}
+
+/* Deletes row-th Row counting from 1 and all n after that */
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::delRow( int irow, int nrows )
+{
+    int m = this->size[0];
+    int n = this->size[1];
+
+    assert( irow > 0 and irow < m );
+    assert( irow + nrows <= m );
+    MathMatrix res( m - nrows, n );
+
+    /* we need a special i-counter, because when deleting rows this counter   *
+     * should not be incremented                                              */
+    int ires = 0;
+
+    /* copy all rows ... */
+    for ( int i = 0; i < m; ++i ) {
+        /* ... except those to be deleted */
+        if ( i < irow or i >= irow + nrows ) {
+            /* copy all elements column-wise in row i */
+            for ( int j = 0; j < n; ++j )
+                res(ires,j) = (*this)(i,j);
+            ires++;
+        }
+    }
+
+    *this = res;
+    return *this;
+}
+
+/* deletes ncols beginning with column icol */
+template<typename T_DTYPE>
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::delCol(int icol, int ncols)
+{
+    int m = this->size[0];
+    int n = this->size[1];
+
+    assert( icol > 0 and icol <n );
+    assert( icol + ncols <= n );
+    MathMatrix res( m, n - ncols );
+
+    /* we need a special i-counter, because when deleting rows this counter   *
+     * should not be incremented                                              */
+    int jres = 0;
+
+    /* copy all columns ... */
+    for ( int j = 0; j < n; ++j ) {
+        /* ... except those to be deleted */
+        if ( j < icol or j >= icol + ncols ) {
+            /* copy all elements row-wise in column j */
+            for ( int i = 0; i < m; ++i )
+                res(i,jres) = (*this)(i,j);
+            jres++;
+        }
+    }
+
+    *this = res;
+    return *this;
+}
+
+/*template<typename T_DTYPE>
+MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::augment(const MathMatrix &mat) const {
+    if (m != mat.m)
+        return *this;
+
+    MathMatrix merg(m,n+mat.n);
+    for (int i=0; i<m; i++)
+        for (int j=0; j<n; j++)
+            merg(i,j) = data[i][j];
+    for (int i=0; i<m; i++)
+        for (int j=0; j<mat.n; j++)
+            merg(i,n+j) = mat(i,j);
+
+    return merg;
+}*/
+
+/********************** More advanced Matrix arithmetics **********************/
+#if 1==0
+/* Load from File? */
 Matrix::Matrix(char* filename) : m(0), n(0), data(NULL) {
     std::ifstream file(filename);
     char s[10];
@@ -40,23 +416,6 @@ Matrix::Matrix(char* filename) : m(0), n(0), data(NULL) {
     free(row);
     return;
 }
-
-
-template<int T_DIM>
-Matrix::operator Vec<double,T_DIM> () const
-{
-    Vec<double,T_DIM> v;
-    for (int i=0; i < T_DIM; i++)
-        if ( i < m*n )
-            v[i] = (*this)[i];
-        else
-            v[i] = 0;
-    return v;
-}
-
-
-
-
 
 double Matrix::Minor(int row, int col) const {                  //i counting from 1 (mathematical)!
     if ( !IsSquare() || (row*col<=0) || (row>m) || (col>m) )    //Det and Minor only possible on square matrices
@@ -136,14 +495,6 @@ Matrix Matrix::Adjugate(void) const {
     return adj;
 }
 
-Matrix Matrix::Transpose(void) const {
-    Matrix trans(n,m);
-    for (int i=0; i<m; i++)
-        for (int j=0; j<n; j++)
-            trans(j,i) = (*this)(i,j);
-    return trans;
-}
-
 double Matrix::Norm(void) const {
     if (!IsVector()) {
         #if DEBUG == 1
@@ -184,16 +535,6 @@ int Matrix::Rank(void) const {
     return 0;
 }
 
-double Matrix::Trace(void) const {
-    if (!IsSquare())
-        return -1;
-
-    double sum;
-    for (int i=0; i<m; i++)
-        sum += (*this)(i,i);
-    return sum;
-}
-
 Matrix Matrix::RowEchelon (void) const {             //TODO
     Matrix echelon = (*this);
     for (int i=0; i<echelon.m; i++) {
@@ -217,58 +558,6 @@ Matrix Matrix::RowEchelon (void) const {             //TODO
     }
     return echelon;
 }
-
-void Matrix::DelRow(int row, int amount) {                          //Deletes row-th Row counting from 1 and all n after that
-    Matrix mat(m-amount,n);
-    int k1=0;
-    const int i=row-1;
-
-    for (int k0=0; k0<m; k0++) {
-        if ( (k0 < i)  || (k0 >= i+amount) ) {
-            for (int j=0; j<n; j++) {
-                mat(k1,j) = data[k0][j];            //WHY THE FUCK is gcc warning me about this line when it works for example in operator+ -.-?! Well as long as it works: [Warning] passing `double' for converting 1 of `double& Matrix::operator()(int, int) const'
-            }
-            k1++;
-        }
-    }
-    *this = mat;
-    return;
-}
-
-void Matrix::DelCol(int column, int amount) {
-    Matrix mat(m,n-amount);
-    int l1=0;
-    const int j=column-1;
-
-    for (int i=0; i<m; i++) {
-        for (int l0=0; l0<n; l0++) {
-            if ( (l0 < j) || (l0 >= j+amount) ) {
-                mat(i,l1) = data[i][l0];            //WHY THE FUCK is gcc warning me about this line when it works for example in operator+ -.-?! Well as long as it works: [Warning] passing `double' for converting 1 of `double& Matrix::operator()(int, int) const'
-                l1++;
-            }
-        }
-        l1=0;
-    }
-    *this = mat;
-    return;
-}
-
-Matrix Matrix::Augment(const Matrix &mat) const {
-    if (m != mat.m)
-        return *this;
-
-    Matrix merg(m,n+mat.n);
-    for (int i=0; i<m; i++)
-        for (int j=0; j<n; j++)
-            merg(i,j) = data[i][j];
-    for (int i=0; i<m; i++)
-        for (int j=0; j<mat.n; j++)
-            merg(i,n+j) = mat(i,j);
-
-    return merg;
-}
-
-
 
 
 
@@ -314,31 +603,10 @@ void Matrix::Save(char* filename) {
     file.close();
     return;
 }
+#endif
 
-MDIM Matrix::GetDim(void) const {
-    MDIM dim;
-    dim.m=m;
-    dim.n=n;
-    return dim;
-}
-
-void Matrix::Print(void) const {
-    #if DEBUG >= 2
-        std::cout << "Printing: " << m << "x" << n << "\n";
-    #endif
-    for (int i=0; i < m; i++) {
-        std::cout << "[";
-        for (int j=0; j < n; j++) {
-            std::cout << std::setw(4) << data[i][j] << " ";
-        }
-        std::cout << "]\n";
-    }
-    return;
-}
-
-
-template<typename T>
-Matrix operator*( const T scalar, const Matrix & rhs )
+template<typename T_DTYPE, typename T_ETYPE>
+MathMatrix<T_DTYPE> operator*( const T_ETYPE a, const MathMatrix<T_DTYPE> & rhs )
 {
-    return rhs * scalar;
+    return rhs * a;
 }

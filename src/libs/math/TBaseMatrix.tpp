@@ -83,12 +83,14 @@ BaseMatrix<T_DTYPE,T_DIM> & BaseMatrix<T_DTYPE,T_DIM>::operator=
 }
 
 template<typename T_DTYPE, int T_DIM>
-int BaseMatrix<T_DTYPE,T_DIM>::getLinearIndex( const VecI & pos ) const {
+int BaseMatrix<T_DTYPE,T_DIM>::getLinearIndex( VecI pos ) const
+{
     return ConvertVectorToLinearIndex( pos, this->size );
 }
 
 template<typename T_DTYPE, int T_DIM>
-Vec<int,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getVectorIndex( const int & linindex ) const {
+Vec<int,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getVectorIndex( int linindex ) const
+{
     return ConvertLinearToVectorIndex( linindex, this->size );
 }
 
@@ -117,11 +119,31 @@ T_DTYPE & BaseMatrix<T_DTYPE,T_DIM>::operator[] ( const VecI pos ) {
     return data[ getLinearIndex(pos) ];
 }
 
-
 /******************************* Other Functions ******************************/
+
 template<typename T_DTYPE, int T_DIM>
-Vec<int,T_DIM> BaseMatrix<T_DTYPE,T_DIM>::getSize( void ) const {
+typename BaseMatrix<T_DTYPE,T_DIM>::VecI
+BaseMatrix<T_DTYPE,T_DIM>::getSize( void ) const
+{
     return this->size;
+}
+
+template<typename T_DTYPE, int T_DIM>
+void BaseMatrix<T_DTYPE,T_DIM>::setSize( VecI psize )
+{
+    BaseMatrix mnew(psize);
+
+    /* copy old values into new matrix ... */
+    for ( int i = 0; i < mnew.size.product(); ++i )
+    {
+        VecI vind = mnew.getVectorIndex(i);
+        /* ... if that index already existed in the old matrix */
+        if ( vind < this->size )
+            /*better than memcpy, because it calls T_DTYPE assignment operator*/
+            mnew[vind] = (*this)[vind];
+    }
+
+    (*this) = mnew;
 }
 
 template<typename T_DTYPE, int T_DIM>
@@ -147,6 +169,8 @@ void BaseMatrix<T_DTYPE,T_DIM>::insertMatrix( const VecI & pos, const BaseMatrix
         (*this)[ index ] = m[i];
     }
 }
+
+/****************************** Resizing methods ******************************/
 
 template<typename T_DTYPE, int T_DIM>
 T_DTYPE InterpolateWithLagrange( const std::vector<Vec<double,T_DIM> > & x0,

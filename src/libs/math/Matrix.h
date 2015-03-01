@@ -2,76 +2,88 @@
 
 #include <fstream>
 #include <algorithm> // std::min
+#include <cstdlib>   // malloc
+#include "math/TBaseMatrix.h"
 #include "math/TVector.h"
 
-struct MDIM {
-    int m,n;
+template<typename T_DTYPE>
+class MathMatrix : public BaseMatrix<T_DTYPE,2> {
+public:
+    typedef Vec<int,2> VecI;
+
+    MathMatrix( void );
+    MathMatrix( VecI psize );
+    MathMatrix( int m, int n );
+    MathMatrix( const MathMatrix & m );
+    //Matrix(char* filename);                     //Automatically read from file
+    ~MathMatrix( void );
+    MathMatrix & operator=(const MathMatrix m); // if I make this a call by reference, then it won't be recognized as a specialization of the next assignment and thereby breaking everything, but copy-arguments could be memory intensive
+    template<typename T_ETYPE> MathMatrix & operator=(T_ETYPE a); // broadcast value to all elements
+
+    /* Conversion Operators */
+    // template<int T_DIM> operator Vec<double,T_DIM>() const;
+    // template<int T_DIM> operator Vec<double,T_DIM>() const;
+    // template<int T_DIM> Matrix& operator=(const Vec<double,T_DIM> val);
+    // template<int T_DIM> Matrix(const Vec<double,T_DIM> v);
+
+    MathMatrix & operator+=(const MathMatrix &mat);    // Add up to matrices
+    MathMatrix & operator*=(const MathMatrix &mat);    // Matrix Multiplication
+    MathMatrix & operator-=(const MathMatrix &mat);    // Subtraction
+    template<typename T_ETYPE>
+    inline MathMatrix & operator/=(T_ETYPE a);         // scalar Division based on Multiplication
+    template<typename T_ETYPE>
+    MathMatrix & operator*=(T_ETYPE a);                // scalar Multiplication
+
+    MathMatrix operator+(const MathMatrix &mat) const; // Add up to matrices
+    MathMatrix operator*(const MathMatrix &mat) const; // Matrix Multiplication
+    MathMatrix operator-(const MathMatrix &mat) const; // Subtraction
+    template<typename T_ETYPE>
+    inline MathMatrix operator/(T_ETYPE a) const;       // scalar Division based on Multiplication
+    template<typename T_ETYPE>
+    MathMatrix operator*(T_ETYPE a) const;              // scalar Multiplication
+    bool operator==(const MathMatrix &mat) const;
+    inline bool operator!=(const MathMatrix &mat) const;
+
+    // /* Returns Norm of Matrix if it is a Vector, else error (returns -1) */
+    /* most of these functions only make sense if T_DTYPE is double! -> make another subclass? */
+    // double norm(void) const;
+    // double (minor)(int row, int col) const;             // Counting from 1. clash with minor-macro -.-
+    // double det(void) const;
+    // MathMatrix invert(void) const;
+    // MathMatrix adjugate(void) const;
+    // /* Returns matrix with only positive elements (aij -> |aij|) */
+    // MathMatrix abs(void) const;
+    // int rank(void) const;
+    // MathMatrix rowEchelon(void) const;
+    MathMatrix transpose(void) const;
+    T_DTYPE trace(void) const;
+
+    inline bool isSquare(void) const;
+    inline bool isVector(void) const;
+
+    T_DTYPE & operator()( int i, int j );     // Get reference to element
+    T_DTYPE   operator()( int i, int j ) const;     // Just read element
+
+    inline int getVectorDim(void) const;
+    inline int getSquareDim(void) const;
+
+    MathMatrix & setDiagonal(T_DTYPE a=1, int k = 0);
+    MathMatrix & setDiagonal(T_DTYPE a[], int k = 0);
+    template<typename T_ETYPE> inline MathMatrix & setAll(T_DTYPE a);
+    MathMatrix & setSize(int m, int n);
+
+    // deletes i-th Row counting from 0 !!!!!!! was changed from counting from 1 => adjust all which use this: !!!minor!!!
+    MathMatrix & delRow(int irow = 0, int nrows = 1);
+    MathMatrix & delCol(int icol = 0, int ncols = 1);
+    //MathMatrix augment(const MathMatrix &mat) const;    // merges two matrices (if number of rows is equivalent)
+
+    // int Load(char* filename);
+    // void Save(char* filename);
+
+    // explicit operator Vec(); // convert to vector class
 };
 
-class Matrix {
-    private:
-        int m,n;
-        double **data;
-        void Setup(int m, int n);                   //Allocates Memory for Matrix.data and stores m,n
-        void Clear(void);
-
-    public:
-        Matrix(const Matrix &mat);                  //Copy method/Constructor
-        Matrix(int m, int n);                       //Create new 2d-array with (m,n) being the dimension/Constructor
-        Matrix(double x);
-        Matrix(char* filename);                     //Automatically read from file
-        template<int T_DIM> Matrix(const Vec<double,T_DIM> v);
-        ~Matrix(void);                              //delete matrix from heap
-
-        template<int T_DIM> operator Vec<double,T_DIM>() const;
-
-        Matrix& operator=(const Matrix &mat);
-        Matrix& operator=(const double val);
-        template<int T_DIM> Matrix& operator=(const Vec<double,T_DIM> val);
-        double& operator()(int i, int j) const;     //Get ptr to element m,n
-        double& operator[](int x) const;            //Get ptr to element m,1 or 1,n if n==1 or m==1
-        // make indexing with negative indices possible !!! or subspaces (slices,...)
-        Matrix operator+(const Matrix &mat);        //Add up to matrices
-        Matrix operator*(const Matrix &mat);        //Matrix Multiplication
-        Matrix operator-(const Matrix &mat);        //Subtraction
-        inline Matrix operator/(double divisor);    //scalar Division based on Multiplication
-        Matrix operator*(double factor);            //scalar Multiplication
-        bool operator==(const Matrix &mat);
-
-        Matrix operator* (const double a) const;
-
-        double Minor(int row, int col) const;       //Counting from 1
-        double Det(void) const;
-        Matrix Invert(void) const;
-        Matrix Adjugate(void) const;
-        Matrix Transpose(void) const;
-        /* Returns Norm of Matrix if it is a Vector, else error (returns -1) */
-        double Norm(void) const;
-        /* Returns matrix with only positive elements (aij -> |aij|) */
-        Matrix Abs(void) const;
-        int Rank(void) const;
-        double Trace(void) const;
-        Matrix RowEchelon(void) const;
-        inline bool IsSquare(void) const;
-        inline bool IsVector(void) const;
-        MDIM GetDim(void) const;
-        int GetVectorDim(void) const;
-        int GetSquareDim(void) const;
-
-        void SetDiagonal(double val=1);
-        void SetDiagonal(double val[]);
-        void SetAll(double val);
-
-        void DelRow(int row, int amount=1);         //Deletes i-th Row counting from 1
-        void DelCol(int col, int amount=1);
-        Matrix Augment(const Matrix &mat) const;    //conjoines object with mat (if number of rows is equivalent)
-
-        int Load(char* filename);
-        void Save(char* filename);
-        void Print(void) const;
-};
-
-template<typename T>
-Matrix operator*( const T scalar, const Matrix & rhs );
+template<typename T_DTYPE, typename T_ETYPE>
+MathMatrix<T_DTYPE> operator*( const T_ETYPE a, const MathMatrix<T_DTYPE> & rhs );
 
 #include "Matrix.cpp"
