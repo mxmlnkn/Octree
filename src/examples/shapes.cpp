@@ -7,7 +7,7 @@
 
 #include "math/TVector.h"
 #include "math/TBaseMatrix.h"
-#include "compileTime.h"
+#include "CompileTime.h"
 
 using namespace std;
 
@@ -211,7 +211,7 @@ MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(const MathMatrix &mat) const
             T_DTYPE sum = (*this)(i,j); // copy (*this)(i,j), to to copy the dimension, this also works, if T_DTYPE is a double!
             sum = 0;
             if ( i==0 and j==0 ) {
-                std::cout << "res:" << res << "\n";
+                std::cout << "sum:" << sum << "\n";
             }
             for ( int k = 0; k < this->size[1]; k++ ) // dot product
 	           sum += (*this)[VecI(i,k)] * mat[VecI(k,j)];
@@ -547,8 +547,8 @@ int main( void ) {
     MathMatrix<MathMatrix<int> > md(np,np);
     md = mzero;
     md.setDiagonal(mmul,0);
-    std::cout << "mx: " << mx << "\n";
-    std::cout << "md: " << md << "\n";
+    std::cout << "mx: " << mx << " size: " << mx.getSize() << "\n";
+    std::cout << "md: " << md << " size: " << md.getSize() << "\n";
 
     std::cout << "md+mx: " << (md+mx) << "\n";
     std::cout << "md+mx: " << (md+mx) << "\n";

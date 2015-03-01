@@ -40,8 +40,11 @@ BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( VecI sizeIn ) : size(sizeIn), data(NULL) 
 /****************************** Copy Constructor ******************************/
 template<typename T_DTYPE, int T_DIM>
 BaseMatrix<T_DTYPE,T_DIM>::BaseMatrix( const BaseMatrix & m ) : size(m.size), data(NULL) {
-    this->data = new T_DTYPE[size.product()];
-    memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
+    this->data = new T_DTYPE[m.size.product()];
+    /* use this instead of memcpy, to call all constructors, if T_DTYPE is
+     * e.g. a class! */
+    for ( int i=0; i < size.product(); ++i )
+        this->data[i] = m[i];
 }
 
 /********************************* Destructor *********************************/
@@ -74,7 +77,8 @@ BaseMatrix<T_DTYPE,T_DIM> & BaseMatrix<T_DTYPE,T_DIM>::operator=
         delete[] this->data;
     this->data = new T_DTYPE[m.size.product()];
 
-    memcpy( this->data, m.data, sizeof(T_DTYPE) * m.size.product() );
+    for ( int i=0; i < size.product(); ++i )
+        this->data[i] = m[i];
     return *this;
 }
 
