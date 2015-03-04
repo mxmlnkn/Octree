@@ -81,9 +81,14 @@ public:
     // void Save(char* filename);
 
     // explicit operator Vec(); // convert to vector class
+
+    template<int T_DIM> MathMatrix( Vec<T_DTYPE,T_DIM> v );
+    template<int T_DIM> operator Vec<T_DTYPE,T_DIM> () const;
 };
 
 template<typename T_DTYPE, typename T_ETYPE>
 MathMatrix<T_DTYPE> operator*( const T_ETYPE a, const MathMatrix<T_DTYPE> & rhs );
+
+typedef MathMatrix<double> Matrix;
 
 #include "Matrix.cpp"

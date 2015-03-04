@@ -71,6 +71,8 @@ public:
     inline Vec  operator* (const T_DTYPE a) const;
     inline Vec  operator/ (const T_DTYPE a) const;
 
+    int getSize(void) const;
+
     inline bool operator!= (const Vec & v) const;
     inline double norm() const;
 };

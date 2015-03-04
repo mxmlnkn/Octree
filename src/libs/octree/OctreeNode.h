@@ -126,7 +126,7 @@ public:
  * with the parents member                                                    */
     inline int getLevel( void ) const;
 /* Returns level at which first leaf can be found */
-    int getMinLevel( void ) const;
+    int getMinLevel( void );
 /* Returns maximum depth of tree */
     int getMaxLevel( void );
 

@@ -10,9 +10,9 @@ Matrix CreateRotationMat4f( const Vec<double,3> pu, const double theta )
 
     Matrix I(ROT_DIM,ROT_DIM);
     I = 0;
-    I.SetDiagonal(1);
+    I.setDiagonal(1);
     m = cos(theta)*I + sin(theta)*m
-        + (1-cos(theta)) * ( Matrix(pu)*Matrix(pu).Transpose() );
+        + (1-cos(theta)) * ( Matrix(pu)*Matrix(pu).transpose() );
     // if ROT_DIM>3 then the matrix should contain a 3x3 matrix in the upper left corner and be zero in the other elements
     for ( int i=4; i < ROT_DIM; i++ )
         m(i,i) = 1;
@@ -139,7 +139,7 @@ Matrix CalcModelMatrix
   const double obj_scale, const double obj_rot )
 {
 	Matrix tmp(4,4), model_matrix(4,4);
-    tmp.SetDiagonal(1);
+    tmp.setDiagonal(1);
 	tmp(0,3) = translationvector[0];    // x-translation
 	tmp(1,3) = translationvector[1];    // y-translation
 	tmp(2,3) = translationvector[2];    // z-translation
@@ -148,23 +148,23 @@ Matrix CalcModelMatrix
     /* more general, because this is only rotation about z-axis !!! */
     model_matrix = tmp * CreateRotationMat4f( Vec<double,3>(0,0,1), obj_rot);
     tmp = 0;
-    tmp.SetDiagonal(obj_scale);
+    tmp.setDiagonal(obj_scale);
 	tmp(3,3) = 1; // except w
 
     return model_matrix * tmp;
 }
 
 std::ostream& operator<<( std::ostream& out, const Matrix mat ) {
-	out << mat.GetDim().m << "x" << mat.GetDim().n << "-Matrix: {";
-	for ( int i=0; i < mat.GetDim().m; i++ ) {
+	out << mat.getSize()[0] << "x" << mat.getSize()[1] << "-Matrix: {";
+	for ( int i=0; i < mat.getSize()[0]; i++ ) {
 		out << "{";
-		for ( int j=0; j < mat.GetDim().n; j++ ) {
+		for ( int j=0; j < mat.getSize()[1]; j++ ) {
 			out << mat(i,j);
-			if ( j != mat.GetDim().n - 1 )
+			if ( j != mat.getSize()[1] - 1 )
 				out << ",";
 		}
 		out << "}";
-		if ( i != mat.GetDim().m - 1 )
+		if ( i != mat.getSize()[0] - 1 )
 			out << ",";
 	}
 	out << "}";

@@ -232,7 +232,7 @@ void Node<T_DIM>::DeleteChildren( void )
 
 /******************************** getMinLevel *********************************/
 template<int T_DIM>
-int Node<T_DIM>::getMinLevel( void ) const {
+int Node<T_DIM>::getMinLevel( void ) {
     int minLevel = 255;
     for ( iterator it = this->begin(); it != it.end(); ++it )
         if ( it->IsLeaf() ) {

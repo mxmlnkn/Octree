@@ -6,7 +6,7 @@
 template<typename T_DTYPE>
 MathMatrix<T_DTYPE>::MathMatrix( void )
  : BaseMatrix<T_DTYPE,2>()
-{ };
+{ }
 
 template<typename T_DTYPE>
 MathMatrix<T_DTYPE>::MathMatrix( int m, int n )
@@ -453,7 +453,7 @@ Matrix Matrix::Invert(void) const {
     return ( ((*this).Adjugate()) * (1/(*this).Det()) );
 #elif JACOBI == 1
     Matrix id(m,m);
-    id.SetDiagonal(1);
+    id.setDiagonal(1);
     Matrix inv = (this->Augment(id)).RowEchelon();
 
     //inv is now in row echelon form -> make the upper right corner zero
@@ -604,6 +604,28 @@ void Matrix::Save(char* filename) {
     return;
 }
 #endif
+
+template<typename T_DTYPE>
+template<int T_DIM>
+MathMatrix<T_DTYPE>::MathMatrix( Vec<T_DTYPE,T_DIM> v )
+ : BaseMatrix<T_DTYPE,2>( VecI( v.getSize(), 1 ) )
+{
+    for ( int i=0; i < v.getSize(); i++ )
+        (*this)[i] = v[i];
+}
+
+template<typename T_DTYPE>
+template<int T_DIM>
+MathMatrix<T_DTYPE>::operator Vec<T_DTYPE,T_DIM>() const
+{
+    Vec<T_DTYPE,T_DIM> v;
+    for ( int i=0; i < T_DIM; i++ )
+        if ( i < this->size.product() )
+            v[i] = (*this)[i];
+        else
+            v[i] = 0;
+    return v;
+}
 
 template<typename T_DTYPE, typename T_ETYPE>
 MathMatrix<T_DTYPE> operator*( const T_ETYPE a, const MathMatrix<T_DTYPE> & rhs )

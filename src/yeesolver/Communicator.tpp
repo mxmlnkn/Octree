@@ -430,7 +430,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
              * 1a belongs to us (a) and needs to be updated with data 4b.     *
              * For 7c top border the neighbors will be: 5b,6c and the         *
              * parent of  4b,1a,... (actually twice: neighbor above and       *
-             * below if  periodic ) In that case we need to travers all       *
+             * below if  periodic ) In that case we need to traverse all      *
              * children and check their neighbor in opposite direction is     *
              * 7c. For 7c top border this will yield 2a and 3b, latter is     *
              * ignored, because I am process a.                               */
@@ -443,6 +443,7 @@ void OctreeCommunicator<T_DIM,T_OCTREE,T_CELLTYPE>::FinishGuardUpdate( int times
             VecI posG  = this->getGuardPositionInDirection(oppositeDir);
             VecI sizeG = this->getGuardSizeInDirection    (oppositeDir);
             assert( sizeG == sizeB );
+            /* traverse all children of neighbor, if there are any            */
             for ( typename T_OCTREE::iterator itT = neighbor->begin(); itT != neighbor->end(); ++itT )
             if ( itT->IsLeaf() and ((CommData*)itT->data[COMM_HEADER_INDEX])->rank == this->rank )
                 if ( neighbor == &(*itT) /* neighbor is leaf */

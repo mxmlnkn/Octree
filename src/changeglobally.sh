@@ -1,0 +1,1 @@
+find . \( -name "*.h" -or -name "*.cpp" -or -name "*.c" -or -name "*.tpp" \) -print0 | xargs -0 --replace={} sed -f changeglobally.sed -i {}

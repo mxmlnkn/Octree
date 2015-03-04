@@ -4,7 +4,9 @@
 
 #include <iostream>
 #include <algorithm> // count
-#include <string>
+#include <stack>
+#include <vector>
+#include <string>   // std::stoi, std::stod
 #include <sstream>
 #include "CompileTime.h"
 #include "math/Matrix.h"
@@ -123,6 +125,7 @@ void printSpaceMathMatrix( T mat, Vec<int,T_LEVELS> index )
 
 /* Print in another way */
 
+/* Last specialized call for recursion toPolynomial goes here */
 template<typename T>
 std::string toPolynomial( T v, int n0, int maxlevel, int level = 0)
 {
@@ -132,6 +135,7 @@ std::string toPolynomial( T v, int n0, int maxlevel, int level = 0)
     return out.str();
 }
 
+/* Print the polynomial representation of given v, e.g. {0,1,2} -> x+2x**2 */
 template<typename T>
 std::string toPolynomial( MathMatrix<T> v, int n0, int maxlevel, int level = 0)
 {
@@ -181,6 +185,36 @@ std::string toPolynomial( MathMatrix<T> v, int n0, int maxlevel, int level = 0)
     }
 
     return out.str();
+}
+
+template<typename T>
+MathMatrix<T> & fromString
+( std::string sr, std::vector<std::string> vars, MathMatrix<T> & result );
+
+/* Last specialized call for recursion toMultiplyer goes here */
+template<typename T>
+T toMultiplyer( T v, int n0 ) {
+    return v;
+}
+
+/* convert vector to multiplication operator i.e. matrix */
+template<typename T>
+MathMatrix<T> toMultiplyer( MathMatrix<T> v, int n0 )
+{
+    assert( v.isVector() );
+    int np = v.getVectorDim();
+
+    /* set up result matrix with correct dimension */
+    MathMatrix<T> mul(np,np);
+    for ( int i = 0; i < mul.getSize().product(); ++i )
+       mul[i].setSize(np,np);
+    mul = 0; /* setSize only allocates but does not set to 0 */
+
+    for ( int i = 0; i < v.getSize()[0]; ++i ) {
+        /* recursive convert inner vectors to multipliers */
+        /* for division set upper diagonal, for multipl. set lower diagonal */
+        mul.setDiagonal( toMultiplyer( v[i] ), n0-i );
+    }
 }
 
 int main( void ) {
@@ -351,8 +385,167 @@ int main( void ) {
           x1-coeff-vectors. If d and x2 don't appear in the limits, then
           the two outer vectors are only non-zero on their diagonals
      */
-    typedef MathMatrix<MathMatrix<MathMatrix<int>>> SX1;
+    typedef MathMatrix<MathMatrix<MathMatrix<int>>> SpaceX1;
     /* Todo: try to convert ShapesV6.nb into this C++ scheme, maybe even with sed or awk! */
+
+    //std::string sr1( "(x1)**(2) * ( (((d)**(2))) - (x1-x2)**2 )" ); // "/( 4 x1 x2 )"
+    std::string sr1( "x1**2 * ( d**2 - x1**2 - x2**2 + 2 x1 x2 )" );
+    SpaceX1 result;
+
+    std::vector<std::string> varnames;
+    varnames.push_back("d");
+    varnames.push_back("x1");
+    varnames.push_back("x2");
+    std::cout << "\n\n";
+    fromString( "((x1))", varnames, result );
+    std::cout << "\n\n";
+    fromString( "((x1)+x2)", varnames, result );
 
     return 0;
 }
+
+template<typename T>
+MathMatrix<T> & fromString
+( std::string str, std::vector<std::string> varnames, MathMatrix<T> & result )
+{
+    std::cout << "Input String   : " << str << "\n";
+    std::cout << "Variable Names : ";
+    for ( int i = 0; i < varnames.size(); ++i ) {
+        std::cout << varnames[i] << ",";
+    }
+    std::cout << "\n";
+
+    /* strip whitespaces */
+    {int i = 0;
+    while ( i < str.length() ) {
+        if ( str[i] == ' ' )
+            str.erase(i,1);
+        else
+            ++i;
+    }}
+    std::cout << "Strip Whitespaces: " << str << "\n";
+
+    /* strip unnecessary parentheses, e.g. '(a+b)' or '(a)+b' reduce to 'a+b' */
+    {assert(    std::count( str.begin(), str.end(), '(' )
+            == std::count( str.begin(), str.end(), ')' ) );
+    std::stack<int> ppos;
+    bool pmsignfound = false;
+    for ( int i = 0; i < str.length(); ++i ) {
+        switch ( str[i] ) {
+            case '(':
+                ppos.push(i);
+                break;
+            case ')':
+                if ( not pmsignfound ) {
+                    str.erase( i,1 );
+                    str.erase( ppos.top(), 1 );
+                    ppos.pop();
+                    i -= 2;
+                }
+                pmsignfound = false;
+                break;
+            case '+':
+            case '-':
+                pmsignfound = true;
+                break;
+        }
+    }
+    while ( str[0] == '(' and str[ str.length()-1 ] == ')' ) {
+        str.erase( str.length()-1, 1 );
+        str.erase( 0, 1 );
+    }}
+    std::cout << "Strip unnecessary parentheses: " << str << "\n";
+
+    /* analyze highest level only, meaning: 2a*(...)+b-(...) call recursively
+     * for (...) */
+    result = 0;
+    MathMatrix<T> summand = result;
+    std::stack<int> ppos;
+    bool summandinitialized = true;
+    for ( int i = 0; i < str.length(); ++i )
+    {
+        /* Recursively evaluate things in parentheses */
+        if ( str[i] == '(' ) {
+            ppos.push(i);
+        } else if ( str[i] == ')' ) {
+            if ( ppos.size() == 1 ) {
+                std::string sexpr = str.substr( ppos.top()+1, i-1 );
+                std::cout << "Recursively evaluate: " << sexpr << "\n";
+            }
+            ppos.pop();
+        }
+
+        MathMatrix<T> tmp = summand*0;
+
+        /* Evaluate numbers appearing */
+        if ( str[i] >= '0' and str[i] <= '9' ) {
+            int j = i;
+            int dotsfound = 0;
+            while ( ( str[j] >= '0' and str[j] <= '9' ) or  str[j] == '.' ) {
+                ++j;
+                if ( str[j] == '.' )
+                    ++dotsfound;
+            }
+            std::string number = str.substr( i, j-i );
+            assert( dotsfound <= 0 );
+
+            if ( dotsfound == 0 ) {
+                tmp = std::stoi( number );
+            } else if ( dotsfound == 1 ) {
+                tmp = std::stod( number );
+            }
+        }
+
+        /* variables may only begin with a letter */
+        if ( ( str[i] >= 'A' and str[i] <= 'Z' ) or
+             ( str[i] >= 'a' and str[i] <= 'z' ) )
+        {
+
+        }
+
+        if ( summandinitialized ) {
+            summand = tmp;
+            summandinitialized = false;
+        } else {
+            summand =  * tmp;
+            summandinitialized = false;
+        }
+
+        if ( str[i] == '+' ) {
+            result += summand;
+            summand = 0;
+            summandinitialized = true;
+        } else if ( str[i] == '-' ) {
+            result += summand;
+            //summand = toMultiplyer( -1 );
+            summandinitialized = false;
+        }
+    }
+
+    #if 1==0
+    int foundpos = std::string::npos; /* stores last found position */
+    /* what datatype do i even return -.- ?... can't specify auto return type and oh my god is this frustratingly difficult xD... -> need class which manages recursion in a non-recursive way! instead of using lowlevel matrices! */
+    do {
+        /* find powers */
+        std::string substr = varnames[0] + std::string("**");
+        foundpos = str.find( substr );
+        std::cout << "Found " << varnames[0] << " to the power of "
+                  << str[ foundpos + substr.length() ] << " with coefficients:";
+        #if 1==0
+        /* find coefficient string */
+        int parentheses = 0;
+        for ( int i = foundpos-1; i >= 0; --i ) {
+            /* if not inside a pair of parentheses */
+            if ( parentheses = 0 ) {
+                if ( str[i] == '+' or str[i] == '-' )
+            }
+            if ( str[i] !=
+        }
+        #endif
+    }
+    while ( foundpos != std::string::npos );
+    #endif
+
+    return result;
+}
+
