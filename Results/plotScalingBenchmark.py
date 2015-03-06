@@ -40,7 +40,7 @@ xlim(0.5,196)
 
 def fitfunc( N, a, e, b ):
     return a*N**e + b
-popt, pcov = curve_fit(fitfunc, x, y[0]/y, sigma=yerr/y * y[0]/y, p0=[1.0,1.0,0.0] ) # 
+popt, pcov = curve_fit(fitfunc, x, y[0]/y, sigma=yerr/y * y[0]/y, p0=[1.0,1.0,0.0] ) #
 perr  = np.sqrt(np.diag(pcov))
 print "Sp(N) = (",popt[0],"+-",perr[0],") * N ** (",popt[1],"+-",perr[1],")"
 fitx = exp( linspace( log(min(x)), 1.1*log(max(x)), 100 ) )
@@ -70,7 +70,7 @@ plot( fitx, fitfunc( fitx, *popt ) / fitx, 'r-', label='Exponential Fit' )
 
 def fitfunc2( N, t_comm, t_work_0 ):
     return 1.0 * ( t_comm/t_work_0 + 1.0 ) / ( N*t_comm/t_work_0 + 1.0 )
-popt2, pcov2 = curve_fit( fitfunc2, x, y[0]/y / x, sigma=yerr/y * y[0]/y / x ) # 
+popt2, pcov2 = curve_fit( fitfunc2, x, y[0]/y / x, sigma=yerr/y * y[0]/y / x ) #
 perr2  = np.sqrt(np.diag(pcov2))
 #plot( fitx, fitfunc2( fitx, popt2[0], popt2[1] ), label=r"$\frac{t_\mathrm{comm}+t_\mathrm{work}^0 }{ t_\mathrm{comm} + \frac{t_\mathrm{work}^0}{N} }$" )
 

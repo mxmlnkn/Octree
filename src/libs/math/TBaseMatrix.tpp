@@ -243,27 +243,39 @@ std::ostream& operator<<( std::ostream& out, const BaseMatrix<T_DTYPE,T_DIM>& m 
     typedef typename BaseMatrix<T_DTYPE,T_DIM>::VecI VecI;
     VecI size = m.getSize();
     VecI index(0);
-    for ( int i=0; i<T_DIM; ++i )
+    bool isvector = size[0] == 1 or size[1] == 1 ? 1 : 0;
+
+    for ( int i = 0; i < T_DIM - isvector; ++i )
         out << "{";
-    for ( int i=0; i<size.product(); ++i ) {
+
+    for ( int i = 0; i < size.product(); ++i )
+    {
         out << m[index];
+        int closedBrackets = 0 - isvector;
+
         /* increment vector index */
-        int closedBracktes = 0;
         index[T_DIM-1] += 1;
-        for ( int j=T_DIM-1; j>=0; j-- ) {
-            if ( index[j] >= size[j] ) {
+        for ( int j=T_DIM-1; j>=0; j-- )
+        {
+            if ( index[j] >= size[j] )
+            {
                 if ( j > 0 ) {
                     index[j] = 0;
                     index[j-1] += 1;
                 } else
                     assert( i == size.product()-1 );
-                out << "}";
-                closedBracktes++;
+                closedBrackets++;
             }
         }
-        if ( i != size.product()-1 ) {
+
+        for ( int j = 0; j < closedBrackets; ++j )
+            out << "}";
+
+        /* if not last element, then add ',' and open brackets for next element */
+        if ( i != size.product()-1 )
+        {
             out << ",";
-            for ( int j=0; j<closedBracktes; j++ )
+            for ( int j = 0; j < closedBrackets; ++j )
                 out << "{";
         }
     }

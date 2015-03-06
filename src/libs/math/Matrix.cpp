@@ -225,9 +225,26 @@ inline MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setAll( T_DTYPE a ) {
 }
 
 template<typename T_DTYPE>
-MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setSize( int m, int n )
+MathMatrix<T_DTYPE> & MathMatrix<T_DTYPE>::setSize( int pm, int pn )
 {
-    BaseMatrix<T_DTYPE,2>::setSize( VecI(m,n) );
+    int m = this->getSize()[0];
+    int n = this->getSize()[1];
+
+    BaseMatrix<T_DTYPE,2>::setSize( VecI(pm,pn) ); /* doesn't set values to 0 */
+
+    /* only set newly added entries to 0, because we don't know what T_DTYPE  *
+     * may be (except that it's mathematical, therefore should support        *
+     * operator* and operator+ at least) we derive zero from first element    */
+    T_DTYPE zero = 0 * (*this)(0,0);
+
+    for ( int i = m; i < pm; ++i )
+        for ( int j = n; j < pn; ++j )
+            (*this)(i,j) = zero;
+
+    for ( int j = n; j < pn; ++j )
+        for ( int i = m; i < pm; ++i )
+            (*this)(i,j) = zero;
+
     return *this;
 }
 
