@@ -30,3 +30,11 @@ std::ostream& operator<<( std::ostream& out, const std::list<T_DTYPE> ls ) {
     out << "}";
     return out;
 }
+
+template<typename T>
+std::string toString( T a )
+{
+    std::stringstream tmp;
+    tmp << a;
+    return tmp.str();
+}

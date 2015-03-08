@@ -114,6 +114,8 @@ MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator-(const MathMatrix &mat) const
 template<typename T_DTYPE>
 MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::operator*(const MathMatrix &mat) const
 {
+    if ( this->size[1] != mat.size[0] )
+        std::cerr << this->size[1] << "!=" << mat.size[0] << "\n" << std::flush;
     assert( this->size[1] == mat.size[0] );
     int m = this->size[0];
     int n = mat.size[1];
@@ -291,7 +293,7 @@ template<typename T_DTYPE>
 MathMatrix<T_DTYPE> MathMatrix<T_DTYPE>::transpose( void ) const
 {
     /* could try to do this by setting a flag... but that could be error prone*/
-    MathMatrix trans( this->size[0], this->size[1] );
+    MathMatrix trans( this->size[1], this->size[0] );
     for ( int i=0; i < this->size[0]; i++ )
         for (int j = 0; j < this->size[1]; j++ )
             trans(j,i) = (*this)(i,j);

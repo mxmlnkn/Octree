@@ -1,58 +1,93 @@
 #pragma once
 
-/******************** Wrapper for recursive template calls ********************/
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM>::Polynomial( std::vector<std::string> pvarnames, std::string spol )
- : varnames(pvarnames), np(5), n0(0)
+template<typename T_COEFF>
+std::vector<std::string> Polynomial<T_COEFF>::splitByDelimiter
+( std::string src, char delimiter ) const
 {
-    this->checkVariableNames();
-    this->fromString( spol );
-}
+    std::vector<std::string> res;
 
-/* takes the first non alphanumerical character as a delimiter, else space is
- * the standard delimiter to convert a string of variable names to a list */
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM>::Polynomial( std::string pvarnames, std::string spol )
- : varnames(), np(5), n0(0)
-{
     /* search for delimiter */
-    char delimiter = ' ';
-    for ( auto it = pvarnames.begin(); it != pvarnames.end(); ++it )
-        if ( not isalnum( *it ) )
-            delimiter = *it;
+    if ( delimiter == -1 )
+        for ( auto it = src.begin(); it != src.end(); ++it )
+            if ( not isalnum( *it ) )
+                delimiter = *it;
 
-    #if POLYNOMIAL_DEBUG >= 100
-        std::cerr << "Found delimtier: " << delimiter << "\n";
-    #endif
 
-    /* split pvarnames by delimiter */
-    int pos1 = 0;
+    /* split src by delimiter */
+    size_t pos1 = 0;
     while (true)
     {
-        pvarnames = pvarnames.substr( pos1 );
-        pos1 = pvarnames.find( delimiter );
+        src = src.substr( pos1 );
+        pos1 = src.find( delimiter );
 
-        if ( pos1 != pvarnames.npos ) {
-            std::string svar = pvarnames.substr( 0, pos1 );
-            if ( svar.length() != 0)
-                this->varnames.push_back( svar );
+        if ( pos1 != src.npos ) {
+            std::string svar = src.substr( 0, pos1 );
+            if ( svar.length() != 0 )
+                res.push_back( svar );
             ++pos1;
         }
         else
         {
-            pos1 = pvarnames.length() - 1;
+            pos1 = src.length() - 1;
             break;
         }
     }
-    if ( pvarnames.length() != 0 )
-        this->varnames.push_back( pvarnames );
+    if ( src.length() != 0 )
+        res.push_back( src );
 
-    this->checkVariableNames();
-    this->fromString( spol );
+    return res;
 }
 
-template<typename T_POLYNOM>
-int Polynomial<T_POLYNOM>::checkVariableNames( void )
+/******************************** Constructors ********************************/
+
+template<typename T_COEFF>
+Polynomial<T_COEFF>::Polynomial
+( std::vector<std::string> pvarnames, std::string spol, int pn0 )
+ : varnames(pvarnames), np(MAX_POWERS), n0(pn0)
+{
+    this->checkVariableNames();
+    this->fromString( spol ); /* automatically sets size */
+}
+
+/* takes the first non alphanumerical character as a delimiter, else space is
+ * the standard delimiter to convert a string of variable names to a list */
+template<typename T_COEFF>
+Polynomial<T_COEFF>::Polynomial
+( std::string pvarnames, std::string spol, int pn0 )
+ : varnames(), np(MAX_POWERS), n0(pn0)
+{
+    this->varnames = splitByDelimiter( pvarnames );
+    this->checkVariableNames();
+    this->fromString( spol ); /* automatically sets size */
+}
+
+template<typename T_COEFF>
+Polynomial<T_COEFF>::Polynomial( const T_COEFF & src, int pn0 )
+ : data(src), varnames(), np(data.getSize()[0]), n0(pn0)
+{
+    assert( data.isVector() );
+    int levels = this->countLevels();
+    #if POLYNOMIAL_DEBUG >= 100
+        std::cerr << "Counted " << levels << " Levels when constructing from nested Matrix\n";
+    #endif
+    assert( levels < 'z'-'a' );
+    char varname[2] = "a";
+    for ( int i = 0; i < levels; ++i ) {
+        this->varnames.push_back( std::string(varname) );
+        ++varname[0];
+    }
+}
+
+template<typename T_COEFF>
+Polynomial<T_COEFF>::Polynomial
+( std::vector<std::string> pvarnames, const T_COEFF & src, int pn0 )
+ : data(src), varnames(pvarnames), np( data.getSize()[pn0] ), n0(pn0)
+{
+    assert( data.isVector() );
+}
+
+template<typename T_COEFF>
+int Polynomial<T_COEFF>::checkVariableNames( void )
 {
     if ( varnames.size() == 0 ) {
         assert( "No varnames given!" && false );
@@ -89,16 +124,17 @@ int Polynomial<T_POLYNOM>::checkVariableNames( void )
     return wrongvarnames;
 }
 
+/******************** Wrapper for recursive template calls ********************/
 /* Counts recursion MathMatrix */
-template<typename T_POLYNOM>
-int Polynomial<T_POLYNOM>::countLevels( void ) const
+template<typename T_COEFF>
+inline int Polynomial<T_COEFF>::countLevels( void ) const
 {
     return countLevels( this->data );
 }
 
 /* Print the polynomial representation of given v, e.g. {0,1,2} -> x+2x**2 */
-template<typename T_POLYNOM>
-std::string Polynomial<T_POLYNOM>::toString( void ) const
+template<typename T_COEFF>
+inline std::string Polynomial<T_COEFF>::toString( void ) const
 {
     std::string result = toString( this->data );
     if ( result.length() == 0 )
@@ -107,16 +143,16 @@ std::string Polynomial<T_POLYNOM>::toString( void ) const
         return result;
 }
 
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM> & Polynomial<T_POLYNOM>::fromOneVarString( std::string sr )
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::fromOneVarString( std::string sr )
 {
     fromOneVarString( sr, this->data );
     this->np = this->data.getSize()[0];
     return *this;
 }
 
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM> & Polynomial<T_POLYNOM>::fromString( std::string sr )
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::fromString( std::string sr )
 {
     fromString( sr, this->data );
     this->np = this->data.getSize()[0];
@@ -124,64 +160,327 @@ Polynomial<T_POLYNOM> & Polynomial<T_POLYNOM>::fromString( std::string sr )
 }
 
 /* convert vector to multiplication operator i.e. matrix */
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM> Polynomial<T_POLYNOM>::toMultiplyer( void ) const
+template<typename T_COEFF>
+inline T_COEFF Polynomial<T_COEFF>::toMultiplyer( void ) const
 {
-    return toMultiplyer( *this );
+    return toMultiplyer( this->data, this->n0 );
 }
 
-template<typename T_POLYNOM>
-Polynomial<T_POLYNOM> & Polynomial<T_POLYNOM>::setSize( int pnp )
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::setSize( int pnp )
 {
     this->setSize( this->data, pnp );
     this->np = pnp;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::setZero( int pn0 )
+{
+    std::string exportdata = this->toString();
+    this->n0 = pn0;
+    this->fromString( exportdata );
+    return *this;
+}
+
+template<typename T_COEFF>
+int Polynomial<T_COEFF>::getSize( void ) const
+{
+    return this->np;
+}
+
+template<typename T_COEFF>
+int Polynomial<T_COEFF>::getZero( void ) const
+{
+    return this->n0;
+}
+
+template<typename T_COEFF>
+Polynomial<T_COEFF> & Polynomial<T_COEFF>::reorderVariableNames
+( std::string to )
+{
+    std::vector<std::string> newnames = this->splitByDelimiter( to );
+    /* check if variables are only reordered, not renamed! */
+    assert( varnames.size() == newnames.size() );
+    for ( auto it = newnames.begin(); it != newnames.end(); ++it )
+        assert( find( varnames.begin(), varnames.end(), *it ) != varnames.end() );
+
+    std::string output = this->toString();
+    this->varnames.clear();
+    this->varnames = newnames;
+    this->fromString(output);
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator+=( double b )
+{
+    (*this) += ::toString(b);
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator-=( double b )
+{
+    (*this) -= ::toString(b);
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator*=( double b )
+{
+    (*this) *= ::toString(b);
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator+=( std::string b )
+{
+    Polynomial<T_COEFF> pol = *this;
+    pol.fromString(b);
+    this->data += pol.data;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator-=( std::string b )
+{
+    Polynomial<T_COEFF> pol = *this;
+    pol.fromString(b);
+    this->data -= pol.data;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator*=( std::string b )
+{
+    Polynomial<T_COEFF> pol = *this;
+    pol.fromString(b);
+    (*this) *= pol;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator+=( Polynomial<T_COEFF> b )
+{
+    this->data += b.data;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator-=( Polynomial<T_COEFF> b )
+{
+    this->data -= b.data;
+    return *this;
+}
+
+template<typename T_COEFF>
+inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator*=( Polynomial<T_COEFF> b )
+{
+    /* TODO!!! change np if necessary */
+    #if POLYNOMIAL_DEBUG >= 99
+        std::cerr << "multiply:\n " << this->data << "\nwith\n " << b.data << "\n";
+        std::cerr << "toMultiplyer returned:\n " << toMultiplyer(this->data, this->n0) << "\n";
+    #endif
+    this->data = toMultiplyer(this->data, this->n0) * b.data;
+    #if POLYNOMIAL_DEBUG >= 99
+        std::cerr << "multiplied:\n " << this->data << "\n";
+    #endif
+    return *this;
+}
+
+template<typename T_COEFF>
+template<typename T_ETYPE>
+inline Polynomial<T_COEFF> Polynomial<T_COEFF>::operator+ ( T_ETYPE b ) const
+{
+    Polynomial<T_COEFF> tmp = *this;
+    tmp += b;
+    return tmp;
+}
+
+template<typename T_COEFF>
+template<typename T_ETYPE>
+inline Polynomial<T_COEFF> Polynomial<T_COEFF>::operator- ( T_ETYPE b ) const
+{
+    Polynomial<T_COEFF> tmp = *this;
+    tmp -= b;
+    return tmp;
+}
+
+template<typename T_COEFF>
+template<typename T_ETYPE>
+inline Polynomial<T_COEFF> Polynomial<T_COEFF>::operator* ( T_ETYPE b ) const
+{
+    Polynomial<T_COEFF> tmp = *this;
+    tmp *= b;
+    return tmp;
+}
+
+template<typename T_COEFF>
+inline bool Polynomial<T_COEFF>::operator==( Polynomial<T_COEFF> b )
+{
+    return ( this->data == b.data ) and ( this->varnames == b.varnames );
+}
+
+template<typename T_COEFF>
+void Polynomial<T_COEFF>::operator=( std::string b )
+{
+    this->fromString( b );
+}
+
+template<typename T_COEFF>
+void Polynomial<T_COEFF>::operator=( const T_COEFF & src )
+{
+    int levelsold = this->countLevels();
+    this->data = src;
+    int levelsnew = this->countLevels();
+
+    assert( data.isVector() );
+    this->np = data.getSize()[0];
+    /* leave n0 where it was */
+
+    #if POLYNOMIAL_DEBUG >= 99
+        std::cerr << "Counted " << levelsnew << " Levels when assigning from nested Matrix\n";
+    #endif
+
+    if ( levelsold != levelsnew )
+    {
+        this->varnames.clear();
+        assert( levelsnew < 'z'-'a' );
+        char varname = 'a';
+        for ( int i = 0; i < levelsnew; ++i )
+            this->varnames.push_back( varname );
+    }
+}
+
+template<typename T_COEFF>
+Polynomial<T_COEFF>::operator std::string(void)
+{
+    return this->toString();
+}
+
+/********************************** Integrate *********************************/
+template<typename T_COEFF>
+auto Polynomial<T_COEFF>::integrate
+( std::string variable, std::string from, std::string to ) const
+ -> Polynomial<decltype(this->data[0])>
+{
+    typedef Polynomial<decltype(this->data[0])> ReturnPol;
+
+    /* create integrator by creating new polynom consisting of all variables lower than integration variable -> set up diagonal integration matrix using 1/k*toMultiplyer(fromString("1")) to fill it. Now broadcast that integration matrix into the polynom, which should recurisvely broadcast it the correct level */
+
+    /* Determine which variable we want to integrate and reorder it to the    *
+     * front, so that setting up the integration Matrix will be easier        */
+    std::vector<std::string> newvarorder = this->varnames;
+    auto it = find( newvarorder.begin(), newvarorder.end(), variable );
+    assert( it != newvarorder.end() );
+    newvarorder.erase( it );
+    std::vector<std::string> resultvars = newvarorder;
+    newvarorder.insert( newvarorder.begin(), variable );
+    Polynomial<T_COEFF> integrand( newvarorder, this->toString() );
+    std::cerr << "Created integrand with new variable order\n";
+
+    /* Check if vector is long enough to contain extra power */
+    auto maxpower = integrand.data[ integrand.data.getSize()[0] - 1 ];
+    if ( maxpower != maxpower*0 ) {
+        #if POLYNOMIAL_DEBUG >= 98
+            std::cerr << "While integrating Vector needed to be elongated\n";
+        #endif
+        integrand.setSize( 2*np );
+    }
+    int newnp = integrand.data.getSize()[0];
+
+    /* Set up minor diagonal integration Matrix, n0 doesn't influence         *
+     * diagonal position, only coefficients inside the diagonal               */
+    T_COEFF MI(newnp,newnp);
+    setSize( MI, newnp, newnp ); // set size recursively
+    ReturnPol unit( resultvars, "1" );
+    for ( int i = 1; i < newnp; ++i )
+        if ( i == n0-1 )
+            MI(i,i-1) = unit.toMultiplyer() * INF;
+        else
+            MI(i,i-1) = unit.toMultiplyer() * ( 1.0 / double( i-n0 ) );
+    #if POLYNOMIAL_DEBUG >= 98
+        std::cerr << "Set up integration Matrix\n";
+    #endif
+
+    /* Create vectors for limits they contain all powers in their vectors     *
+     * So if limit a is 'x-1', then vector will be ( 1, x-1, (x-1)**2, ... )  */
+    ReturnPol a0( resultvars, from );
+    ReturnPol b0( resultvars, to );
+    std::vector<ReturnPol> a;
+    std::vector<ReturnPol> b;
+    a.push_back( unit );
+    b.push_back( unit );
+    for ( int i = 1; i < newnp; ++i ) {
+        #if POLYNOMIAL_DEBUG >= 98
+            std::cerr << "Calculate power " << i << "\n";
+        #endif
+        a.push_back( a0 * a[i-1] );
+        b.push_back( b0 * b[i-1] );
+    }
+
+    /* Integrate and apply limits */
+    #if POLYNOMIAL_DEBUG >= 98
+        std::cerr << "Integrate integrand ( size: " << integrand.data.getSize() << " with MI ( size: " << MI.getSize() << " )\n";
+        std::cerr << "MI: " << MI << "\n";
+        std::cerr << "Integrand: " << integrand.data << "\n";
+    #endif
+    T_COEFF indefinite = MI * integrand.data;
+    #if POLYNOMIAL_DEBUG >= 98
+        std::cerr << "Applying limits\n";
+    #endif
+    assert( (size_t) indefinite.getSize()[0] == a.size() );
+    ReturnPol result( resultvars, "0" );
+    for ( int i = 0; i < indefinite.getSize()[0]; ++i )
+        result += ( b[i] - a[i] ) * ReturnPol( indefinite[i], integrand.getZero() );
+
+    return result;
 }
 
 /************************** Recursive template calls **************************/
 
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_POLYNOM>::setSize
-( MathMatrix<MathMatrix<T_ELEM>> & pol, int pnp ) const
+MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_COEFF>::setSize
+( MathMatrix<MathMatrix<T_ELEM>> & pol, int pnx, int pny )
 {
-    pol.setSize( pnp, 1 );
+    pol.setSize( pnx, pny );
     for ( int i = 0; i < pol.getSize().product(); ++i )
-        setSize( pol[i], pnp );
+        setSize( pol[i], pnx, pny );
     /* MathMatrix::setSize sets newly added elements to zero automatically ! */
     return pol;
 }
 
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::setSize
-( MathMatrix<T_ELEM> & pol, int pnp ) const
+MathMatrix<T_ELEM> & Polynomial<T_COEFF>::setSize
+( MathMatrix<T_ELEM> & pol, int pnx, int pny )
 {
-    pol.setSize( pnp, 1 );
+    pol.setSize( pnx, pny );
     return pol;
 }
 
-
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-int Polynomial<T_POLYNOM>::countLevels
-( MathMatrix<T_ELEM> v, int level ) const
+int Polynomial<T_COEFF>::countLevels
+( MathMatrix<T_ELEM> v, int level )
 {
     return countLevels( v[0], level+1 );
 }
 
 /* Last specialized call for recursion toPolynomial goes here */
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-int Polynomial<T_POLYNOM>::countLevels
-( T_ELEM v, int level ) const
+int Polynomial<T_COEFF>::countLevels
+( T_ELEM v, int level )
 {
     return level;
 }
 
 /* Last specialized call for recursion toString goes here */
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-std::string Polynomial<T_POLYNOM>::toString
+std::string Polynomial<T_COEFF>::toString
 ( const T_ELEM & v, int level ) const
 {
     /* todo: first output ( after '(' ) doesn't have to have a plus sign */
@@ -191,9 +490,9 @@ std::string Polynomial<T_POLYNOM>::toString
 }
 
 /* Print the polynomial representation of given v, e.g. {0,1,2} -> x+2x**2 */
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-std::string Polynomial<T_POLYNOM>::toString
+std::string Polynomial<T_COEFF>::toString
 ( const MathMatrix<T_ELEM> & v, int level ) const
 {
     std::stringstream out;
@@ -214,7 +513,7 @@ std::string Polynomial<T_POLYNOM>::toString
         std::string tmp = toString( v[i], level+1 );
 
         /* count coefficients by counting + and - */
-        int ncoeffs = 1;
+        long int ncoeffs = 1;
         ncoeffs += std::count( tmp.begin(), tmp.end(), '+' );
         ncoeffs += std::count( tmp.begin(), tmp.end(), '-' );
         if ( tmp[0] == '+' or tmp[0] == '-' )
@@ -262,10 +561,10 @@ std::string Polynomial<T_POLYNOM>::toString
 }
 
 /* Last specialized call for recursion toMultiplyer goes here, T_ELEM is e.g. int */
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<T_ELEM> Polynomial<T_POLYNOM>::toMultiplyer
-( const MathMatrix<T_ELEM> & v ) const
+MathMatrix<T_ELEM> Polynomial<T_COEFF>::toMultiplyer
+( const MathMatrix<T_ELEM> & v, int n0 )
 {
     int np = v.getVectorDim();
     MathMatrix<T_ELEM> mul(np,np);
@@ -276,24 +575,24 @@ MathMatrix<T_ELEM> Polynomial<T_POLYNOM>::toMultiplyer
 }
 
 /* convert vector to multiplication operator i.e. matrix */
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<MathMatrix<T_ELEM>> Polynomial<T_POLYNOM>::toMultiplyer
-( const MathMatrix<MathMatrix<T_ELEM>> & v ) const
+MathMatrix<MathMatrix<T_ELEM>> Polynomial<T_COEFF>::toMultiplyer
+( const MathMatrix<MathMatrix<T_ELEM>> & v, int n0 )
 {
     assert( v.isVector() );
     int np = v.getVectorDim();
 
     /* set up result matrix with correct dimension recursively and 0-elements */
     MathMatrix<MathMatrix<T_ELEM>> mul(np,np);
-    MathMatrix<T_ELEM> zero = toMultiplyer( v[0]*0 );
+    MathMatrix<T_ELEM> zero = toMultiplyer( v[0]*0, n0 );
     for ( int i = 0; i < mul.getSize().product(); ++i )
        mul[i] = zero;
 
     for ( int i = 0; i < v.getSize()[0]; ++i ) {
         /* recursive convert inner vectors to multipliers */
         /* for division set upper diagonal, for multipl. set lower diagonal */
-        mul.setDiagonal( toMultiplyer( v[i] ), n0-i );
+        mul.setDiagonal( toMultiplyer( v[i], n0 ), n0-i );
     }
     return mul;
 }
@@ -301,9 +600,9 @@ MathMatrix<MathMatrix<T_ELEM>> Polynomial<T_POLYNOM>::toMultiplyer
 /* converts single coefficients to recursive data format: e.g. x**2 or 3, but *
  * not 3+x                                                                    */
 
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromOneVarString
+MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromOneVarString
 ( std::string str, MathMatrix<T_ELEM> & result, int level ) const
 {
     result.setSize(np,1) = 0;
@@ -315,7 +614,7 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromOneVarString
 
     /* search for powers: x**n */
     std::string searchstr = varnames[level] + std::string("**");
-    int foundpos          = str.find( searchstr );
+    size_t foundpos = str.find( searchstr );
     assert( foundpos == 0 or foundpos == str.npos );
 
     /* if found power x**n */
@@ -338,7 +637,7 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromOneVarString
     else if ( foundpos == str.npos )
     {
         int dotsfound = 0;
-        for ( int i = 0; i < str.length(); ++i )
+        for ( size_t i = 0; i < str.length(); ++i )
             switch ( str[i] ) {
                 case '.':
                     ++dotsfound;
@@ -367,9 +666,9 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromOneVarString
     return result;
 }
 
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_POLYNOM>::fromOneVarString
+MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_COEFF>::fromOneVarString
 ( std::string str, MathMatrix<MathMatrix<T_ELEM>> & result, int level ) const
 {
     MathMatrix<T_ELEM> tmp(np,1);
@@ -383,7 +682,7 @@ MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_POLYNOM>::fromOneVarString
 
     /* search for powers: x**n */
     std::string searchstr = varnames[level] + std::string("**");
-    int foundpos          = str.find( searchstr );
+    size_t foundpos = str.find( searchstr );
     assert( foundpos == 0 or foundpos == str.npos );
 
     /* if found power x**n */
@@ -432,9 +731,9 @@ MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_POLYNOM>::fromOneVarString
     return result;
 }
 
-template<typename T_POLYNOM>
+template<typename T_COEFF>
 template<typename T_ELEM>
-MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
+MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
 ( std::string str, MathMatrix<T_ELEM> & result ) const
 {
     #if POLYNOMIAL_DEBUG >= 100
@@ -449,7 +748,7 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
     result = fromOneVarString( "0", result );
 
     /* strip whitespaces */
-    {int i = 0;
+    {size_t i = 0;
     while ( i < str.length() ) {
         if ( str[i] == ' ' )
             str.erase(i,1);
@@ -463,9 +762,9 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
     /* strip unnecessary parentheses, e.g. '(a+b)' or '(a)+b' reduce to 'a+b' */
     {assert(    std::count( str.begin(), str.end(), '(' )
             == std::count( str.begin(), str.end(), ')' ) );
-    std::stack<int> ppos;
+    std::stack<size_t> ppos;
     bool pmsignfound = false;
-    for ( int i = 0; i < str.length(); ++i ) {
+    for ( size_t i = 0; i < str.length(); ++i ) {
         switch ( str[i] ) {
             case '(':
                 ppos.push(i);
@@ -497,13 +796,13 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
      * for (...) */
 
     MathMatrix<T_ELEM> summand = result*0;
-    std::stack<int> ppos;
+    std::stack<size_t> ppos;
     bool summandinitialized = true;
 
     /* this is a trick to make this for loop apply the last summand */
     str.push_back('+');
 
-    for ( int i = 0; i < str.length(); ++i )
+    for ( size_t i = 0; i < str.length(); ++i )
     {
         #if POLYNOMIAL_DEBUG >= 100
             std::cout << "Evaluate " << str.substr(i) << ":\n" << std::flush;
@@ -537,8 +836,8 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
             case '(':
             {
                 /* there is a matching ')', because we checked correctness of string above */
-                int pos0 = i; /* points to first '(' */
-                int pos1 = i; /* will point to ')' of same level */
+                size_t pos0 = i; /* points to first '(' */
+                size_t pos1 = i; /* will point to ')' of same level */
                 int parentheses = 1;
                 while ( parentheses != 0 )
                     if ( str[++pos1] == ')' )
@@ -566,9 +865,9 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
             case 'a' ... 'z':
             {
                 bool validvarname = false;
-                int pos0 = i;
-                int pos1 = i;
-                for ( int j = 0; j < varnames.size(); ++j ) {
+                size_t pos0 = i;
+                size_t pos1 = i;
+                for ( size_t j = 0; j < varnames.size(); ++j ) {
                     if ( str.substr( pos0 ).find( varnames[j] ) == 0 )
                     {
                         pos1 = i + varnames[j].length();
@@ -615,7 +914,7 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
             case '0' ... '9':
             {
                 tmpchanged = true;
-                int j = i;
+                size_t j = i;
                 int dotsfound = 0;
                 while ( ( str[j] >= '0' and str[j] <= '9' ) or  str[j] == '.' ) {
                     ++j;
@@ -649,7 +948,7 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
                         std::cout << "raw: " << tmpmul << "\n";
                     #endif
                 #endif
-                summand = toMultiplyer( summand ) * tmp;
+                summand = toMultiplyer( summand, n0 ) * tmp;
             }
             summandinitialized = false;
         }
@@ -658,9 +957,15 @@ MathMatrix<T_ELEM> & Polynomial<T_POLYNOM>::fromString
     return result;
 }
 
-template<typename T_POLYNOM>
+/*template<typename T_COEFF, typename T_ETYPE>
+Polynomial<T_COEFF> operator*( const T_ETYPE a, const Polynomial<T_COEFF> & rhs )
+{
+    return rhs * a;
+}*/
+
+template<typename T_COEFF>
 std::ostream& operator<<
-( std::ostream& out, const Polynomial<T_POLYNOM> & p )
+( std::ostream& out, const Polynomial<T_COEFF> & p )
 {
    out << p.toString();
    return out;

@@ -1,20 +1,84 @@
-/*
- rm shapes.exe; g++ shapes.cpp -o shapes.exe -Wall -Wextra -Wchar-subscripts -Wcomment -Wconversion -Wformat -Wmissing-braces -Wmissing-noreturn -Wparentheses -Wreturn-type -Wshadow -Wsign-compare -Wstrict-aliasing -Wuninitialized -Wunknown-pragmas -Wunreachable-code -std=c++0x -I ../libs/ -g 2>&1 | grep 'error'; ./shapes.exe
-*/
+#pragma once
 
-#include <iostream>
-#include <algorithm> // count
-#include <stack>
-#include <vector>
-#include <string>   // std::stoi, std::stod
-#include <sstream>
-#include "CompileTime.h"
-#include "math/Matrix.h"
-#include "math/Polynomial.h"
+namespace Shapes {
 
-using namespace std;
+namespace Clouds {
 
-//typedef BaseMatrix<int,2> Matrix;
+    /********************************************
+     *     _:_     _:_     :  : /:\ :  :        *
+     *    | : | * | : |  = :  /  :  \  :        *
+     *    | : |   | : |    :/ :  :  : \:        *
+     * r:-1 0 1     x   r:-2 -1  0  1  2        *
+     * j=-1 : j=0            :j=1:j=0  :j=2     *
+     *           j==section         :j=1        *
+     ********************************************/
+    Polynomial< MathMatrix<double> > Weighting( int order, int section ) {
+        Pol1Var result("r"); /* need order+1 powers ! */
+        if ( order == 1 ) {
+            if ( section == -1 )
+                result = "1+r";
+            else if ( section == 0 )
+                result = "1-r";
+            else
+                result = "0";
+        } else {
+            Pol2Vars integrand("x,r");
+            integrand = "1-r";
+            integrand.integrate( "r", "x-"+toString(order), toString(order) );
+            Pol2Vars a("INVALID,x");
+            Pol2Vars b("INVALID,x");
+            /*a(0) = pa*0.0+1.0;
+            b(0) = pb*0.0+1.0;
+            for ( int i = 1; i < np; ++i ) {
+                a.data[i] = pa * a.data[i];
+                b.data[i] = pb * b.data[i];
+            }*/
+
+            //MI*integrand*(b-a)
+
+            //integrand = ;
+            //return Polynomial::Integrate( Weighting( order-1, section ), "x", "a", "b" );
+            /* e.g. TSC and j=0: */
+        }
+        return result;
+    }
+
+}
+
+Pol3Vars Int( std::string integrand, std::string var, std::string pa,
+std::string pb, std::string paceil, std::string pbfloor, int shapeorder )
+{
+    /* Module[{k, a, b, aceil, bfloor, x, g},                 *
+     * a = lims[[2]]; b = lims [[3]]; aceil = intlims[[1]];   *
+     * bfloor = intlims[[2]];                                 *
+     * g[x_] := Unevaluated[ReplaceAll[f, {lims[[1]] -> x}]]; */
+    Pol3Vars g      ( "d|x1|x2", integrand );
+    Pol3Vars a      ( "d|x1|x2", pa        );
+    Pol3Vars b      ( "d|x1|x2", pb        );
+    Pol3Vars aceil  ( "d|x1|x2", paceil     );
+    Pol3Vars bfloor ( "d|x1|x2", pbfloor    );
+    /* Unevaluated[ If[aceil - 1 == bfloor,                                   *
+     *  (MI[np].PadRight[CoefficientList[x^2 g[x] wx[n, bfloor, x], x], np]). *
+     *  (Vx[np, lims[[3]]] - Vx[np, lims[[2]]])                               *
+     * ,                                                                      */
+    if ( aceil - 1 == bfloor ) {
+        std::cerr << "aceil-1 == bfloor\n";
+    }
+    /*    (MI[np].PadRight[
+          CoefficientList[x^2 g[x] wx[n, aceil - 1, x], x], np]).
+              (Vx[np, aceil] -
+                Vx[np, lims[[2]]]) + (MI[np].PadRight[
+                 CoefficientList[x^2 g[x] wx[n, bfloor, x], x], np]).
+              (Vx[np, lims[[3]]] - Vx[np, bfloor]) +
+             \!\(
+        \*UnderoverscriptBox[\(\[Sum]\), \(k = aceil\), \(bfloor -
+                1\)]\(\((MI[np] . PadRight[CoefficientList[
+        \*SuperscriptBox[\(x\), \(2\)] g[x]\ wx[n, k, x], x],
+                  np])\) . \[IndentingNewLine]\((Vx[np, k + 1] -
+                 Vx[np, k])\)\)\)
+            ]]];*/
+    return g;
+}
 
 /******************************************************************************
  * n  ... specifies the order of the shape:                                   *
@@ -39,8 +103,45 @@ using namespace std;
  *         j=0 : 2n <= d <= 2n + 1/4, meaning the shapes are not intersecting *
  ******************************************************************************/
 
+struct {
+    int n;
+    int j;
+
+    /* fDEHI = Unevaluated[Int[1,{x2, 0, d - x1},{0, floor["d-x1"]},n,np] *
+     *    + Int[FSSInt, {x2, d - x1, n}, {floor["d-x1"] + 1, n}, n, np]]; */
+    Pol3Vars fDEHI( std::string floordmx1 )
+    {
+        std::string FSSInt = "0.25*x1*x2*(d**2 - (x1 - x2)**2)";
+        return Int( "x1x2", "x2", "0", "d-x1", "0", floordmx1    , n )
+             + Int( FSSInt, "x2", "0", "d-x1", "0", floordmx1+"1", n );
+    }
+
+    Pol3Vars operator() ( int pn, int pj ) {
+        n = pn; j = pj;
+        /* FSSInt = (d^2 - (x1 - x2)^2)/(4 x1 x2); i = Ceiling[j/2];          *
+         * floor["d-n"] = n - i + 1; floor["d"] = 2 n - i;                    *
+         * x2G["d-x1"] = k + d - floor["d"];                                  */
+        const int i = j / 2 + ( j % 2 != 0 ) ? 1 : 0 ;
+        const std::string floord   = toString( 2*n-1 );
+        const std::string floordmn = toString( n-i+1 );
+
+        return
+        /* (* AB *) Int[1, {x1, 0, d - n}, {0, floor["d-n"] - 1}, n, np] 1/(  *
+         *  4 \[Pi] \[Rho]0[n, "3D", 1]) +                                    */
+        Int( "1", "x1", "0", "d-"+toString(n), "0", floordmn+"-1", n ) // * ( 1.0 / rho3D4pi(n) )
+        /* +(* C(D+E+H+I) *) Int[ (floor["d-x1"] = n - 1; fDEHI),             *
+         *   {x1, d - n, floor["d-n"]}, {floor["d-n"], floor["d-n"]}, n, np]  */
+        + Int( fDEHI(toString(n)+"-1"), "x1", "d-"+toString(n), floordmn, floordmn,
+            floordmn, n )
+        /* +(* F(D+E+H+I)1 *) SplitInt[(floor["d-x1"] = floor["d"] - k; fDEHI)*
+         *   , {x1, floor["d-n"], n}, {k, k, x2G["d-x1"]}, n, np]             */
+        /* +(* F(D+E+H+I)2 *) SplitInt[(floor["d-x1"] = floor["d"] - k - 1;   *
+         *  fDEHI) , {x1, n - i + 1, n}, {k, x2G["d-x1"], k + 1}, n, np]      */
+        ;
+    }
+} f1;
+
 #if 1==0
-MathMatrix<double> f1( int n, int j, int np ) {};
 MathMatrix<double> f2( int n, int j, int np );
 MathMatrix<double> f2Orange( int n, int j, int np ) {};
 MathMatrix<double> f2Green ( int n, int j, int np ) {};
@@ -76,222 +177,4 @@ MathMatrix<double> f2( int n, int j, int np ) {
 }
 #endif
 
-
-int main( void ) {
-    /* the main idea is like this: 1+x = \begin{pmatrix} 0 \\ 1 \\ 2 \\ 0 \\ 0 \end{pmatrix} \cdot \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix}\\
-(1+x)\cdot \hat{=} \begin{pmatrix} 1 & 0 &0 & 0 &0 \\ 0 & 1 &0 & 0 &0 \\ 0 & 0 &1 & 0 &0 \\ 0 & 0 &0 & 1 &0 \\0 & 0 &0 & 0 &1 \\ \end{pmatrix} + \begin{pmatrix} 0 & 0 &0 & 0 &0 \\ 2 & 0 &0 & 0 &0 \\ 0 & 2 &0 & 0 &0 \\ 0 & 0 &2 & 0 &0 \\0 & 0 &0 & 2 &0 \\ \end{pmatrix}\\
-\Rightarrow (1+x)\cdot(1+x) = \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix} \begin{pmatrix} 1 & 0 &0 & 0 &0 \\ 2 & 1 &0 & 0 &0 \\ 0 & 2 &1 & 0 &0 \\ 0 & 0 &2 & 1 &0 \\0 & 0 &0 & 2 &1 \end{pmatrix}\begin{pmatrix} 0 \\ 1 \\ 2 \\ 0 \\ 0 \end{pmatrix} = \begin{pmatrix} x^{-1} \\ x^0 \\ x^1 \\ x^2 \\ x^3 \end{pmatrix} \begin{pmatrix} 0 \\ 1 \\ 4 \\ 4 \\ 0 \end{pmatrix} = 4x^2+4x^1+1 */
-
-    /* ( d**2 - (x1-x2)**2 ) / ( x1*x2 ) =
-         ( d**2*x1**(-1) - x1) * x2**(-1)
-         +                   2 * x2**( 0)
-         +         -1*x1**(-1) * x2**( 1) =
-      ( ( d**2, 0, -1, 0, 0 )_x1,
-        ( 0   , 2, 0 , 0, 0 )_x1,
-        (   -1, 0, 0 , 0, 0 )_x1,
-        (    0, 0, 0 , 0, 0 )_x1,
-        (    0, 0, 0 , 0, 0 )_x1
-      )_x2 = again polynomial space for d! */
-
-    int np = 5;
-    int n0 = 1;
-    MathMatrix<double> spaced(np,1); spaced = 0;
-/*
-    MathMatrix<double> spacedconst(np,1); spacedconst = 0;
-    MathMatrix<MathMatrix<double> > spacex1(np,1); spacex1 = spaced;
-    MathMatrix<MathMatrix<MathMatrix<double> > > spacex2(np,1); spacex2 = spacex1;
-
-    spacex2[n0-1][n0-1][n0+2] =  1;
-    spacex2[n0-1][n0+1][n0  ] = -1;
-    spacex2[n0  ][n0  ][n0  ] =  2;
-    spacex2[n0+1][n0-1][n0  ] = -1;
-
-    MathMatrix<double> MI(np,np);
-    for ( int i = 0; i < np-1; ++i )
-        MI[i+1,i] = 1.0 / double(i+1-n0); // it is wanted that 1/0 is INF
-    MI[np-1,np-1] = INF;
-    MathMatrix<double> Mx(np,np);
-    for ( int i = 0; i < np-1; ++i )
-        Mx[i+1,i] = 1;
-
-    #define SCP(a,b) (((a).Transpose())*b)[0]
-    MathMatrix<MathMatrix<double> > x2e;
-    MathMatrix<MathMatrix<MathMatrix<double> > > x2evec;
-    x2evec[n0][n0][n0] = 1; // !!! ToDo: alle n0 sind 1
-    for ( int i = n0 + 1; i < x2evec.dim; ++i )
-        x2evec[i] = x2evec[i-1] * x2e;
-
-    //MI*Mx*Mx*SCP(MI*Mx*Mx*spacex2,x2evec);
-
-    std::cout << "\frac{Q_1 Q_2}{4\pi\epsilon_0 d**2} (4 pi R**2)**2 R**2  rho0_n(R)^2\n";
-*/
-
-/****************************** Expand (1-2x)**2 ******************************/
-    MathMatrix<int> x1(np,1);
-    x1 = 0;
-    std::cout << "x1: " << x1 << "\n";
-    x1[1] =  1;
-    x1[2] = -2;
-    std::cout << "x1: " << x1 << "\n";
-
-    MathMatrix<int> mx1(np,np);
-    mx1 = 3;
-    std::cout << "mx1: " << mx1 << "\n";
-    mx1.setDiagonal(17,-2);
-    std::cout << "mx1: " << mx1 << "\n";
-    mx1 = 0;
-    for ( int i = 0; i < x1.size[0]; ++i ) {
-        mx1.setDiagonal( x1[i], n0-i );
-        // for division set upper diagonal, for multiplication set lower diagonal
-    }
-    std::cout << "mx1: " << mx1 << "\n";
-    std::cout << "mx1*x1: " << (mx1*x1) << "\n";
-    std::cout << "  => [ ";
-
-    {bool firstprinted = false;
-    for ( int i = 0; i < x1.size[0]; ++i ) {
-        if ( x1[i] == 0 )
-            continue;
-        if ( firstprinted )
-            std::cout << " + ";
-        std::cout << x1[i] << " x**(" << i-n0 << ")";
-        firstprinted = true;
-    }}
-
-    std::cout << " ]**2 = ";
-
-    MathMatrix<int> res = mx1*x1;
-    //res = mx1*x1;
-
-    {bool firstprinted = false;
-    for ( int i = 0; i < res.size[0]; ++i ) {
-        if ( res[i] == 0 )
-            continue;
-        if ( firstprinted )
-            std::cout << " + ";
-        std::cout << res[i] << " x**(" << i-n0 << ")";
-        firstprinted = true;
-    }}
-
-    std::cout << "\n";
-
-/****************************** Expand (d-3x)**2 ******************************/
-
-    /* initialize polynomial: d-2x */
-    MathMatrix<int> dspace(np,1);
-        dspace = 0;
-    MathMatrix<MathMatrix<int> > vxd(np,1);
-        vxd = dspace;
-    dspace[2] =  1;
-    vxd[1]    =  dspace;
-    dspace[1] = -3;
-    dspace[2] =  0;
-    vxd[2]    =  dspace;
-
-    /* set up multiplier manually: (d-3x)* */
-    MathMatrix<int> mzero(np,np);
-    mzero = 0;
-    MathMatrix<int> munit(np,np);
-    munit = 0;
-    munit.setDiagonal(1);
-    MathMatrix<int> mmul (np,np);
-    mmul  = 0;
-    mmul.setDiagonal(1,-1);
-
-    MathMatrix<MathMatrix<int> > mx(np,np);
-    mx = mzero;
-    mx.setDiagonal( -3 * munit,-1);
-    MathMatrix<MathMatrix<int> > md(np,np);
-    md = mzero;
-    md.setDiagonal(mmul,0);
-
-    /* convert vector to multiplication operator i.e. matrix */
-    MathMatrix<MathMatrix<int> > mxd(np,np);
-    for ( int i = 0; i< mxd.getSize().product(); ++i )
-       mxd[i].setSize(np,np);
-    mxd = 0;
-
-    for ( int i = 0; i < vxd.getSize()[0]; ++i ) {
-        /* recursive convert inner vectors to multipliers */
-        MathMatrix<int> md(np,np);
-        md = vxd[0][0] * 0;
-        for ( int j = 0; j < vxd[i].getSize()[0]; ++j )
-            md.setDiagonal( vxd[i][j], n0-j );
-
-        mxd.setDiagonal( md, n0-i );
-        // for division set upper diagonal, for multiplication set lower diagonal
-    }
-    /*********************************************************/
-
-    auto sum = md+mx;
-    std::cout << "md+mx: " << sum << "\n\n";
-    std::cout << "mxd: " << mxd << "\n\n";
-    std::cout << "md+mx == mxd: " << (mxd == sum) << "\n\n";
-
-    /*std::cout << vxd << "\n";
-    std::cout << "(md+mx)*vxd:\n";
-    std::cout << "    [" << toPolynomial( vxd, n0, 1 );
-    std::cout << "]**2\n  = " << toPolynomial( sum*vxd, n0, 1 );*/
-
-    /************************* Integrate Coulomb Force ************************/
-    /* Integrate[ x2**2
-         Integrate[ x1**2 * ( d*d-(x1-x2)**2 )/( 4 x1 x2 ), {x1,0,1} ]
-       , {x2,0,1} ]
-       => we are working 3(!) different spaces: x1,x2,d
-          After inserting the limits for x1, we leave that space!
-          Then we leave the polynomial space for x2!
-          At last we need to output the coefficients for d
-       => the limits for x1 is a d-coeff-vector of x2-coeff-vectors of
-          x1-coeff-vectors. If d and x2 don't appear in the limits, then
-          the two outer vectors are only non-zero on their diagonals
-     */
-    typedef MathMatrix<MathMatrix<MathMatrix<int>>> SpaceX1;
-    /* Todo: try to convert ShapesV6.nb into this C++ scheme, maybe even with sed or awk! */
-
-    //std::string sr1( "(x1)**(2) * ( (((d)**(2))) - (x1-x2)**2 )" ); // "/( 4 x1 x2 )"
-
-    std::vector<std::string> varnames;
-    varnames.push_back("d");
-    varnames.push_back("x1");
-    varnames.push_back("x2");
-
-    Pol3Vars result ( "d|x1|x2" );
-    Pol2Vars result2( varnames  );
-    Pol1Vars result1( varnames  );
-
-    std::cout << "\n\n";
-
-    std::cout << "3 -> " << result1.fromOneVarString("3") << "\n" << "raw: " << result1.data << "\n";
-    std::cout << "3 -> " << result2.fromOneVarString("3") << "\n" << "raw: " << result2.data << "\n";
-    std::cout << "((x1)+d) -> " << result2.fromString("((x1)+d)") << "\n" << "raw: " << result2.data << "\n";
-    std::cout << "((x1)d)+1 -> " << result2.fromString("((x1)d)+1") << "\n" << "raw: " << result2.data << "\n";
-    std::cout << "\n";
-
-    std::cout << "Polynomials with 3 variables:\n";
-    std::vector<std::string> teststrings = { "3","x1","x2**2" };
-    for ( auto it = teststrings.begin(); it != teststrings.end(); ++it ) {
-        std::cout << "\"" << *it << "\" -> " <<  result.fromOneVarString( *it ) << "\n";
-         //std::cout << "raw: " << result.data << "\n";
-         std::cout << "\n";
-    }
-
-    std::vector<std::string> teststrings2 = {"(3+(1+7))","((x1))","((x1)+x2)", "x1**2 * ( d**2 - x1**2 - x2**2 + 2 x1 x2 )" };
-    for ( auto it = teststrings2.begin(); it != teststrings2.end(); ++it ) {
-        std::cout << "\"" << *it << "\" -> " <<  result.fromString( *it ) << "\n";
-        std::cout << "raw: " << result.data << "\n";
-        std::cout << "\n";
-    }
-    std::cout << "\n";
-
-
-    /********* TODO **********
-
-        als klasse mit membervariablen:
-        np,n0,varnames
-    implementieren
-
-    **************************/
-
-    return 0;
-}
-
+} // namespace shapes
