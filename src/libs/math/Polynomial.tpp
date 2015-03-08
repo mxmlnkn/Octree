@@ -45,8 +45,11 @@ Polynomial<T_COEFF>::Polynomial
 ( std::vector<std::string> pvarnames, std::string spol, int pn0 )
  : varnames(pvarnames), np(MAX_POWERS), n0(pn0)
 {
+    setSize( this->data, np );
+    this->data = 0;
     this->checkVariableNames();
-    this->fromString( spol ); /* automatically sets size */
+    if ( spol != "0" )
+        this->fromString( spol ); /* automatically sets size */
 }
 
 /* takes the first non alphanumerical character as a delimiter, else space is
@@ -56,6 +59,8 @@ Polynomial<T_COEFF>::Polynomial
 ( std::string pvarnames, std::string spol, int pn0 )
  : varnames(), np(MAX_POWERS), n0(pn0)
 {
+    setSize( this->data, np );
+    this->data = 0;
     this->varnames = splitByDelimiter( pvarnames );
     this->checkVariableNames();
     this->fromString( spol ); /* automatically sets size */
@@ -67,7 +72,7 @@ Polynomial<T_COEFF>::Polynomial( const T_COEFF & src, int pn0 )
 {
     assert( data.isVector() );
     int levels = this->countLevels();
-    #if POLYNOMIAL_DEBUG >= 100
+    #if DEBUG_POLYNOMIAL == 100
         std::cerr << "Counted " << levels << " Levels when constructing from nested Matrix\n";
     #endif
     assert( levels < 'z'-'a' );
@@ -93,6 +98,10 @@ int Polynomial<T_COEFF>::checkVariableNames( void )
         assert( "No varnames given!" && false );
         return -1;
     }
+    //std::cout << "varnames: " << varnames.size() << " countLevels: " << countLevels(this->data) << "\n";
+    assert( not ( varnames.size() < (size_t) countLevels(this->data) ) && "Too few variables given!" );
+    /* more variables given than needed is not that bad */
+    assert( not ( varnames.size() > (size_t) this->countLevels() ) && "Too much variables given!" );
 
     int wrongvarnames = 0;
     /* Only consisting of alphanum and beginning with letter */
@@ -127,7 +136,7 @@ int Polynomial<T_COEFF>::checkVariableNames( void )
 /******************** Wrapper for recursive template calls ********************/
 /* Counts recursion MathMatrix */
 template<typename T_COEFF>
-inline int Polynomial<T_COEFF>::countLevels( void ) const
+constexpr int Polynomial<T_COEFF>::countLevels( void ) const
 {
     return countLevels( this->data );
 }
@@ -196,6 +205,33 @@ int Polynomial<T_COEFF>::getZero( void ) const
 }
 
 template<typename T_COEFF>
+Polynomial<T_COEFF> & Polynomial<T_COEFF>::renameVariables
+( std::string pfrom, std::string pto )
+{
+    #if DEBUG_POLYNOMIAL == 96
+        std::cerr << "Rename " << (*this);
+    #endif
+    std::vector<std::string> oldvars = this->varnames;
+    std::vector<std::string> from    = this->splitByDelimiter( pfrom );
+    std::vector<std::string> to      = this->splitByDelimiter( pto );
+
+    assert( from.size() == to.size() && "number of variables differs in renameVariables" );
+    for ( auto it = from.begin(); it != from.end(); ++it )
+    {
+        auto foundit = find( oldvars.begin(), oldvars.end(), *it );
+        if ( foundit != oldvars.end() )
+        {
+            size_t index = foundit - oldvars.begin();
+            varnames[index] = to[index];
+        }
+    }
+    #if DEBUG_POLYNOMIAL == 96
+        std::cerr << " to " << (*this) << "\n";
+    #endif
+    return *this;
+}
+
+template<typename T_COEFF>
 Polynomial<T_COEFF> & Polynomial<T_COEFF>::reorderVariableNames
 ( std::string to )
 {
@@ -206,7 +242,6 @@ Polynomial<T_COEFF> & Polynomial<T_COEFF>::reorderVariableNames
         assert( find( varnames.begin(), varnames.end(), *it ) != varnames.end() );
 
     std::string output = this->toString();
-    this->varnames.clear();
     this->varnames = newnames;
     this->fromString(output);
 }
@@ -277,15 +312,32 @@ template<typename T_COEFF>
 inline Polynomial<T_COEFF> & Polynomial<T_COEFF>::operator*=( Polynomial<T_COEFF> b )
 {
     /* TODO!!! change np if necessary */
-    #if POLYNOMIAL_DEBUG >= 99
+    #if DEBUG_POLYNOMIAL == 99
         std::cerr << "multiply:\n " << this->data << "\nwith\n " << b.data << "\n";
         std::cerr << "toMultiplyer returned:\n " << toMultiplyer(this->data, this->n0) << "\n";
     #endif
     this->data = toMultiplyer(this->data, this->n0) * b.data;
-    #if POLYNOMIAL_DEBUG >= 99
+    #if DEBUG_POLYNOMIAL == 99
         std::cerr << "multiplied:\n " << this->data << "\n";
     #endif
     return *this;
+}
+
+template<typename T_COEFF>
+Polynomial<T_COEFF> Polynomial<T_COEFF>::power( int exponent ) const
+{
+    #if DEBUG_POLYNOMIAL == 94
+        std::cerr << "Calculate power of " << exponent << " of " << (*this) << "\n";
+    #endif
+    assert( exponent >= 0 ); // division not yet supported and not always possible
+    Polynomial<T_COEFF> result = *this;
+    result = "1";
+    T_COEFF mul = this->toMultiplyer();
+    while ( exponent > 1 ) {
+        result.data = mul * result.data;
+        --exponent;
+    }
+    return result;
 }
 
 template<typename T_COEFF>
@@ -316,9 +368,12 @@ inline Polynomial<T_COEFF> Polynomial<T_COEFF>::operator* ( T_ETYPE b ) const
 }
 
 template<typename T_COEFF>
-inline bool Polynomial<T_COEFF>::operator==( Polynomial<T_COEFF> b )
+template<typename T_COEFF2>
+inline bool Polynomial<T_COEFF>::operator==( Polynomial<T_COEFF2> b )
 {
-    return ( this->data == b.data ) and ( this->varnames == b.varnames );
+    /* by comparing toString we also can compare Polynoms with different      *
+     * amounts of internal variables / recursion                              */
+    return ( this->toString() == b.toString() );
 }
 
 template<typename T_COEFF>
@@ -338,7 +393,7 @@ void Polynomial<T_COEFF>::operator=( const T_COEFF & src )
     this->np = data.getSize()[0];
     /* leave n0 where it was */
 
-    #if POLYNOMIAL_DEBUG >= 99
+    #if DEBUG_POLYNOMIAL == 99
         std::cerr << "Counted " << levelsnew << " Levels when assigning from nested Matrix\n";
     #endif
 
@@ -346,10 +401,45 @@ void Polynomial<T_COEFF>::operator=( const T_COEFF & src )
     {
         this->varnames.clear();
         assert( levelsnew < 'z'-'a' );
-        char varname = 'a';
-        for ( int i = 0; i < levelsnew; ++i )
+        std::string varname = "a";
+        for ( int i = 0; i < levelsnew; ++i ) {
             this->varnames.push_back( varname );
+            ++varname[0];
+        }
     }
+}
+
+template<typename T_COEFF>
+void Polynomial<T_COEFF>::operator=( const Polynomial<T_COEFF> & src )
+{
+    this->data = src.data;
+    this->varnames = src.varnames;
+    this->n0 = src.n0;
+    this->np = src.np;
+}
+
+template<typename T_COEFF>
+template<typename T_COEFF2>
+void Polynomial<T_COEFF>::operator=( const Polynomial<T_COEFF2> & src )
+{
+    /* by using toString we also can copy from Polynoms with different        *
+     * amounts of internal variables / recursion. Watch out as this doesn't   *
+     * copy the varnames, because they won't be equal. User has to do what he *
+     * wants !!!                                                              */
+    this->n0 = src.getZero();
+    this->np = src.getSize();
+    (*this)  = src.toString();
+    #if DEBUG_POLYNOMIAL == 96
+        std::cerr << "Assigned " << src << " => " << (*this) << "\n";
+        std::cerr << "  this->varnames: ";
+        for ( auto it = varnames.begin(); it != varnames.end(); ++it )
+            std::cerr << (*it) << ",";
+        std::cerr << "\n";
+        std::cerr << "  src.varnames: ";
+        for ( auto it = src.varnames.begin(); it != src.varnames.end(); ++it )
+            std::cerr << (*it) << ",";
+        std::cerr << "\n";
+    #endif
 }
 
 template<typename T_COEFF>
@@ -371,18 +461,20 @@ auto Polynomial<T_COEFF>::integrate
     /* Determine which variable we want to integrate and reorder it to the    *
      * front, so that setting up the integration Matrix will be easier        */
     std::vector<std::string> newvarorder = this->varnames;
-    auto it = find( newvarorder.begin(), newvarorder.end(), variable );
-    assert( it != newvarorder.end() );
-    newvarorder.erase( it );
+    auto foundit = find( newvarorder.begin(), newvarorder.end(), variable );
+    assert( foundit != newvarorder.end() );
+    newvarorder.erase( foundit );
     std::vector<std::string> resultvars = newvarorder;
     newvarorder.insert( newvarorder.begin(), variable );
     Polynomial<T_COEFF> integrand( newvarorder, this->toString() );
-    std::cerr << "Created integrand with new variable order\n";
+    #if DEBUG_POLYNOMIAL == 98
+        std::cerr << "Created integrand with new variable order\n";
+    #endif
 
     /* Check if vector is long enough to contain extra power */
     auto maxpower = integrand.data[ integrand.data.getSize()[0] - 1 ];
     if ( maxpower != maxpower*0 ) {
-        #if POLYNOMIAL_DEBUG >= 98
+        #if DEBUG_POLYNOMIAL == 98
             std::cerr << "While integrating Vector needed to be elongated\n";
         #endif
         integrand.setSize( 2*np );
@@ -399,7 +491,7 @@ auto Polynomial<T_COEFF>::integrate
             MI(i,i-1) = unit.toMultiplyer() * INF;
         else
             MI(i,i-1) = unit.toMultiplyer() * ( 1.0 / double( i-n0 ) );
-    #if POLYNOMIAL_DEBUG >= 98
+    #if DEBUG_POLYNOMIAL == 98
         std::cerr << "Set up integration Matrix\n";
     #endif
 
@@ -412,7 +504,7 @@ auto Polynomial<T_COEFF>::integrate
     a.push_back( unit );
     b.push_back( unit );
     for ( int i = 1; i < newnp; ++i ) {
-        #if POLYNOMIAL_DEBUG >= 98
+        #if DEBUG_POLYNOMIAL == 98
             std::cerr << "Calculate power " << i << "\n";
         #endif
         a.push_back( a0 * a[i-1] );
@@ -420,19 +512,33 @@ auto Polynomial<T_COEFF>::integrate
     }
 
     /* Integrate and apply limits */
-    #if POLYNOMIAL_DEBUG >= 98
+    #if DEBUG_POLYNOMIAL == 98
         std::cerr << "Integrate integrand ( size: " << integrand.data.getSize() << " with MI ( size: " << MI.getSize() << " )\n";
         std::cerr << "MI: " << MI << "\n";
-        std::cerr << "Integrand: " << integrand.data << "\n";
+        std::cerr << "Integrand: " << integrand << "\n";
     #endif
     T_COEFF indefinite = MI * integrand.data;
-    #if POLYNOMIAL_DEBUG >= 98
+    #if DEBUG_POLYNOMIAL == 98
+        std::cerr << "Integrated: " << Polynomial<T_COEFF>( newvarorder, indefinite ) << "\n";
         std::cerr << "Applying limits\n";
+        std::cerr << "a : a[1] = " << a[1].data << "\n";
+        int power = 0;
+        for ( auto it = a.begin(); it != a.end(); ++it )
+             std::cerr << "Power " << power++ << " : " << *it << "\n";
+        std::cerr << "b : b[1] = " << b[1].data << "\n";
+        power = 0;
+        for ( auto it = b.begin(); it != b.end(); ++it )
+             std::cerr << "Power " << power++ << " : " << *it << "\n";
     #endif
     assert( (size_t) indefinite.getSize()[0] == a.size() );
     ReturnPol result( resultvars, "0" );
-    for ( int i = 0; i < indefinite.getSize()[0]; ++i )
+    for ( int i = 0; i < indefinite.getSize()[0]; ++i ) {
+        #if DEBUG_POLYNOMIAL == 98
+            std::cerr << "b[i]-a[i] = " << (b[i]-a[i]) << "\n";
+            std::cerr << "result += " << ( b[i] - a[i] ) * ReturnPol( indefinite[i], integrand.getZero() ) << "\n";
+        #endif
         result += ( b[i] - a[i] ) * ReturnPol( indefinite[i], integrand.getZero() );
+    }
 
     return result;
 }
@@ -462,7 +568,7 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::setSize
 
 template<typename T_COEFF>
 template<typename T_ELEM>
-int Polynomial<T_COEFF>::countLevels
+constexpr int Polynomial<T_COEFF>::countLevels
 ( MathMatrix<T_ELEM> v, int level )
 {
     return countLevels( v[0], level+1 );
@@ -471,7 +577,7 @@ int Polynomial<T_COEFF>::countLevels
 /* Last specialized call for recursion toPolynomial goes here */
 template<typename T_COEFF>
 template<typename T_ELEM>
-int Polynomial<T_COEFF>::countLevels
+constexpr int Polynomial<T_COEFF>::countLevels
 ( T_ELEM v, int level )
 {
     return level;
@@ -497,12 +603,6 @@ std::string Polynomial<T_COEFF>::toString
 {
     std::stringstream out;
 
-    /* Count summands to decide whether parentheses are necessary */
-    int nsummands = 0;
-    for ( int i = 0; i < v.size[0]; ++i )
-        if ( v[i] != v[i]*0 )
-            ++nsummands;
-
     bool firstprinted = false;
     for ( int i = 0; i < v.size[0]; ++i )
     {
@@ -512,38 +612,13 @@ std::string Polynomial<T_COEFF>::toString
 
         std::string tmp = toString( v[i], level+1 );
 
-        /* count coefficients by counting + and - */
-        long int ncoeffs = 1;
-        ncoeffs += std::count( tmp.begin(), tmp.end(), '+' );
-        ncoeffs += std::count( tmp.begin(), tmp.end(), '-' );
-        if ( tmp[0] == '+' or tmp[0] == '-' )
-            --ncoeffs;
-
-        /* only print a sign, if needed i.e. if tmp does not begin with one   *
-         * and if this is not the very first string to be printed             */
-        if ( tmp[0] != '+' and tmp[0] != '-' and firstprinted )
+        /* only print a sign, if this is not the first string to be printed   */
+        if ( firstprinted )
             out << "+";
-        firstprinted = true;
-
-        /* if power > 0 and return of toString == "1", then don't print it*/
-        int power = i-n0;
-        if ( ncoeffs > 1 and not ( nsummands == 1 or power == 0 ) ) {
-            out << "(" << tmp << ")";
-        } else {
-            if ( tmp.compare( "+1" ) == 0 or tmp.compare( "1" ) == 0 ) {
-                if ( power == 0 )
-                    out << "1";
-            } else if ( tmp.compare( "-1" ) == 0 ) {
-                if ( power != 0 )
-                    out << "-";
-                else /* power == 0 */
-                    out << "-1";
-            } else
-                out << tmp;
-        }
+        out << "(" << tmp << ")";
 
         /* print variable name: x**(n) if not x**0 */
-        if ( power != 0 )
+        if ( i-n0 /* power */ != 0 )
         {
             /* print negative powers as fractions */
             if ( i-n0 < 0 )
@@ -555,9 +630,11 @@ std::string Polynomial<T_COEFF>::toString
             else if ( i-n0 != 1 )
                 out << "**" << i-n0;
         }
+
+        firstprinted = true;
     }
 
-    return out.str();
+    return cleanString( out.str() );
 }
 
 /* Last specialized call for recursion toMultiplyer goes here, T_ELEM is e.g. int */
@@ -597,6 +674,131 @@ MathMatrix<MathMatrix<T_ELEM>> Polynomial<T_COEFF>::toMultiplyer
     return mul;
 }
 
+template<typename T_COEFF>
+std::string Polynomial<T_COEFF>::cleanString( std::string str )
+{
+    /* strip unnecessary parentheses, e.g. '(a+b)' or '(a)+b' reduce to 'a+b' */
+    assert(    std::count( str.begin(), str.end(), '(' )
+            == std::count( str.begin(), str.end(), ')' ) );
+    std::stack<size_t> ppos;
+    std::stack<int   > nsummands;
+    std::stack<bool  > newsummandfound;
+    int stacksize = 0;
+    for ( size_t i = 0; i < str.length(); ++i ) {
+        switch ( str[i] ) {
+            case '(':
+                newsummandfound.push(false);
+                      nsummands.push(false);
+                           ppos.push(i);
+                ++stacksize;
+                break;
+            case ')':
+                assert( stacksize > 0 && "this could be triggered by ')a+b(' which is an invalid string!" );
+                if ( nsummands.top() == 0 ) {
+                    str.erase( i,1 );
+                    str.erase( ppos.top(), 1 );
+                    newsummandfound.pop();
+                          nsummands.pop();
+                               ppos.pop();
+                    i -= 2;
+                }
+                --stacksize;
+                break;
+            case '+':
+            case '-':
+                if ( stacksize == 0 )
+                    break;
+                if ( newsummandfound.top() ) {
+                    nsummands.top() += 1;
+                    newsummandfound.top() = false;
+                }
+                break;
+            default:
+                if ( stacksize == 0 )
+                    break;
+                newsummandfound.top() = true;
+                break;
+        }
+    }
+    /* strip all-enclosing parentheses, e.g. '((b+a))' to 'b+a' */
+    while ( str[0] == '(' and str[ str.length()-1 ] == ')' ) {
+        str.erase( str.length()-1, 1 );
+        str.erase( 0, 1 );
+    }
+
+    /* Find and replace double signs: '++' -> '+', '+-' -> '-', '-+' -> '-' */
+    size_t foundpos;
+    do {
+        foundpos = str.find( "++" );
+        if ( foundpos != str.npos )
+        {
+            str.erase( foundpos,1 );
+            continue;
+        }
+
+        foundpos = str.find( "+-" );
+        if ( foundpos != str.npos )
+        {
+            str.erase( foundpos,1 );
+            continue;
+        }
+
+        foundpos = str.find( "-+" );
+        if ( foundpos != str.npos )
+        {
+            str.erase( ++foundpos,1 );
+            continue;
+        }
+        /* only if neither of the 3 strings were found */
+        break;
+    } while ( true );
+
+    #if DEBUG_POLYNOMIAL == 97
+        std::cerr << "Trying to strip unnecessary '1's from: " << str;
+    #endif
+
+    /* Strip unnecessary factors equaling 1, e.g. '1x' or '(a+b)1', but not
+     * '(a+b1)', as b1 could be a variable! */
+    size_t curpos = 0;
+    while ( curpos < str.length() ) {
+        size_t relfound1 = str.substr(curpos).find( "1" );
+        if ( relfound1 == str.npos )
+            break;
+        size_t found1 = curpos + relfound1;
+        if ( found1+1 >= str.length() )
+            break;
+
+        /* if occurence is at beginning of string */
+        if ( found1 == 0 and isalpha( str[found1+1] ) ) {
+            str.erase(found1,1);
+            continue;
+        }
+        /* if occurence is at end of string ( would also kill alone standing 1s ) */
+        /*if ( found1 == str.length()-1 and not isalnum( str[found1-1] ) ) {
+            str.erase(found1);
+            continue;
+        }*/
+        /* if left of it is neither a letter nor a digit, but right of it is  *
+         * a letter, meaning a variable name begins, then erase '1'           */
+        if ( not isalnum( str[found1-1] ) and isalpha( str[found1+1] ) ) {
+            str.erase(found1,1);
+            continue;
+        }
+        /* programm will only come to this point if nothing was deleted */
+        curpos += relfound1 + 1;
+    }
+
+    /* Strip leading plus signs */
+    if ( str[0] == '+' )
+        str.erase(0,1);
+
+    #if DEBUG_POLYNOMIAL == 97
+        std::cerr << " => " << str << "\n";
+    #endif
+
+    return str;
+}
+
 /* converts single coefficients to recursive data format: e.g. x**2 or 3, but *
  * not 3+x                                                                    */
 
@@ -621,10 +823,10 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromOneVarString
     if ( foundpos == 0 )
     {
         std::string spower = str.substr( foundpos+varnames[level].length()+2 );
-        int power = atoi( spower.c_str() );
-        if ( n0 + power >= np )
-            result.setSize( n0+power+1, 1 );
-        result[n0 + power] = 1;
+        int ipower = atoi( spower.c_str() );
+        if ( n0 + ipower >= np )
+            result.setSize( n0+ipower+1, 1 );
+        result[n0+ipower] = 1;
     }
     /* if found varname without power */
     else if ( str == varnames[level] )
@@ -686,25 +888,25 @@ MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_COEFF>::fromOneVarString
     assert( foundpos == 0 or foundpos == str.npos );
 
     /* if found power x**n */
-    int power = 0;
+    int ipower = 0;
     if ( foundpos == 0 )
     {
         std::string spower = str.substr( foundpos+varnames[level].length()+2 );
-        power = atoi( spower.c_str() );
-        if ( n0 + power >= np ) {
-            setSize( result, n0+power+1 );
-            setSize( tmp   , n0+power+1 );
+        ipower = atoi( spower.c_str() );
+        if ( n0 + ipower >= np ) {
+            setSize( result, n0+ipower+1 );
+            setSize( tmp   , n0+ipower+1 );
         }
-        result[n0 + power] = fromOneVarString( "1", tmp, level+1 );
-        if ( result[n0 + power].getSize()[0] > np ) {
-            setSize( result, result[n0 + power].getSize()[0] );
-            setSize( tmp   , result[n0 + power].getSize()[0] );
+        result[n0 + ipower] = fromOneVarString( "1", tmp, level+1 );
+        if ( result[n0 + ipower].getSize()[0] > np ) {
+            setSize( result, result[n0 + ipower].getSize()[0] );
+            setSize( tmp   , result[n0 + ipower].getSize()[0] );
         }
     }
     /* if found varname without power */
     else if ( str == varnames[level] )
     {
-        power = 1;
+        ipower = 1;
         if ( n0 + 1 >= np ) {
             setSize( result, n0+1+1 );
             setSize( tmp   , n0+1+1 );
@@ -718,7 +920,7 @@ MathMatrix<MathMatrix<T_ELEM>> & Polynomial<T_COEFF>::fromOneVarString
     /* if string is number, convert it */
     else if ( foundpos == str.npos )
     {
-        power = 0;
+        ipower = 0;
         result[n0] = fromOneVarString( str, tmp, level+1 );
         if ( result[n0].getSize()[0] > np ) {
             setSize( result, result[n0].getSize()[0] );
@@ -736,10 +938,10 @@ template<typename T_ELEM>
 MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
 ( std::string str, MathMatrix<T_ELEM> & result ) const
 {
-    #if POLYNOMIAL_DEBUG >= 100
+    #if DEBUG_POLYNOMIAL == 100
         std::cout << "Input String   : " << str << "\n";
         std::cout << "Variable Names : ";
-        for ( int i = 0; i < varnames.size(); ++i ) {
+        for ( size_t i = 0; i < varnames.size(); ++i ) {
             std::cout << varnames[i] << ",";
         }
         std::cout << "\n";
@@ -755,42 +957,11 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
         else
             ++i;
     }}
-    #if POLYNOMIAL_DEBUG >= 100
+    #if DEBUG_POLYNOMIAL == 100
         std::cout << "Strip Whitespaces: " << str << "\n";
     #endif
 
-    /* strip unnecessary parentheses, e.g. '(a+b)' or '(a)+b' reduce to 'a+b' */
-    {assert(    std::count( str.begin(), str.end(), '(' )
-            == std::count( str.begin(), str.end(), ')' ) );
-    std::stack<size_t> ppos;
-    bool pmsignfound = false;
-    for ( size_t i = 0; i < str.length(); ++i ) {
-        switch ( str[i] ) {
-            case '(':
-                ppos.push(i);
-                break;
-            case ')':
-                if ( not pmsignfound ) {
-                    str.erase( i,1 );
-                    str.erase( ppos.top(), 1 );
-                    ppos.pop();
-                    i -= 2;
-                }
-                pmsignfound = false;
-                break;
-            case '+':
-            case '-':
-                pmsignfound = true;
-                break;
-        }
-    }
-    while ( str[0] == '(' and str[ str.length()-1 ] == ')' ) {
-        str.erase( str.length()-1, 1 );
-        str.erase( 0, 1 );
-    }}
-    #if POLYNOMIAL_DEBUG >= 100
-        std::cout << "Strip unnecessary parentheses: " << str << "\n";
-    #endif
+    str = cleanString( str );
 
     /* analyze highest level only, meaning: 2a*(...)+b-(...) call recursively
      * for (...) */
@@ -802,49 +973,106 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
     /* this is a trick to make this for loop apply the last summand */
     str.push_back('+');
 
+    /* basically tmp it has the last factor saved, on '+','-' it is set to 0 */
+    MathMatrix<T_ELEM> tmp = result*0;
     for ( size_t i = 0; i < str.length(); ++i )
     {
-        #if POLYNOMIAL_DEBUG >= 100
+        #if DEBUG_POLYNOMIAL == 100
             std::cout << "Evaluate " << str.substr(i) << ":\n" << std::flush;
         #endif
 
         bool tmpchanged = false;
-        MathMatrix<T_ELEM> tmp = result*0;
 
         switch ( str[i] ) {
             /* Add summand to result and reinitialize it */
             case '+':
-                #if POLYNOMIAL_DEBUG >= 100
+                #if DEBUG_POLYNOMIAL == 100
                     std::cerr << "result += summand\n";
                     std::cerr << " result : " << result  << "\n";
                     std::cerr << " summand: " << summand << "\n";
                 #endif
                 result += summand;
                 fromOneVarString( "+0", summand );
+                fromOneVarString( "+0", tmp );
                 summandinitialized = true;
                 break;
             case '-':
                 result += summand;
                 fromOneVarString( "-1", summand );
-                #if POLYNOMIAL_DEBUG >= 100
+                fromOneVarString( "+0", tmp );
+                #if DEBUG_POLYNOMIAL == 100
                     std::cout << "fromOneVarString('-1'): " << summand << "\n";
                 #endif
                 summandinitialized = false;
+                break;
+
+            /* Evaluate more complex powers, like (a+b)**3 or 3**2 */
+            case '*':
+                /* need at least two more characters to be a power operator */
+                if ( i+2 < str.length() )
+                {
+                    #if DEBUG_POLYNOMIAL == 100
+                        std::cerr << "One '*' found, test neighbor\n";
+                        std::cerr << "Neighbor of " << str << std::flush;
+                        std::cerr << " is " << str[i+1] << "\n";
+                    #endif
+                    if ( str[i+1] == '*' )
+                    {
+                        #if DEBUG_POLYNOMIAL == 100
+                            std::cerr << "Two '*' found -> power operator\n";
+                        #endif
+                        assert( not summandinitialized && "A valid factor must stand before power operator '**'!" );
+
+                        /* Read integer behind '**' */
+                        size_t pos0 = i+2;
+                        size_t pos1 = i+2;
+                        while ( pos1 < str.length() ) {
+                            if ( not isdigit( str[pos1] ) )
+                                break;
+                            ++pos1;
+                        }
+
+                        /* Calculate power */
+                        Polynomial<MathMatrix<T_ELEM>> poltmp = *this;
+                        poltmp = tmp;
+                        int ipower = atoi( str.substr( pos0, pos1-pos0 ).c_str() );
+                        tmp = poltmp.power( ipower ).data;
+                        #if DEBUG_POLYNOMIAL == 100
+                            std::cerr << poltmp << " to the power of " << ipower << " = " << toString(tmp) << "\n";
+                        #endif
+
+                        /* update position */
+                        i = pos1-1;
+                        tmpchanged = true;
+                    }
+                    else
+                    {
+                        #if DEBUG_POLYNOMIAL == 100
+                            std::cerr << "Only one '*' found -> ignore it\n";
+                        #endif
+                    }
+                }
                 break;
 
             /* Recursively evaluate things in parentheses */
             case '(':
             {
                 /* there is a matching ')', because we checked correctness of string above */
-                size_t pos0 = i; /* points to first '(' */
-                size_t pos1 = i; /* will point to ')' of same level */
+                size_t pos0 = i+1; /* points to character after '(' */
+                size_t pos1 = i; /* will point to char after ')' of same level */
                 int parentheses = 1;
                 while ( parentheses != 0 )
-                    if ( str[++pos1] == ')' )
-                        --parentheses;
+                    switch ( str[++pos1] ) {
+                        case '(':
+                            ++parentheses;
+                            break;
+                        case ')':
+                            --parentheses;
+                            break;
+                    }
                 /* e.g. "ab(cd)" -> pos0 = 2; pos1 = 5 */
-                std::string enclosed = str.substr( pos0+1, pos1-pos0-1 );
-                #if POLYNOMIAL_DEBUG >= 100
+                std::string enclosed = str.substr( pos0, pos1-pos0 );
+                #if DEBUG_POLYNOMIAL == 100
                     std::cout << "Recursively evaluate: " << enclosed << "\n";
                 #endif
                 tmp = fromString( enclosed, tmp );
@@ -852,10 +1080,10 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
                     setSize( summand, tmp.getSize()[0] );
                     setSize( result , tmp.getSize()[0] );
                 }
-                #if POLYNOMIAL_DEBUG >= 100
+                #if DEBUG_POLYNOMIAL == 100
                     std::cout << "Recursively evaluated: " << enclosed << " to " << toString(tmp) << "\n";
                 #endif
-                i = pos1;
+                i = pos1 -1;
                 tmpchanged = true;
                 break;
             }
@@ -864,6 +1092,61 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
             case 'A' ... 'Z':
             case 'a' ... 'z':
             {
+                /* If I found, test if it is from an Integrate[...,...,...,...]   *
+                 * command, if not don't break, as it could be a variable name    */
+                if ( str[i] == 'I' )
+                {
+                    std::string keyword = "Integrate[";
+                    if ( str.substr(i).find(keyword) == 0 )
+                    {
+                        std::vector<std::string> arguments;
+                        /* pos1 points to '[', because it will be incremented *
+                         * before the first character is being checked        */
+                        size_t pos0 = i+keyword.length();
+                        size_t pos1 = pos0-1;
+                        int brackets = 1;
+                        while ( brackets != 0 )
+                            switch ( str[++pos1] ) {
+                            case '[':
+                                ++brackets;
+                                break;
+                            case ']':
+                                if ( brackets == 1 ) {
+                                    arguments.push_back( str.substr( pos0, pos1-pos0 ) );
+                                    pos0 = pos1+1;
+                                }
+                                --brackets;
+                                break;
+                            case ',':
+                                if ( brackets == 1 ) {
+                                    arguments.push_back( str.substr( pos0, pos1-pos0 ) );
+                                    pos0 = pos1+1;
+                                }
+                            }
+                        #if DEBUG_POLYNOMIAL == 100
+                            std::cerr << "Integrate command found with arguments:\n";
+                            for ( auto it = arguments.begin(); it != arguments.end(); ++it )
+                                    std::cerr << (*it) << "\n";
+                        #endif
+
+                        assert( arguments.size() == 4 && "Integrate takes exactly 4 arguments: Integrate[integrand,integration variable, from, to] !" );
+
+                        /* create new Polynomial for integrand with one variable extra */
+                        std::vector<std::string> newvars = this->varnames;
+                        newvars.push_back( arguments[1] );
+                        Polynomial<MathMatrix<MathMatrix<T_ELEM>>> integrand( newvars, arguments[0] );
+                        tmp = integrand.integrate( arguments[1], arguments[2], arguments[3] ).data;
+                        #if DEBUG_POLYNOMIAL == 100
+                            std::cerr << "Integration Result: " << tmp << "\n";
+                        #endif
+
+                        tmpchanged = true;
+                        i = pos1-1;
+                        break;
+                    }
+                }
+
+
                 bool validvarname = false;
                 size_t pos0 = i;
                 size_t pos1 = i;
@@ -887,11 +1170,14 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
 
                         if ( str[pos1] == '*' and str[pos1+1] == '*' ) {
                             pos1 += 2;
-                            while ( str[pos1] >= '0' and str[pos1] <= '9' )
+                            while ( pos1 < str.length() ) {
+                                if ( not isdigit( str[pos1] ) )
+                                    break;
                                 ++pos1;
+                            }
                         }
                         std::string sp = str.substr( pos0, pos1-pos0 );
-                        #if POLYNOMIAL_DEBUG >= 100
+                        #if DEBUG_POLYNOMIAL == 100
                             std::cout << "Convert Variable: " << sp << "\n";
                         #endif
                         tmp = fromOneVarString( sp, tmp );
@@ -899,7 +1185,7 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
                             setSize( summand, tmp.getSize()[0] );
                             setSize( result , tmp.getSize()[0] );
                         }
-                        #if POLYNOMIAL_DEBUG >= 100
+                        #if DEBUG_POLYNOMIAL == 100
                             std::cout << " to: " << tmp << "\n" << std::flush;
                         #endif
                         tmpchanged = true;
@@ -915,36 +1201,41 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
             {
                 tmpchanged = true;
                 size_t j = i;
+                /* look how long the number is and wheter it contains a dot */
                 int dotsfound = 0;
-                while ( ( str[j] >= '0' and str[j] <= '9' ) or  str[j] == '.' ) {
-                    ++j;
+                while ( j < str.length() ) {
+                    if ( not ( isdigit(str[j]) or str[j] == '.' ) )
+                        break;
                     if ( str[j] == '.' )
                         ++dotsfound;
+                    ++j;
                 }
                 std::string number = str.substr( i, j-i );
-                assert( dotsfound <= 1 );
+                /* convert substring containing number to number */
+                assert( dotsfound <= 1 && "Things like '3.4.1' or '3..' not allowed!");
                 tmp = fromOneVarString( number, tmp );
                 if ( tmp.getSize()[0] > np ) {
                     setSize( summand, tmp.getSize()[0] );
                     setSize( result , tmp.getSize()[0] );
                 }
+                i = j-1;
                 tmpchanged = true;
                 break;
             }
-        }
+        } /* end switch( str[i] ) */
 
         if ( tmpchanged ) {
             if ( summandinitialized ) {
-                #if POLYNOMIAL_DEBUG >= 100
+                #if DEBUG_POLYNOMIAL == 100
                     std::cout << "summand = tmp\n";
                 #endif
                 summand = tmp;
             } else {
-                #if POLYNOMIAL_DEBUG >= 100
+                #if DEBUG_POLYNOMIAL == 100
                     std::cout << "summand = summand * tmp\n";
-                    auto tmpmul = toMultiplyer( summand );
+                    auto tmpmul = toMultiplyer( summand, this->n0 );
                     std::cout << "Multiplyer dims: " << tmpmul.getSize() << "\n";
-                    #if POLYNOMIAL_DEBUG >= 110
+                    #if DEBUG_POLYNOMIAL == 110
                         std::cout << "raw: " << tmpmul << "\n";
                     #endif
                 #endif

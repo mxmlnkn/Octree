@@ -187,12 +187,11 @@ int main( void ) {
 
     std::vector<std::string> varnames;
     varnames.push_back("d");
-    varnames.push_back("x1");
-    varnames.push_back("x2");
-
-    Pol3Vars result ( "d|x1|x2" );
-    Pol2Vars result2( varnames  );
     Pol1Var  result1( varnames  );
+    varnames.push_back("x1");
+    Pol2Vars result2( varnames  );
+    varnames.push_back("x2");
+    Pol3Vars result ( "d|x1|x2" );
 
     std::cout << "\n\n";
 
@@ -232,16 +231,38 @@ int main( void ) {
         a[i] = ( a0 * Pol2Vars( a0.varnames , a[i-1] ) ).data;
         std::cout << Pol2Vars( a0.varnames , a[i] ) << "\n";
     }
+    std::cout << "Integrate[x-r,{x,1,r}]   = " << a0.integrate( "x", "1", "r"   ) << "\n";
+    std::cout << "Integrate[x-r,{r,1,x-1}] = " << a0.integrate( "r", "1", "x-1" ) << "\n";
+    std::cout << "\n";
 
+    /* Test doubles in input string correctly being parsed */
     std::cout << "Shape-Functions:\n";
-    for ( int order = 1; order < 3; ++order ) {
+    std::string fromstring = "4.5-3r+0.5r**2";
+    Pol2Vars test("x,r",fromstring);
+    std::cout << fromstring << " => " << test << "\nraw:" << test.data << "\n";
+
+    for ( int order = 1; order < 5; ++order ) {
         std::cout << "w_" << order << " = \n";
-        for ( int j = 0; j < order; ++j ) {
-            std::cout << " " << std::setw(2) << j << " < r/R < " << j+1 << ": "
-                      << Shapes::Clouds::Weighting(order,j) << "\n";
+        for ( int j = -(order+1); j <= order; ++j ) {
+            std::cout << " " << std::setw(2) << j << " < r/R < " << std::setw(2) << j+1 << ": " << Shapes::Clouds::Weighting(order,j) << "\n";
         }
     }
+    std::cout << "\n";
 
+    std::cout << "Integrate[r,r,0,1] = " << Pol2Vars("r,x","Integrate[r,r,0,1]") << "\n";
+    std::cout << "x*Integrate[1,r,0,x]**2 = " << Pol2Vars("x,r","x*Integrate[1,r,0,x]**2") << "\n";
+    std::cout << "b+a(a-b)**3 = " << Pol2Vars("a,b","b+a(a-b)**3") << "\n";
+
+    #if 1==0
+    std::cout << "rh0_3D:\n";
+    for ( int order = 1; order < 5; ++order ) {
+        std::cout << " n=" << order << ": ";
+        /* Integrate shape, maybe implement this as some kind of function */
+        double
+        for ( int j = -(order+1); j <= order; ++j ) {
+            std::cout << " " << std::setw(2) << j << " < r/R < " << std::setw(2) << j+1 << ": " << Shapes::Clouds::Weighting(order,j) << "\n";
+        }
+    #endif
     return 0;
 }
 

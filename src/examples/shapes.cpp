@@ -1,5 +1,7 @@
 #pragma once
 
+#define DEBUG_SHAPES 99
+
 namespace Shapes {
 
 namespace Clouds {
@@ -9,36 +11,33 @@ namespace Clouds {
      *    | : | * | : |  = :  /  :  \  :        *
      *    | : |   | : |    :/ :  :  : \:        *
      * r:-1 0 1     x   r:-2 -1  0  1  2        *
-     * j=-1 : j=0            :j=1:j=0  :j=2     *
+     *  j=-1:j=0             j=-1:j=0  :j=2     *
      *           j==section         :j=1        *
+     * section <= x <= section+1                *
      ********************************************/
-    Polynomial< MathMatrix<double> > Weighting( int order, int section ) {
-        Pol1Var result("r"); /* need order+1 powers ! */
-        if ( order == 1 ) {
-            if ( section == -1 )
-                result = "1+r";
-            else if ( section == 0 )
-                result = "1-r";
+    Pol1Var Weighting( int order, int section ) {
+        Pol1Var result("x"); /* need order+1 powers ! */
+        if ( order == 1 )
+        {
+            if ( section == -1 or section == 0 )
+                result = "1";
             else
                 result = "0";
-        } else {
+        }
+        else
+        {
+            Pol1Var tmp("x");
+            Pol1Var intoldvar("x");
             Pol2Vars integrand("x,r");
-            integrand = "1-r";
-            integrand.integrate( "r", "x-"+toString(order), toString(order) );
-            Pol2Vars a("INVALID,x");
-            Pol2Vars b("INVALID,x");
-            /*a(0) = pa*0.0+1.0;
-            b(0) = pb*0.0+1.0;
-            for ( int i = 1; i < np; ++i ) {
-                a.data[i] = pa * a.data[i];
-                b.data[i] = pb * b.data[i];
-            }*/
 
-            //MI*integrand*(b-a)
+            integrand = Weighting( order-1, section-1 ).renameVariables("x","r");
+            result    = integrand.integrate( "r", "x-1", toString(section) );
 
-            //integrand = ;
-            //return Polynomial::Integrate( Weighting( order-1, section ), "x", "a", "b" );
-            /* e.g. TSC and j=0: */
+            integrand = Weighting( order-1, section ).renameVariables("x","r");
+            result   += integrand.integrate( "r", toString(section), toString(section+1) );
+
+            integrand = Weighting( order-1, section+1 ).renameVariables("x","r");
+            result   += integrand.integrate( "r", toString(section+1), "x+1" );
         }
         return result;
     }

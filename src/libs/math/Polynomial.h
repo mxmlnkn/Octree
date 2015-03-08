@@ -1,14 +1,17 @@
 #pragma once
 
 #include <vector>
+#include <stack>
 #include <iostream>
 #include <string>
 #include <sstream>
-#include "math/Matrix.h"
 #include <cctype> // isalpha, isalnum, isdigit, islower, isspace, isupper
+#include "math/Matrix.h"
+#include "CompileTime.h"
 
-#define POLYNOMIAL_DEBUG 98
+#define DEBUG_POLYNOMIAL 93
 #define MAX_POWERS 5
+
 
 /* the template parameter must be explicitely given and is very important! e.g.
  * MathMatrix<int> or MathMatrix<MathMatrix<int>> and so on. varnames should
@@ -34,8 +37,9 @@ public:
     int checkVariableNames( void );
 
     /* Counts recursion MathMatrix */
-    int countLevels(void) const;
+    constexpr int countLevels(void) const;
     /* Print the polynomial representation of given v, e.g. {0,1,2} -> x+2x**2 */
+    static std::string cleanString( std::string str );
     std::string toString(void) const;
     Polynomial<T_COEFF> & fromString( std::string sr );
     Polynomial<T_COEFF> & fromOneVarString( std::string sr );
@@ -45,6 +49,8 @@ public:
     Polynomial<T_COEFF> & setZero( int pn0 );
     int getSize( void ) const;
     int getZero( void ) const;
+    /* e.g. renameVariables("x,r","r,y") */
+    Polynomial<T_COEFF> & renameVariables( std::string from, std::string to );
     Polynomial<T_COEFF> & reorderVariableNames( std::string to );
 
     Polynomial<T_COEFF> & operator+=( double b );
@@ -56,6 +62,7 @@ public:
     Polynomial<T_COEFF> & operator+=( Polynomial<T_COEFF> );
     Polynomial<T_COEFF> & operator-=( Polynomial<T_COEFF> );
     Polynomial<T_COEFF> & operator*=( Polynomial<T_COEFF> );
+    Polynomial<T_COEFF> power( int exponent ) const;
     template<typename T_ETYPE>
     Polynomial<T_COEFF> operator+( T_ETYPE b ) const;
     template<typename T_ETYPE>
@@ -63,10 +70,14 @@ public:
     template<typename T_ETYPE>
     Polynomial<T_COEFF> operator*( T_ETYPE b ) const;
 
-    bool operator==( Polynomial<T_COEFF> b );
+    template<typename T_COEFF2>
+    bool operator==( Polynomial<T_COEFF2> b );
 
     void operator=( std::string );
     void operator=( const T_COEFF & );
+    void operator=( const Polynomial<T_COEFF> & src );
+    template<typename T_COEFF2>
+    void operator=( const Polynomial<T_COEFF2> & src );
     operator std::string(void);
 
     auto integrate( std::string variable, std::string from, std::string to ) const -> Polynomial<decltype(this->data[0])>;
@@ -81,10 +92,10 @@ private:
     ( MathMatrix<T_ELEM> & pol, int pnx, int pny = 1 );
 
     template<typename T_ELEM>
-    static int countLevels( MathMatrix<T_ELEM> v, int level = 0 );
+    static constexpr int countLevels( MathMatrix<T_ELEM> v, int level = 0 );
     /* Last specialized call for recursion toPolynomial goes here */
     template<typename T_ELEM>
-    static int countLevels( T_ELEM v, int level = 0 );
+    static constexpr int countLevels( T_ELEM v, int level = 0 );
 
     template<typename T_ELEM>
     std::string toString( const MathMatrix<T_ELEM> & v, int level = 0) const;
@@ -127,9 +138,34 @@ private:
 
 };
 
+/* without this fromString (because of evaluating "Integrate[...]") will not  *
+ * stop instantiating Polynomials with higher and higher recursions. If more  *
+ * than 5 variable polynoms are needed, this recursion end needs to be        *
+ * adjusted by adding more MathMatrix<>                                       */
+template<>
+class Polynomial<MathMatrix<MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>>>>
+{
+public:
+    typedef MathMatrix<MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>>> T_COEFF;
+
+    T_COEFF data;
+    std::vector<std::string> varnames;
+
+public:
+    Polynomial( std::vector<std::string> pvarnames, std::string pol = "0", int pn0 = 0 ) : data(), varnames(pvarnames) {}
+    //Polynomial( std::string pvarnames = "x", std::string pol = "0", int pn0 = 0 );
+    //Polynomial( const T_COEFF &, int pn0 = 0 ) {}
+    //Polynomial( std::vector<std::string> pvarnames, const T_COEFF & src, int pn0 = 0 ) {}
+    auto integrate( std::string variable, std::string from, std::string to ) const -> Polynomial<decltype(this->data[0])> {
+        return Polynomial<decltype(this->data[0])> ( this->varnames );
+    }
+};
+
 typedef Polynomial< MathMatrix<double> > Pol1Var;
 typedef Polynomial< MathMatrix<MathMatrix<double>> > Pol2Vars;
 typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<double>>> > Pol3Vars;
+typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>> > Pol4Vars;
+typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>>> > Pol5Vars;
 
 template<typename T_COEFF>
 std::ostream& operator<<(std::ostream& out, const Polynomial<T_COEFF>& data);
