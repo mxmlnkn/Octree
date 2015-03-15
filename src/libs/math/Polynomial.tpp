@@ -634,6 +634,9 @@ std::string Polynomial<T_COEFF>::toString
         firstprinted = true;
     }
 
+    #if DEBUG_POLYNOMIAL == 92
+        std::cout << "[toString] str:" << out.str() << " cleanString(str):" << cleanString(out.str()) << "\n";
+    #endif
     return cleanString( out.str() );
 }
 
@@ -677,6 +680,15 @@ MathMatrix<MathMatrix<T_ELEM>> Polynomial<T_COEFF>::toMultiplyer
 template<typename T_COEFF>
 std::string Polynomial<T_COEFF>::cleanString( std::string str )
 {
+    /* strip whitespaces */
+    {size_t i = 0;
+    while ( i < str.length() ) {
+        if ( str[i] == ' ' )
+            str.erase(i,1);
+        else
+            ++i;
+    }}
+
     /* strip unnecessary parentheses, e.g. '(a+b)' or '(a)+b' reduce to 'a+b' */
     assert(    std::count( str.begin(), str.end(), '(' )
             == std::count( str.begin(), str.end(), ')' ) );
@@ -694,13 +706,52 @@ std::string Polynomial<T_COEFF>::cleanString( std::string str )
                 break;
             case ')':
                 assert( stacksize > 0 && "this could be triggered by ')a+b(' which is an invalid string!" );
-                if ( nsummands.top() == 0 ) {
+                if ( nsummands.top() == 0 )
+                {
+                    /* if only factors inside parentheses, then parentheses   *
+                     * not needed ( in normal form, which is the only one we  *
+                     * can internally store, meaning (a*b)->a*b, beware that  *
+                     * in general/input form there could be (ab)**2 !         */
                     str.erase( i,1 );
                     str.erase( ppos.top(), 1 );
                     newsummandfound.pop();
                           nsummands.pop();
                                ppos.pop();
                     i -= 2;
+                }
+                else
+                {
+                    /* Case for e.g. the (a+b) in (a+b)+c                     *
+                     * test if expression in parentheses is multiplied with   *
+                     * factor or just added. If latter then parentheses are   *
+                     * not necessary                                          */
+                    bool nofactors = true;
+                    char tocheck;
+                    /* check right side */
+                    if ( i+1 >= 0 and i+1 < str.length() )
+                        tocheck = str[i];
+                    else
+                        tocheck = '+'; // if at end, then no factor
+                    if ( not (tocheck == '+' or tocheck == '-' or tocheck == ')') )
+                        nofactors = false;
+                    /* check left side */
+                    if ( ppos.top()+1 >= 0 and ppos.top()+1 < str.length() )
+                        tocheck = str[ppos.top()];
+                    else
+                        tocheck = '+'; // if at beginning, then no factor
+                    if ( not (tocheck == '+' or tocheck == '-' or tocheck == '(') )
+                        nofactors = false;
+
+                    /* erase ( same as above, join codes ? */
+                    if ( nofactors == true )
+                    {
+                        str.erase( i,1 );
+                        str.erase( ppos.top(), 1 );
+                        newsummandfound.pop();
+                              nsummands.pop();
+                                   ppos.pop();
+                        i -= 2;
+                    }
                 }
                 --stacksize;
                 break;
@@ -949,18 +1000,9 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
 
     result = fromOneVarString( "0", result );
 
-    /* strip whitespaces */
-    {size_t i = 0;
-    while ( i < str.length() ) {
-        if ( str[i] == ' ' )
-            str.erase(i,1);
-        else
-            ++i;
-    }}
     #if DEBUG_POLYNOMIAL == 100
-        std::cout << "Strip Whitespaces: " << str << "\n";
+        std::cout << "[fromString] cleanString(str):" << cleanString(str) << "\n";
     #endif
-
     str = cleanString( str );
 
     /* analyze highest level only, meaning: 2a*(...)+b-(...) call recursively
@@ -1128,12 +1170,13 @@ MathMatrix<T_ELEM> & Polynomial<T_COEFF>::fromString
                             for ( auto it = arguments.begin(); it != arguments.end(); ++it )
                                     std::cerr << (*it) << "\n";
                         #endif
+                        /* todo find and replace inputvariable with a magic variable ! */
 
                         assert( arguments.size() == 4 && "Integrate takes exactly 4 arguments: Integrate[integrand,integration variable, from, to] !" );
 
                         /* create new Polynomial for integrand with one variable extra */
                         std::vector<std::string> newvars = this->varnames;
-                        newvars.push_back( arguments[1] );
+                        newvars.insert( newvars.begin(), arguments[1] );
                         Polynomial<MathMatrix<MathMatrix<T_ELEM>>> integrand( newvars, arguments[0] );
                         tmp = integrand.integrate( arguments[1], arguments[2], arguments[3] ).data;
                         #if DEBUG_POLYNOMIAL == 100

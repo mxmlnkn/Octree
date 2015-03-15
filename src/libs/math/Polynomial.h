@@ -9,7 +9,7 @@
 #include "math/Matrix.h"
 #include "CompileTime.h"
 
-#define DEBUG_POLYNOMIAL 93
+#define DEBUG_POLYNOMIAL 92
 #define MAX_POWERS 5
 
 
@@ -161,11 +161,26 @@ public:
     }
 };
 
-typedef Polynomial< MathMatrix<double> > Pol1Var;
-typedef Polynomial< MathMatrix<MathMatrix<double>> > Pol2Vars;
-typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<double>>> > Pol3Vars;
-typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>> > Pol4Vars;
-typedef Polynomial< MathMatrix<MathMatrix<MathMatrix<MathMatrix<MathMatrix<double>>>>> > Pol5Vars;
+template<int NVars, typename T_BASE>
+struct NVarPolynomialRec {
+    typedef typename NVarPolynomialRec<NVars-1,MathMatrix<T_BASE>>::type type;
+};
+
+template<typename T_BASE>
+struct NVarPolynomialRec<1,T_BASE> {
+    typedef MathMatrix<T_BASE> type;
+};
+
+template<int NVars, typename T_BASE>
+struct NVarPolynomial {
+    typedef Polynomial< typename NVarPolynomialRec<NVars,T_BASE>::type > type;
+};
+
+typedef NVarPolynomial<1,double>::type Pol1Var;
+typedef NVarPolynomial<2,double>::type Pol2Vars;
+typedef NVarPolynomial<3,double>::type Pol3Vars;
+typedef NVarPolynomial<4,double>::type Pol4Vars;
+typedef NVarPolynomial<5,double>::type Pol5Vars;
 
 template<typename T_COEFF>
 std::ostream& operator<<(std::ostream& out, const Polynomial<T_COEFF>& data);
