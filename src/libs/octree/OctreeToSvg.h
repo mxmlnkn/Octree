@@ -10,6 +10,11 @@
 #include "math/Matrix.h"
 #include "CompileTime.h"  // M_PI
 
+#ifndef DEBUG_OCTREE_SVG
+    #define DEBUG_OCTREE_SVG 0
+#endif
+
+
 namespace Octree {
 
 template<int T_DIM>
@@ -65,7 +70,7 @@ public:
     template<typename T_FUNCTOR>
     void PrintTraversal( int pordering, T_FUNCTOR colorfunc, double delay = 1./64. );
     void PrintTraversal( int pordering, double delay = 1./64. );
-    void AnimateUpdated( const OctreeType & newtree );
+    void AnimateUpdated( const OctreeType & newtree, double p_t = -1 );
     Vec<double,2> convertToImageCoordinates( const Vec<double,T_DIM> pos );
     void close(void);
 };

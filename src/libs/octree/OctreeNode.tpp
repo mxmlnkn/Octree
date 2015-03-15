@@ -157,7 +157,7 @@ template<int T_DIM>
 inline int Node<T_DIM>::getLevel( void ) const {
     Node * tmp = this->parent;
     int level  = 0;
-    while (tmp != NULL) {
+    while ( tmp != NULL ) {
         tmp = tmp->parent;
         level++;
     }
@@ -166,10 +166,12 @@ inline int Node<T_DIM>::getLevel( void ) const {
 
 /*********************************** GrowUp ***********************************/
 template<int T_DIM>
-void Node<T_DIM>::GrowUp( void ) {
-    for (int i=0; i<nchildren; ++i) {
+void Node<T_DIM>::GrowUp( void )
+{
+    for ( int i = 0; i < nchildren; ++i )
+    {
         VecD direction = VecD( ConvertNumberToDirection( i ) );
-        this->children[i] = new class Node( this, this->center +
+        this->children[i] = new class Node( this /* parent */, this->center +
                             0.25*direction*size, 0.5*size );
     }
     assert( this->data.empty() );
@@ -178,34 +180,24 @@ void Node<T_DIM>::GrowUp( void ) {
 template<int T_DIM>
 bool Node<T_DIM>::Rejuvenate( void )
 {
-    assert( this->IsLeaf() == false );
-/* Now check if we can collapse the parent node after removing that element.  *
- * It won't be possible, if the parent node has one or more non-leaf child    *
- * nodes, because that child node will already too much elements for the      *
- * parent node to store. This functionality could be enforced to be called by *
- * the in order to save time                                                  */
-    if ( this->HasOnlyLeaves() ) {
-        int sumelements = 0;
-        for ( int i=0; i < this->nchildren; ++i )
-            if ( children[i] != NULL ) {
-                sumelements += (int) children[i]->data.size();
-            }
-        /* If we can collapse, then do so by copying all data into this node. */
-        if ( sumelements <= maxdata ) {
-            assert( this->data.empty() );
-            for ( int i=0; i < nchildren; ++i )
-                if (  children[i] != this
-                  and children[i] != NULL ) {
-                    this->data.splice( this->data.end(),
-                                       this->children[i]->data );
-                    assert( this->children[i]->data.empty() );
-                    delete children[i];
-                    children[i] = NULL;
-                }
-            return true;
+    /* data of a non-leaf node should be empty! */
+    assert( not IsLeaf() );
+    assert( this->data.empty() );
+
+    for ( int i=0; i < nchildren; ++i )
+        if ( children[i] != NULL )
+        {
+            /* Recursively Rejuvenate children which are also parents */
+            if ( not children[i]->IsLeaf() )
+                children[i]->Rejuvenate();
+
+            data.insert( data.end(), children[i]->data.begin(),
+                         children[i]->data.end() );
+            delete children[i];
+            children[i] = NULL;
         }
-    }
-    return false;
+
+    return true;
 }
 
 template<int T_DIM>

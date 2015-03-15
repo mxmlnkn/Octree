@@ -11,8 +11,8 @@ Matrix CreateRotationMat4f( const Vec<double,3> pu, const double theta )
     Matrix I(ROT_DIM,ROT_DIM);
     I = 0;
     I.setDiagonal(1);
-    m = cos(theta)*I + sin(theta)*m
-        + (1-cos(theta)) * ( Matrix(pu)*Matrix(pu).transpose() );
+    m = cos(theta)*I + sin(theta)*m + (1-cos(theta)) * ( ( Matrix(pu) *
+        Matrix(pu).transpose() ).setSize( ROT_DIM, ROT_DIM ) );
     // if ROT_DIM>3 then the matrix should contain a 3x3 matrix in the upper left corner and be zero in the other elements
     for ( int i=4; i < ROT_DIM; i++ )
         m(i,i) = 1;
@@ -127,10 +127,10 @@ Matrix CalcView(const CameraData & Camera) {
     T[1] = -y.scp(Camera.Eye);
     T[2] = -z.scp(Camera.Eye);
 
-	view(0,0) = x[0];   view(0,1) = x[1];   view(0,2) = x[2];   view(0,3) = T[0];
-	view(1,0) = y[0];   view(1,1) = y[1];   view(1,2) = y[2];   view(1,3) = T[1];
-	view(2,0) = z[0];   view(2,1) = z[1];   view(2,2) = z[2];   view(2,3) = T[2];
-	view(3,0) = 0;      view(3,1) = 0;      view(3,2) = 0;      view(3,3) = 1;
+	view(0,0) = x[0];  view(0,1) = x[1];  view(0,2) = x[2];  view(0,3) = T[0];
+	view(1,0) = y[0];  view(1,1) = y[1];  view(1,2) = y[2];  view(1,3) = T[1];
+	view(2,0) = z[0];  view(2,1) = z[1];  view(2,2) = z[2];  view(2,3) = T[2];
+	view(3,0) = 0;     view(3,1) = 0;     view(3,2) = 0;     view(3,3) = 1;
 	return view;
 }
 

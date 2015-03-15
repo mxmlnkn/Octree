@@ -289,10 +289,12 @@ inline OctreeIterator<T_DIM> OctreeIterator<T_DIM>::begin( void )
     if ( tmp.traversallist.size() == 0 and tmp.ordering == Ordering::Rows ) {
         int maxdepth   = tmp.root->getMaxLevel() - tmp.root->getLevel();
         VecI t_size    = int(pow(2,maxdepth));
-        int nleaves    = tmp.root->countLeaves();
-        int ileave    = 0;
-        clock_t tstart = clock();
-        clock_t ttmp   = clock();
+        #if DEBUG_OCTREE_ITERATOR > 0
+            int nleaves    = tmp.root->countLeaves();
+            int ileave    = 0;
+            clock_t tstart = clock();
+            clock_t ttmp   = clock();
+        #endif
 
         for ( int i=0; i < t_size.product(); i++ ) {
             VecD index = VecD(ConvertLinearToVectorIndex<T_DIM>(i,t_size)) + 0.5;
@@ -303,15 +305,22 @@ inline OctreeIterator<T_DIM> OctreeIterator<T_DIM>::begin( void )
                 tmp.done.push_back(found);
                 tmp.traversallist.push_back(found);
                 tmp.curpos = i;
-                if ( found->IsLeaf() )
-                        ileave++;
+                #if DEBUG_OCTREE_ITERATOR > 0
+                    if ( found->IsLeaf() )
+                            ileave++;
+                #endif
             }
-            if ( clock() - ttmp > CLOCKS_PER_SEC ) {
-                ttmp = clock();
-                tout << "[" << (double) 100.0 * ileave / nleaves
-                     << "%] Currently at node at " << tmp.done.back()->center << "\n";
-            }
+            #if DEBUG_OCTREE_ITERATOR > 0
+                if ( clock() - ttmp > CLOCKS_PER_SEC ) {
+                    ttmp = clock();
+                    tout << "[" << (double) 100.0 * ileave / nleaves
+                         << "%] Currently at node at " << tmp.done.back()->center << "\n";
+                }
+            #endif
         }
+        #if DEBUG_OCTREE_ITERATOR > 0
+            tout << "Iterator took " << clock() - tstart << " in total.\\n";
+        #endif
     }
     if ( tmp.traversallist.size() > 0 )
         tmp.curpos = 0;

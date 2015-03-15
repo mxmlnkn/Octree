@@ -53,13 +53,15 @@ template<int T_DIM>
 const typename Octree<T_DIM>::Node * Octree<T_DIM>::GetNodePtr
 ( const VecD p_center ) const
 {
-    const Node * tmp = this->root;
-    while( ! tmp->IsLeaf() ) {
+    Node * tmp = root;
+    while( ! tmp->IsLeaf() )
+    {
         if ( tmp->center == p_center )
             return tmp;
-        VecI direction = 2*VecI( center.GreaterThan( tmp->center )) - 1;
+        VecD direction = 2*VecI( p_center.GreaterOrEqualThan( tmp->center )) - 1;
         tmp = tmp->children[ tmp->ConvertDirectionToNumber( direction ) ];
     }
+
     if ( tmp->center == p_center )
         return tmp;
     else
