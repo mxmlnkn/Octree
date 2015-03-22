@@ -28,11 +28,19 @@ struct {
     }
 } returnEy;
 
+#define BLACKGROUND 0
+
 struct {
     Vec<double,3> operator() ( YeeCell cell ) {
         Vec<double,3> color;
-        color[0] = cell.E[2];
-        color[1] =-cell.E[2];
+        #if BLACKGROUND == 1
+            color[0] = cell.E[2];
+            color[1] =-cell.E[2];
+        #else
+            color[0] = cell.E[2] > 0 ? 1.0                 : 1.0 + cell.E[2];
+            color[1] = cell.E[2] < 0 ? 1.0                 : 1.0 - cell.E[2];
+            color[2] = cell.E[2] > 0 ? 1.0 - 0.5*cell.E[2] : 1.0 + cell.E[2];
+        #endif
         return color;
     }
 } returnEz;

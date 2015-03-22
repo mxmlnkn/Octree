@@ -11,16 +11,61 @@
             {"png-interval"    , required_argument, 0, 'p'},
             {"wave-source"     , required_argument, 0, 'w'},
             {"absorber"        , required_argument, 0, 'a'},
+            {"help"            , no_argument      , 0, 'h'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        int c = getopt_long(argc, argv, "t:i:m:n:o:s:p:w:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "t:i:m:n:o:s:p:w:a:h", long_options, &option_index);
 
         if (c == -1)
             break;
 
         switch (c) {
+            case 'h':
+                std::cout << "-t --timestep\n";
+                std::cout << "   Set number of timesteps to calculate\n";
+                std::cout << "-i --init-refinement\n";
+                std::cout << "   Set initial homogenous refinement depth for Octree or Quadtree. 0 means no refinement. Only used of '-o 1' specified.\n";
+                std::cout << "-m --mac-refinement\n";
+                std::cout << "   Set maximum Refinement. If smaller or equal than number given to -i, then no complex octree refinement is being applied. See -o to specify what to refine further than homogenous\n";
+                std::cout << "-n --number-of-cells\n";
+                std::cout << "   Specify number of cells. Takes 1,2 or 3 arguments depending on SIMDIM in Parameters.cpp\n";
+                std::cout << "-o --octree-setup\n";
+                std::cout << "   Takes one argument, but this option can be specified arbitrarily often to combine setups\n";
+                std::cout << "   1 - Refine homogenously up to level specified by -i\n";
+                std::cout << "   6 - Refine sphere and wave spawning area\n";
+                std::cout << "   7 - Refine cells at one point\n";
+                std::cout << "   8 - Refine wave spawning area\n";
+                std::cout << "   9 - Refine cells containing elliptic lense\n";
+                std::cout << "-s simulation-setup\n";
+                std::cout << "   Takes one argument, but this option can be specified arbitrarily often to combine setups\n";
+                std::cout << "   100 + direction:                                     \n";
+                std::cout << "   direction = 000000b         => 111111b = 63 activates\n";
+                std::cout << "               |||||+- left       absorber everywhere   \n";
+                std::cout << "               ||||+-- right                            \n";
+                std::cout << "               |||+--- bottom                           \n";
+                std::cout << "               ||+---- top                              \n";
+                std::cout << "               |+----- back                             \n";
+                std::cout << "               +------ front                            \n";
+                std::cout << "   2 - Result 014: broken total reflexion\n";
+                std::cout << "   3 - Perfectly reflecting barrier with one slit\n";
+                std::cout << "   4 - Circular Lense\n";
+                std::cout << "   5 - Parabolic Mirror\n";
+                std::cout << "   7 - Elliptic Lense\n";
+                std::cout << "-p png-interval\n";
+                std::cout << "   Every timestep % <argument> a png is being written\n";
+                std::cout << "-w --wave-source\n";
+                std::cout << "    1 - Sine Wave over all timesteps at SPAWN_POS with wavelength LAMBDA_SI\n";
+                std::cout << "    2 - old shield function generator in one direction around SPAWN_POS consisting of a reflecting wall\n";
+                std::cout << "    3 - Plane wave slanted by ALPHA\n";
+                std::cout << "   51 - Initializes a gaussian wave packet over many cells only at the first time step\n";
+                std::cout << "   52 - similar to 51\n";
+                std::cout << "-a --absorber\n";
+                std::cout << "   Specify absorber thickness in number of cells\n";
+                std::cout << "-h --help\n";
+                std::cout << "   Print this message\n";
+                exit(0);
             case 't':
                 NUMBER_OF_STEPS = atoi(optarg);
                 break;
@@ -80,7 +125,7 @@
                 break;
             case 'w':
                 WAVE_SPAWN_SETUP.push_back( atoi(optarg) );
-                if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
+                if ( CONTAINS(WAVE_SPAWN_SETUP, 3) and optind+1 < argc ) {
                 if ( SIMDIM == 2 and argv[optind+0][0] != '-' and argv[optind+1][0] != '-' )
                 {
                     SPAWN_POS = Vec<double,SIMDIM>( atoi(argv[optind+0]), atoi(argv[optind+1]) );
@@ -94,7 +139,7 @@
                 }
                 break;
             case 'a':
-                ABSORBER_STRENGTH = atoi(optarg);
+                ABSORBER_STRENGTH = atof(optarg);
                 if ( argv[optind-2][0] != '-' ) {
                     ABSORBING_BORDER_THICKNESS = atoi(argv[optind-2]);
                     optind += 1;

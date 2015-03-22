@@ -46,7 +46,7 @@ int main( int argc, char **argv )
         }
 
         const VecD  center = VecD( fmod(0.5 + t/(0.5*T_MAX), 1.0) - 0.5, 0.0 );
-        const float radius = 0.25 * tree.size[0] * ( 1.0 - cos( 2.0*3.141592653*t/(0.5*T_MAX) ) );
+        const float radius = 0.15 * tree.size[0] * ( 1.8 - cos( 2.0*3.141592653*t/(0.5*T_MAX) ) );
         std::cout << "center:" << center << " radius:" << radius << "\n";
 
         /* refine a subsection ( 2D-Ball ) of the cells one more time */

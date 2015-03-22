@@ -48,7 +48,7 @@ ToDo:
 	- Use SIMDIM correctly (but not everywhere, as YEE is 3D
 	- Change definition of NCells to not include Guard!
 	- Antialiasing for slanted Material surfaces ???
-	
+
 \vec{H}=\vec{H}_0 e^{i\left( k_x\cdot x + k_y\cdot y - \omega \cdot t \right)}
 = \vec{H}_0 e^{i\left( \sqrt{ k_M^2 \left( 1+\frac{\sigma}{i\omega\epsilon_M} \right )\left( 1+\frac{\sigma^*}{i\omega\mu_M} \right )-(k_y^2) }}\cdot x +k_y\cdot y -\omega\cdot t\right)
 \\
@@ -79,3 +79,9 @@ ffmpeg -i output/Ez_%05d.png -c:v libx264 -crf 10 Ez.mkv
 		For stability in glass  Delta_T=1 =< 1.17557=DELTA_X/sqrt(2)/c_M
 014_verhidnerte_Totalreflexion
 	very geil :3
+
+
+
+
+courant1dbutnot2d:
+    rm MainYeeOctree.exe; mpic++ -DOWN_PARAMSET yeesolver/MainYeeOctree.cpp -o MainYeeOctree.exe -I ./paramset/courant1dbutnot2d/ -I . -I ./libs -m64 -std=c++11 -Wall -Weffc++ -pedantic -pedantic-errors -Wextra -Wcast-align -Wcast-qual  -Wchar-subscripts  -Wcomment -Wconversion -Wdisabled-optimization -Werror -Wformat -Wformat-nonliteral -Wformat-security -Wformat-y2k -Wimport  -Winit-self  -Winline -Winvalid-pch -Wno-long-long -Wunsafe-loop-optimizations -Wmissing-braces -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs -Wmissing-noreturn -Wpacked -Wparentheses -Wpointer-arith -Wredundant-decls -Wreturn-type -Wsequence-point  -Wshadow -Wsign-compare  -Wstack-protector -Wstrict-aliasing -Wstrict-aliasing=2 -Wswitch -Wswitch-enum -Wtrigraphs  -Wuninitialized -Wunknown-pragmas -Wunreachable-code -Wunused-function -Wunused-label -Wno-unused-parameter -Wunused-value -Wno-unused-variable -Wvariadic-macros -Wvolatile-register-var  -Wwrite-strings -Wno-unused-variable -g -O0 -Wno-unused-variable -lboost_system -lboost_filesystem -DNO_FREETYPE -I ./pngwriter -L ./pngwriter -lboost_system -lboost_filesystem -lz -lpngwriter -lpng; ./MainYeeOctree.exe -s 101 -t 300 -p 1 -w 3 -s 3

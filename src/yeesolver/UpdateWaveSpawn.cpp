@@ -50,11 +50,19 @@ if ( CONTAINS(WAVE_SPAWN_SETUP, 3) ) {
     double ky      = 2*M_PI/LAMBDA * sin(alpha);
     double width   = SPAWN_AREA_SIZE[1];
     VecD pos       = SPAWN_POS;// + SPAWN_AREA_SIZE - 1;
-    assert( SPAWN_POS[1]+SPAWN_AREA_SIZE[1] < tree.center[1] + tree.size[1] );
 
+    /* don't spawn wave in absorber */
     VecD mincellsize = CELL_SIZE / pow( 2.0, combox.maxLevel - combox.minLevel );
-    for (double x = SPAWN_POS[0]; x < SPAWN_POS[0] + SPAWN_AREA_SIZE[0]; x += mincellsize[0] )
-    for (double y = SPAWN_POS[1]; y < SPAWN_POS[1] + SPAWN_AREA_SIZE[1]; y += mincellsize[1] ) {
+    for (double x = SPAWN_POS[0]; x < std::min( SPAWN_POS[0] + SPAWN_AREA_SIZE[0],
+    tree.center[0] + tree.size[0]/2.0 - ABSORBING_BORDER_THICKNESS*ABSORBER_SIDE[1] ); x += mincellsize[0] )
+    for (double y = SPAWN_POS[1]; y < std::min( SPAWN_POS[1] + SPAWN_AREA_SIZE[1],
+    tree.center[1] + tree.size[1]/2.0 - ABSORBING_BORDER_THICKNESS*ABSORBER_SIDE[3] ); y += mincellsize[1] )
+    {
+        /* don't spawn wave in absorber */
+        if ( x < tree.center[0] - tree.size[0]/2.0 + ABSORBING_BORDER_THICKNESS*ABSORBER_SIDE[0]
+        or   y < tree.center[1] - tree.size[1]/2.0 + ABSORBING_BORDER_THICKNESS*ABSORBER_SIDE[2] )
+            continue;
+
         pos[0] = x; pos[1] = y;
         VecD cellpos;
         YeeCell * cell = combox.findCell( pos, &cellpos );

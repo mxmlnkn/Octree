@@ -29,7 +29,11 @@ char ** argv;
 #include "math/TVector.tpp"
 #include "math/TBaseMatrix.h"
 #include "teestream/TeeStream.h"
-#include "paramset/Parameters_2015-01-16.cpp"
+#ifndef OWN_PARAMSET
+    #include "paramset/Parameters_2015-01-16.cpp"
+#else
+    #include "Parameters.cpp"
+#endif
 #include "YeeCell.h"
 #include "YeeCellColors.h"
 #include "YeeSolver.h"
@@ -60,6 +64,7 @@ int main( int pargc, char **pargv )
     typedef Vec<double,SIMDIM> VecD;
     typedef Vec<int   ,SIMDIM> VecI;
 
+    std::cout << "Evaluate Arguments\n";
     #include "InitArguments.cpp"
 
     /* Create timestamp and basefolder for filenames */
@@ -129,7 +134,10 @@ int main( int pargc, char **pargv )
     tout << "WAVE_SPAWN_SETUP         : " << WAVE_SPAWN_SETUP           << "\n";
     tout << "SPAWN_POS                : " << SPAWN_POS                  << "\n";
     tout << "SPAWN_AREA_SIZE          : " << SPAWN_AREA_SIZE            << "\n";
+    tout << "ABSORBING_BORDER_THICKNESS : " << ABSORBING_BORDER_THICKNESS << "\n";
     tout << "PNG_INTERVAL             : " << PNG_INTERVAL               << "\n";
+    tout << "tree.center              : " << tree.center                << "\n";
+    tout << "tree.size                : " << tree.size                  << "\n";
     tout << "combox.worldsize         : " << combox.worldsize           << "\n";
     tout << "combox.rank              : " << combox.rank                << "\n";
     tout << "\n";

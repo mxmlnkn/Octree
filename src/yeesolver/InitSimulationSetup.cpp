@@ -27,11 +27,14 @@ if ( CONTAINS(SIMULATION_SETUP,2) ) {
 }
 /********** Perfectly reflecting barrier with one slit ************/
 if ( CONTAINS(SIMULATION_SETUP,3) ) {
-    const double wy = LAMBDA;
-    if ( curpos[X] > LAMBDA and curpos[X] < 2*LAMBDA )
-    if ( curpos[Y] > 0.5 - wy/2 and curpos[Y] < 0.5 + wy/2 ) {
-            itm->epsilon  = INF;//2*EPS0;
-            //itm->mu       = INF;
+    VecD SLIT_CENTER  = tree.center;
+    VecD SLIT_SIZE(0); SLIT_SIZE[0] = LAMBDA; SLIT_SIZE[1] = 2*LAMBDA;
+    if ( curpos[X] > SLIT_CENTER[0] - SLIT_SIZE[0] / 2.0 and
+         curpos[X] < SLIT_CENTER[0] + SLIT_SIZE[0] / 2.0 )
+    if ( curpos[Y] > SLIT_CENTER[1] + SLIT_SIZE[1] / 2.0 or
+         curpos[Y] < SLIT_CENTER[1] - SLIT_SIZE[1] / 2.0 )
+    {
+            itm->epsilon  = INF;
     }
 }
 /************************* Circular Lense *************************/
@@ -40,8 +43,8 @@ if ( CONTAINS(SIMULATION_SETUP,4) ) {
     if ( (curpos - SPHERICAL_LENSE_CENTER).norm() < SPHERICAL_LENSE_RADIUS )
         itm->epsilon = EPS0 * n*n;
     if ( (curpos[X] - 0 < ABSORBING_BORDER_THICKNESS) or
-         (tree.center[X] + tree.size[X]/2 - curpos[X] < ABSORBING_BORDER_THICKNESS) or
-         (tree.center[Y] + tree.size[Y]/2 - curpos[Y] < ABSORBING_BORDER_THICKNESS) or
+         (tree.center[X] + tree.size[X]/2.0 - curpos[X] < ABSORBING_BORDER_THICKNESS) or
+         (tree.center[Y] + tree.size[Y]/2.0 - curpos[Y] < ABSORBING_BORDER_THICKNESS) or
          (curpos[Y] - 0 < ABSORBING_BORDER_THICKNESS)
        )
     {
