@@ -62,12 +62,13 @@ int main( int argc, char **argv )
             {"octree-setup"        , required_argument, 0, 'o'},
             {"svg"                 , required_argument, 0, 's'},
             {"ordering"            , required_argument, 0, 'r'},
+            {"radius"              , required_argument, 0, 'r'},
             {"number-of-worldsizes", required_argument, 0, 'n'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        int c = getopt_long(argc, argv, "i:m:n:o:r:s:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "i:m:n:o:r:s:R:", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -84,6 +85,9 @@ int main( int argc, char **argv )
                 break;
             case 'r':
                 ORDERING = atoi(optarg);
+                break;
+            case 'R':
+                R = atof(optarg) * SIM_SIZE.min();
                 break;
             case 'n':
                 //if ( strstr( argv[optind-2], "--number-of-worldsizes\0" ) != NULL )
