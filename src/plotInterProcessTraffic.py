@@ -41,7 +41,9 @@ def powerfit(x,b,c):
 
 for isetup in range(len(basestrings)):
     fig = figure( figsize=(6,4) );
-    title( setupnames[isetup] )
+    #title( setupnames[isetup] )
+    print setupnames[isetup]
+
     for i in range(len(orderings)):
         fname = basestrings[isetup] + orderings[i] + "_Ordering.dat"
         if os.path.isfile( fname ):
@@ -50,21 +52,41 @@ for isetup in range(len(basestrings)):
                 labelname = "Spaltenweise"
             elif orderings[i] == "Morton":
                 labelname = "Z-Kurve"
+            elif orderings[i] == "GrayCode":
+                labelname = "mod. Gray-Code"
             else:
                 labelname = orderings[i]
             plot( data[20:,0], data[20:,2], 'o', ms=5, label=labelname )
             # Plot scaling
-            if i == 2:
+            if orderings[i] == "Rows":
+                x = data[-15:-1,0]
+                poptg, pcovg = curve_fit(powerfit, x, data[-15:-1,2], p0=[1e5,1.0] )
+                # sigma=yerr/y * y[0]/y,
+                print "Fit for Rows: ",poptg, sqrt(diag(pcovg))
+                
+                poptg[0] *= 4.
+                poptg[1] = 1.0
+                plot( x, powerfit(x , *poptg ) , 'k', linestyle='dashed', linewidth=2 )
+                tx = 5.0
+                ty = 1.8*powerfit(tx,*poptg)
+                text( 0.7*tx, ty, r"$\propto n$", fontsize=18 )
+
+            if orderings[i] == "Hilbert":
                 x = data[20:-20,0]
-                poptg, pcovg = curve_fit(powerfit, x, data[20:-20,2],  p0=[1,1.0] ) # sigma=yerr/y * y[0]/y,
-                print poptg, sqrt(diag(pcovg))
-                #if abs( poptg[1] - 0.5 ) < abs( poptg[1] - 1./3. ):
-                #    poptg[1] = 0.5
-                #else:
-                #    poptg[1] = 1./3.
-                #poptg[0] = 0
-                #poptg[1] /= 2.
-                #plot( x, powerfit(x , *poptg ) , 'k-' )
+                poptg, pcovg = curve_fit(powerfit, x, data[20:-20,2], p0=[1.0,1.0] )
+                print "Fit for Hilbert: ",poptg, sqrt(diag(pcovg))
+                
+                if poptg[1] < 2.0:
+                    poptg[1] = 2.0
+                else:
+                    poptg[1] = 3.0
+                poptg[0] /= 2.
+                plot( x, powerfit(x , *poptg ) , 'k-', linestyle='dashed', linewidth=2 )
+                
+                tx = 1.5*x[ len(x)/2 ]
+                ty = 1.5*powerfit(tx,*poptg)
+                text( tx, ty, r"$\propto n^%i$" % int(poptg[1]), fontsize=18 )
+
         else:
             print "Can't find ", fname
     plot( data[20:,0], data[20:,1], 'b-', lw=2, label = "Maximum" )
