@@ -63,7 +63,7 @@ for isetup in range(len(basestrings)):
                 poptg, pcovg = curve_fit(powerfit, x, data[-15:-1,2], p0=[1e5,1.0] )
                 # sigma=yerr/y * y[0]/y,
                 print "Fit for Rows: ",poptg, sqrt(diag(pcovg))
-                
+
                 poptg[0] *= 4.
                 poptg[1] = 1.0
                 plot( x, powerfit(x , *poptg ) , 'k', linestyle='dashed', linewidth=2 )
@@ -75,17 +75,17 @@ for isetup in range(len(basestrings)):
                 x = data[20:-20,0]
                 poptg, pcovg = curve_fit(powerfit, x, data[20:-20,2], p0=[1.0,1.0] )
                 print "Fit for Hilbert: ",poptg, sqrt(diag(pcovg))
-                
+
                 if poptg[1] < 2.0:
                     poptg[1] = 2.0
                 else:
                     poptg[1] = 3.0
                 poptg[0] /= 2.
                 plot( x, powerfit(x , *poptg ) , 'k-', linestyle='dashed', linewidth=2 )
-                
+
                 tx = 1.5*x[ len(x)/2 ]
                 ty = 1.5*powerfit(tx,*poptg)
-                text( tx, ty, r"$\propto n^%i$" % int(poptg[1]), fontsize=18 )
+                text( tx, ty, r"$\propto n^\frac{1}{%i}$" % int(poptg[1]), fontsize=18 )
 
         else:
             print "Can't find ", fname
